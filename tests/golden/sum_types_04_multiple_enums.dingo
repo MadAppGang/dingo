@@ -1,0 +1,11 @@
+package main
+
+enum Status {
+	Pending,
+	Active,
+}
+
+enum Priority {
+	Low,
+	High,
+}

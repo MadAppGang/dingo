@@ -1,0 +1,55 @@
+package main
+
+type StatusTag uint8
+
+const (
+	StatusTag_Pending StatusTag = iota
+	StatusTag_Active
+)
+
+type Status struct {
+	tag StatusTag
+}
+
+func Status_Pending() Status {
+	return Status{tag: StatusTag_Pending}
+}
+func Status_Active() Status {
+	return Status{tag: StatusTag_Active}
+}
+func (e Status) IsPending() bool {
+	return e.tag == StatusTag_Pending
+}
+func (e Status) IsActive() bool {
+	return e.tag == StatusTag_Active
+}
+
+type PriorityTag uint8
+
+const (
+	PriorityTag_Low PriorityTag = iota
+	PriorityTag_High
+)
+
+type Priority struct {
+	tag PriorityTag
+}
+
+func Priority_Low() Priority {
+	return Priority{tag: PriorityTag_Low}
+}
+func Priority_High() Priority {
+	return Priority{tag: PriorityTag_High}
+}
+func (e Priority) IsLow() bool {
+	return e.tag == PriorityTag_Low
+}
+func (e Priority) IsHigh() bool {
+	return e.tag == PriorityTag_High
+}
+func checkTask(s Status, p Priority) string {
+	if s.IsPending() && p.IsHigh() {
+		return "urgent"
+	}
+	return "normal"
+}

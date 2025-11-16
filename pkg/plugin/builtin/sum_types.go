@@ -2,6 +2,7 @@
 package builtin
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"strings"
@@ -76,29 +77,54 @@ func (p *SumTypesPlugin) Transform(ctx *plugin.Context, node ast.Node) (ast.Node
 	p.generatedDecls = make([]ast.Decl, 0)
 
 	// First pass: Collect all enum declarations and register them
-	p.collectEnums(file)
+	if err := p.collectEnums(file); err != nil {
+		return nil, fmt.Errorf("collecting enums: %w", err)
+	}
 
 	// Second pass: Transform the AST
 	result := astutil.Apply(file, p.preVisit, p.postVisit)
 
+	// Validate result
+	if result == nil {
+		return nil, fmt.Errorf("AST transformation failed")
+	}
+
 	// Add generated declarations (tag enums, constructors, helpers) at the end
 	if resultFile, ok := result.(*ast.File); ok {
 		resultFile.Decls = append(resultFile.Decls, p.generatedDecls...)
+		return resultFile, nil
 	}
 
 	return result, nil
 }
 
-// collectEnums builds a registry of all enum declarations in the file
-func (p *SumTypesPlugin) collectEnums(file *ast.File) {
+// collectEnums builds a registry of all enum declarations in the file with validation
+func (p *SumTypesPlugin) collectEnums(file *ast.File) error {
 	for _, decl := range file.Decls {
 		// Check if this declaration is a placeholder for an enum
 		if dingoNode, hasDingo := p.currentFile.GetDingoNode(decl); hasDingo {
 			if enumDecl, isEnum := dingoNode.(*dingoast.EnumDecl); isEnum {
+				// Check for duplicate enum names
+				if existing, exists := p.enumRegistry[enumDecl.Name.Name]; exists {
+					return fmt.Errorf("duplicate enum %s (previous at %v)",
+						enumDecl.Name.Name, existing.Name.Pos())
+				}
+
+				// Check for duplicate variant names within enum
+				variantNames := make(map[string]bool)
+				for _, v := range enumDecl.Variants {
+					if variantNames[v.Name.Name] {
+						return fmt.Errorf("duplicate variant %s in enum %s",
+							v.Name.Name, enumDecl.Name.Name)
+					}
+					variantNames[v.Name.Name] = true
+				}
+
 				p.enumRegistry[enumDecl.Name.Name] = enumDecl
 			}
 		}
 	}
+	return nil
 }
 
 // preVisit is called before visiting a node's children
@@ -139,9 +165,9 @@ func (p *SumTypesPlugin) postVisit(cursor *astutil.Cursor) bool {
 func (p *SumTypesPlugin) transformEnumDecl(cursor *astutil.Cursor, enumDecl *dingoast.EnumDecl) {
 	enumName := enumDecl.Name.Name
 
-	// Generate tag enum type
-	tagDecl := p.generateTagEnum(enumDecl)
-	p.generatedDecls = append(p.generatedDecls, tagDecl)
+	// Generate tag enum type and constants (returns 2 declarations)
+	tagDecls := p.generateTagEnum(enumDecl)
+	p.generatedDecls = append(p.generatedDecls, tagDecls...)
 
 	// Generate tagged union struct
 	unionDecl := p.generateUnionStruct(enumDecl)
@@ -167,7 +193,8 @@ func (p *SumTypesPlugin) transformEnumDecl(cursor *astutil.Cursor, enumDecl *din
 
 // generateTagEnum creates the tag enum type and constants
 // Example: type ShapeTag uint8; const ( ShapeTag_Circle ShapeTag = iota; ... )
-func (p *SumTypesPlugin) generateTagEnum(enumDecl *dingoast.EnumDecl) ast.Decl {
+// Returns TWO declarations: [typeDecl, constDecl]
+func (p *SumTypesPlugin) generateTagEnum(enumDecl *dingoast.EnumDecl) []ast.Decl {
 	enumName := enumDecl.Name.Name
 	tagName := enumName + "Tag"
 
@@ -175,6 +202,11 @@ func (p *SumTypesPlugin) generateTagEnum(enumDecl *dingoast.EnumDecl) ast.Decl {
 	typeSpec := &ast.TypeSpec{
 		Name: &ast.Ident{Name: tagName},
 		Type: &ast.Ident{Name: "uint8"},
+	}
+
+	typeDecl := &ast.GenDecl{
+		Tok:   token.TYPE,
+		Specs: []ast.Spec{typeSpec},
 	}
 
 	// Create const block with iota
@@ -198,22 +230,13 @@ func (p *SumTypesPlugin) generateTagEnum(enumDecl *dingoast.EnumDecl) ast.Decl {
 		}
 	}
 
-	// Combine into a single declaration with both type and const
-	// We'll return the type declaration and add const separately
-	typeDecl := &ast.GenDecl{
-		Tok:   token.TYPE,
-		Specs: []ast.Spec{typeSpec},
-	}
-
-	// Add const declaration to generated decls
 	constDecl := &ast.GenDecl{
-		Tok:   token.CONST,
+		Tok:    token.CONST,
 		Lparen: 1, // Grouped const
-		Specs: constSpecs,
+		Specs:  constSpecs,
 	}
-	p.generatedDecls = append(p.generatedDecls, constDecl)
 
-	return typeDecl
+	return []ast.Decl{typeDecl, constDecl}
 }
 
 // generateUnionStruct creates the tagged union struct
@@ -263,20 +286,32 @@ func (p *SumTypesPlugin) generateUnionStruct(enumDecl *dingoast.EnumDecl) ast.De
 // Unit variants have no fields
 // Tuple/struct variants get pointer fields to store their data
 func (p *SumTypesPlugin) generateVariantFields(variant *dingoast.VariantDecl) []*ast.Field {
-	if variant.Kind == dingoast.VariantUnit {
-		return nil // No data fields for unit variants
+	if variant.Kind == dingoast.VariantUnit || variant.Fields == nil {
+		return nil // No data fields for unit variants or nil fields
 	}
 
 	variantName := strings.ToLower(variant.Name.Name)
-	fields := make([]*ast.Field, 0)
+
+	// Count fields for proper allocation
+	totalFields := 0
+	for _, f := range variant.Fields.List {
+		if f.Names != nil {
+			totalFields += len(f.Names)
+		}
+	}
+
+	fields := make([]*ast.Field, 0, totalFields)
 
 	// For each field in the variant, create a pointer field in the union
 	for _, f := range variant.Fields.List {
+		if f.Names == nil || len(f.Names) == 0 {
+			continue // Skip malformed fields
+		}
 		for _, name := range f.Names {
 			fieldName := variantName + "_" + name.Name
 			fields = append(fields, &ast.Field{
 				Names: []*ast.Ident{{Name: fieldName}},
-				Type: &ast.StarExpr{X: f.Type}, // Pointer type
+				Type:  &ast.StarExpr{X: f.Type}, // Pointer type
 			})
 		}
 	}
@@ -291,10 +326,20 @@ func (p *SumTypesPlugin) generateConstructor(enumDecl *dingoast.EnumDecl, varian
 	variantName := variant.Name.Name
 	funcName := enumName + "_" + variantName
 
-	// Build parameter list
-	params := &ast.FieldList{}
-	if variant.Fields != nil {
-		params.List = variant.Fields.List
+	// Build parameter list (deep copy to avoid aliasing)
+	var params *ast.FieldList
+	if variant.Fields != nil && variant.Fields.List != nil {
+		paramsCopy := make([]*ast.Field, len(variant.Fields.List))
+		for i, f := range variant.Fields.List {
+			// Deep copy each field
+			paramsCopy[i] = &ast.Field{
+				Names: append([]*ast.Ident{}, f.Names...),
+				Type:  f.Type, // Types are immutable, OK to share
+			}
+		}
+		params = &ast.FieldList{List: paramsCopy}
+	} else {
+		params = &ast.FieldList{}
 	}
 
 	// Build return type (same as enum)
@@ -307,9 +352,17 @@ func (p *SumTypesPlugin) generateConstructor(enumDecl *dingoast.EnumDecl, varian
 		for i, param := range enumDecl.TypeParams.List {
 			typeArgs[i] = param.Names[0]
 		}
-		returnType = &ast.IndexListExpr{
-			X:       &ast.Ident{Name: enumName},
-			Indices: typeArgs,
+		// Use IndexExpr for single type param, IndexListExpr for multiple
+		if len(typeArgs) == 1 {
+			returnType = &ast.IndexExpr{
+				X:     &ast.Ident{Name: enumName},
+				Index: typeArgs[0],
+			}
+		} else {
+			returnType = &ast.IndexListExpr{
+				X:       &ast.Ident{Name: enumName},
+				Indices: typeArgs,
+			}
 		}
 	}
 
@@ -394,9 +447,17 @@ func (p *SumTypesPlugin) generateHelperMethod(enumDecl *dingoast.EnumDecl, varia
 		for i, param := range enumDecl.TypeParams.List {
 			typeArgs[i] = param.Names[0]
 		}
-		receiverType = &ast.IndexListExpr{
-			X:       &ast.Ident{Name: enumName},
-			Indices: typeArgs,
+		// Use IndexExpr for single type param, IndexListExpr for multiple
+		if len(typeArgs) == 1 {
+			receiverType = &ast.IndexExpr{
+				X:     &ast.Ident{Name: enumName},
+				Index: typeArgs[0],
+			}
+		} else {
+			receiverType = &ast.IndexListExpr{
+				X:       &ast.Ident{Name: enumName},
+				Indices: typeArgs,
+			}
 		}
 	}
 
@@ -446,6 +507,12 @@ func (p *SumTypesPlugin) transformMatchExpr(cursor *astutil.Cursor, matchExpr *d
 	// For Phase 1, we'll create a basic switch on the tag field
 	// Full pattern matching and destructuring will come in Phase 3
 
+	// Check if we're in expression context (match should return a value)
+	if _, isExprContext := cursor.Parent().(ast.Expr); isExprContext {
+		p.currentContext.Logger.Error("match expressions not yet supported (use match statements only)")
+		return
+	}
+
 	// Create switch statement
 	switchStmt := &ast.SwitchStmt{
 		Tag: &ast.SelectorExpr{
@@ -459,17 +526,20 @@ func (p *SumTypesPlugin) transformMatchExpr(cursor *astutil.Cursor, matchExpr *d
 
 	// Convert each match arm to a case clause
 	for _, arm := range matchExpr.Arms {
-		caseClause := p.transformMatchArm(matchExpr.Expr, arm)
+		caseClause, err := p.transformMatchArm(matchExpr.Expr, arm)
+		if err != nil {
+			p.currentContext.Logger.Error("match arm transformation failed: %v", err)
+			return
+		}
 		switchStmt.Body.List = append(switchStmt.Body.List, caseClause)
 	}
 
 	// Replace the match expression with the switch statement
-	// Note: This is a simplified version - full implementation needs expression context handling
 	cursor.Replace(switchStmt)
 }
 
 // transformMatchArm converts a match arm to a switch case clause
-func (p *SumTypesPlugin) transformMatchArm(matchedExpr ast.Expr, arm *dingoast.MatchArm) *ast.CaseClause {
+func (p *SumTypesPlugin) transformMatchArm(matchedExpr ast.Expr, arm *dingoast.MatchArm) (*ast.CaseClause, error) {
 	pattern := arm.Pattern
 
 	var caseExpr ast.Expr
@@ -478,16 +548,24 @@ func (p *SumTypesPlugin) transformMatchArm(matchedExpr ast.Expr, arm *dingoast.M
 	if pattern.Wildcard {
 		// Wildcard becomes default case
 		caseExpr = nil
+	} else if pattern.Variant == nil {
+		return nil, fmt.Errorf("unsupported pattern type (literal patterns not yet implemented)")
 	} else {
 		// Variant pattern becomes case for that tag
 		// TODO: Determine enum name from type inference
 		variantName := pattern.Variant.Name
 		// For now, we'll use a placeholder - full implementation needs type registry
+		// This needs enum registry lookup to build correct tag name like "ShapeTag_Circle"
 		caseExpr = &ast.Ident{Name: "Tag_" + variantName}
 	}
 
+	// Check for guards (not yet implemented)
+	if arm.Guard != nil {
+		return nil, fmt.Errorf("match guards not yet implemented (Phase 3)")
+	}
+
 	// Add destructuring statements if needed
-	if len(pattern.Fields) > 0 {
+	if pattern.Variant != nil && len(pattern.Fields) > 0 {
 		// TODO: Generate field extraction code
 		// Example: r := *matchedExpr.circle_r
 		body = p.generateDestructuring(matchedExpr, pattern)
@@ -504,7 +582,7 @@ func (p *SumTypesPlugin) transformMatchArm(matchedExpr ast.Expr, arm *dingoast.M
 			return nil // default case
 		}(),
 		Body: body,
-	}
+	}, nil
 }
 
 // generateDestructuring creates statements to extract fields from a variant

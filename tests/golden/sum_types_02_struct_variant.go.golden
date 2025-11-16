@@ -1,0 +1,44 @@
+package main
+
+type ShapeTag uint8
+
+const (
+	ShapeTag_Point ShapeTag = iota
+	ShapeTag_Circle
+	ShapeTag_Rectangle
+)
+
+type Shape struct {
+	tag              ShapeTag
+	circle_radius    *float64
+	rectangle_width  *float64
+	rectangle_height *float64
+}
+
+func Shape_Point() Shape {
+	return Shape{tag: ShapeTag_Point}
+}
+func Shape_Circle(radius float64) Shape {
+	return Shape{tag: ShapeTag_Circle, circle_radius: &radius}
+}
+func Shape_Rectangle(width float64, height float64) Shape {
+	return Shape{tag: ShapeTag_Rectangle, rectangle_width: &width, rectangle_height: &height}
+}
+func (e Shape) IsPoint() bool {
+	return e.tag == ShapeTag_Point
+}
+func (e Shape) IsCircle() bool {
+	return e.tag == ShapeTag_Circle
+}
+func (e Shape) IsRectangle() bool {
+	return e.tag == ShapeTag_Rectangle
+}
+func area(s Shape) float64 {
+	if s.IsCircle() {
+		return 3.14 * (*s.circle_radius) * (*s.circle_radius)
+	}
+	if s.IsRectangle() {
+		return (*s.rectangle_width) * (*s.rectangle_height)
+	}
+	return 0.0
+}
