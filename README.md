@@ -382,11 +382,22 @@ Everyone has this except Go. Until now.
 
 ### 6. Lambda Functions — Multiple styles, pick your favorite
 
-**Rust/JavaScript style with pipes:**
+**Rust style with pipes:**
 ```go
 users.filter(|u| u.age > 18)
     .map(|u| u.name)
     .sorted()
+```
+
+**TypeScript/JavaScript arrow functions:**
+```go
+users.filter((u) => u.age > 18)
+    .map((u) => u.name)
+    .sorted()
+
+// Or without parens for single param
+users.filter(u => u.age > 18)
+    .map(u => u.name)
 ```
 
 **Kotlin style with braces and implicit `it`:**
@@ -406,6 +417,9 @@ users.filter { $0.age > 18 }
 **Full syntax when you need types:**
 ```go
 users.filter(|u: User| -> bool { u.age > 18 && u.verified })
+
+// Or TS/JS style
+users.filter((u: User): bool => { u.age > 18 && u.verified })
 ```
 
 Compare that to Go's verbose function literals:
@@ -427,6 +441,8 @@ sort.Strings(names)
 ```
 
 Yeah. Lambda functions are just nicer. That's the whole argument.
+
+Pick whichever style feels right. We support them all.
 
 ### 7. Null Safety Operators — Chain nil checks like a human
 

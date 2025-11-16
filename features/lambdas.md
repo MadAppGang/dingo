@@ -40,7 +40,7 @@ names := Map(users, func(u User) string {
 
 ## Proposed Syntax
 
-### Basic Lambda
+### Style 1: Rust-Style Pipes
 
 ```dingo
 // Single expression (implicit return)
@@ -58,43 +58,95 @@ let process = |x| {
     println("Doubling ${x}")
     return result
 }
+
+// In functional chains
+users.filter(|u| u.age > 18)
+    .map(|u| u.name)
+    .forEach(|name| println(name))
+```
+
+### Style 2: TypeScript/JavaScript Arrow Functions
+
+```dingo
+// Single parameter (no parens needed)
+let double = x => x * 2
+
+// Multiple parameters (parens required)
+let add = (a, b) => a + b
+
+// Block body
+let process = (x) => {
+    let result = x * 2
+    println("Doubling ${x}")
+    return result
+}
+
+// In functional chains
+users.filter(u => u.age > 18)
+    .map(u => u.name)
+    .sorted()
+
+// With parens (always valid)
+users.filter((u) => u.age > 18)
+    .map((u) => u.name)
+```
+
+### Style 3: Kotlin-Style Trailing Lambda
+
+```dingo
+// When last parameter is a function
+users.filter { |u| u.age > 18 }
+    .map { |u| u.name }
+
+// Implicit 'it' parameter (single param)
+users.filter { it.age > 18 }
+    .map { it.name }
+
+// Arrow style also works in braces
+users.filter { u => u.age > 18 }
+    .map { u => u.name }
+```
+
+### Style 4: Swift-Style Dollar Signs
+
+```dingo
+// Shorthand argument names
+users.filter { $0.age > 18 }
+    .map { $0.name }
+
+// Multiple parameters
+pairs.sorted { $0.key < $1.key }
 ```
 
 ### With Type Annotations
 
 ```dingo
-// Explicit types (when inference fails)
+// Rust style with types
 let parse = |s: string| -> int {
+    return parseInt(s)
+}
+
+// TypeScript/JS style with types
+let parse = (s: string): int => {
     return parseInt(s)
 }
 
 // Or inferred from context
 let numbers: []int = strings.map(|s| parseInt(s))
-```
-
-### Kotlin-Style Trailing Lambda
-
-```dingo
-// When last parameter is a function
-users.filter(|u| u.age > 18)
-    .map(|u| u.name)
-    .forEach(|name| println(name))
-
-// Trailing lambda (move outside parens if last arg)
-users.filter { |u| u.age > 18 }
-
-// Implicit 'it' parameter (single param)
-users.filter { it.age > 18 }
-    .map { it.name }
+let numbers: []int = strings.map(s => parseInt(s))
+let numbers: []int = strings.map { parseInt(it) }
 ```
 
 ---
 
 ## Transpilation Strategy
 
+All lambda styles transpile to the same Go function literals:
+
 ```dingo
-// Dingo source
+// Dingo source (any style works)
 let add = |a, b| a + b
+let add = (a, b) => a + b
 ```
 
 ```go
@@ -105,20 +157,42 @@ var add = func(a int, b int) int {
 ```
 
 ```dingo
-// Dingo source with trailing lambda
+// Dingo source with any trailing lambda style
 users.filter { it.age > 18 }
+users.filter { |u| u.age > 18 }
+users.filter { u => u.age > 18 }
+users.filter { $0.age > 18 }
 ```
 
 ```go
-// Transpiled Go
-users.filter(func(__it User) bool {
-    return __it.age > 18
+// All transpile to the same Go code
+users.filter(func(__param User) bool {
+    return __param.age > 18
 })
 ```
 
 ---
 
 ## Inspiration
+
+### TypeScript/JavaScript Arrow Functions
+
+```typescript
+// Arrow functions
+const add = (a, b) => a + b;
+const double = x => x * 2;
+
+// In functional chains
+users.filter(u => u.age > 18)
+    .map(u => u.name)
+    .sort();
+
+// With block bodies
+const process = (data) => {
+    const result = transform(data);
+    return result;
+};
+```
 
 ### Kotlin Lambdas
 
