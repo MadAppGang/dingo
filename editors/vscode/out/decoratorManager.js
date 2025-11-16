@@ -40,18 +40,21 @@ class DecoratorManager {
     constructor(configManager) {
         this.configManager = configManager;
         this.decorationType = this.createDecorationType();
+        this.markerHideDecorationType = this.createMarkerHideDecorationType();
     }
     /**
      * Update decoration type based on current configuration
      */
     updateDecorationType() {
         this.decorationType.dispose();
+        this.markerHideDecorationType.dispose();
         this.decorationType = this.createDecorationType();
+        this.markerHideDecorationType = this.createMarkerHideDecorationType();
     }
     /**
      * Apply decorations to an editor
      */
-    applyDecorations(editor, ranges) {
+    applyDecorations(editor, ranges, markerLines) {
         if (!this.configManager.isHighlightingEnabled()) {
             this.clearDecorations(editor);
             return;
@@ -59,18 +62,27 @@ class DecoratorManager {
         // Extract just the ranges for decoration
         const decorationRanges = ranges.map(m => m.range);
         editor.setDecorations(this.decorationType, decorationRanges);
+        // Apply marker hiding if enabled
+        if (markerLines && this.configManager.shouldHideMarkers()) {
+            editor.setDecorations(this.markerHideDecorationType, markerLines);
+        }
+        else {
+            editor.setDecorations(this.markerHideDecorationType, []);
+        }
     }
     /**
      * Clear all decorations from an editor
      */
     clearDecorations(editor) {
         editor.setDecorations(this.decorationType, []);
+        editor.setDecorations(this.markerHideDecorationType, []);
     }
     /**
      * Clean up resources
      */
     dispose() {
         this.decorationType.dispose();
+        this.markerHideDecorationType.dispose();
     }
     /**
      * Create decoration type based on current configuration
@@ -103,6 +115,16 @@ class DecoratorManager {
                 break;
         }
         return vscode.window.createTextEditorDecorationType(options);
+    }
+    /**
+     * Create decoration type for hiding marker comments
+     */
+    createMarkerHideDecorationType() {
+        return vscode.window.createTextEditorDecorationType({
+            opacity: '0.3',
+            fontStyle: 'italic',
+            color: '#888888'
+        });
     }
 }
 exports.DecoratorManager = DecoratorManager;

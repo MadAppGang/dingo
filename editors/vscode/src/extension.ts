@@ -124,14 +124,15 @@ function updateHighlights(document: vscode.TextDocument) {
         return;
     }
 
-    // Find marker ranges
+    // Find marker ranges and marker lines
     const ranges = markerDetector.findMarkerRanges(document);
+    const markerLines = markerDetector.findMarkerLines(document);
 
     // Apply decorations to all visible editors showing this document
     vscode.window.visibleTextEditors
         .filter(editor => editor.document === document)
         .forEach(editor => {
-            decoratorManager?.applyDecorations(editor, ranges);
+            decoratorManager?.applyDecorations(editor, ranges, markerLines);
         });
 }
 

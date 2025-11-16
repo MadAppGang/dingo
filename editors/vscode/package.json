@@ -49,27 +49,12 @@
           "light": "./icons/dingo-light.png",
           "dark": "./icons/dingo-dark.png"
         }
-      },
-      {
-        "id": "go-golden",
-        "aliases": [
-          "Go Golden Test"
-        ],
-        "extensions": [
-          ".go.golden"
-        ],
-        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
         "language": "dingo",
         "scopeName": "source.dingo",
-        "path": "./syntaxes/dingo.tmLanguage.json"
-      },
-      {
-        "language": "go-golden",
-        "scopeName": "source.go",
         "path": "./syntaxes/dingo.tmLanguage.json"
       }
     ],
@@ -100,13 +85,18 @@
         },
         "dingo.generatedCodeColor": {
           "type": "string",
-          "default": "#3b82f620",
-          "description": "Background color for generated code (hex with alpha channel)"
+          "default": "#3b82f660",
+          "description": "Background color for generated code (hex with alpha channel, default: ~38% opacity)"
         },
         "dingo.generatedCodeBorderColor": {
           "type": "string",
-          "default": "#3b82f660",
-          "description": "Border color for bold/outline styles"
+          "default": "#3b82f680",
+          "description": "Border color for bold/outline styles (default: ~50% opacity)"
+        },
+        "dingo.hideGeneratedMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide DINGO:GENERATED comment markers in the editor (decorative only, comments remain in file)"
         }
       }
     },

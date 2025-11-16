@@ -79,13 +79,19 @@ class ConfigManager {
      * Get the background color
      */
     getBackgroundColor() {
-        return this.config.get('generatedCodeColor', '#3b82f620');
+        return this.config.get('generatedCodeColor', '#3b82f660');
     }
     /**
      * Get the border color
      */
     getBorderColor() {
-        return this.config.get('generatedCodeBorderColor', '#3b82f660');
+        return this.config.get('generatedCodeBorderColor', '#3b82f680');
+    }
+    /**
+     * Check if marker comments should be hidden
+     */
+    shouldHideMarkers() {
+        return this.config.get('hideGeneratedMarkers', false);
     }
 }
 exports.ConfigManager = ConfigManager;

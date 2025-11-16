@@ -93,6 +93,21 @@ class MarkerDetector {
         const text = document.getText();
         return text.includes('DINGO:GENERATED:START');
     }
+    /**
+     * Find marker comment lines (just the START and END lines themselves)
+     */
+    findMarkerLines(document) {
+        const markerLines = [];
+        for (let i = 0; i < document.lineCount; i++) {
+            const line = document.lineAt(i);
+            const text = line.text.trim();
+            // Check if this line is a marker comment
+            if (text.match(this.startPattern) || text.match(this.endPattern)) {
+                markerLines.push(line.range);
+            }
+        }
+        return markerLines;
+    }
 }
 exports.MarkerDetector = MarkerDetector;
 //# sourceMappingURL=markerDetector.js.map

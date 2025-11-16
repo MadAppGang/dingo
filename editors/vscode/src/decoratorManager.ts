@@ -4,9 +4,11 @@ import { ConfigManager, HighlightStyle } from './config';
 
 export class DecoratorManager {
     private decorationType: vscode.TextEditorDecorationType;
+    private markerHideDecorationType: vscode.TextEditorDecorationType;
 
     constructor(private configManager: ConfigManager) {
         this.decorationType = this.createDecorationType();
+        this.markerHideDecorationType = this.createMarkerHideDecorationType();
     }
 
     /**
@@ -14,13 +16,15 @@ export class DecoratorManager {
      */
     public updateDecorationType() {
         this.decorationType.dispose();
+        this.markerHideDecorationType.dispose();
         this.decorationType = this.createDecorationType();
+        this.markerHideDecorationType = this.createMarkerHideDecorationType();
     }
 
     /**
      * Apply decorations to an editor
      */
-    public applyDecorations(editor: vscode.TextEditor, ranges: MarkerRange[]) {
+    public applyDecorations(editor: vscode.TextEditor, ranges: MarkerRange[], markerLines?: vscode.Range[]) {
         if (!this.configManager.isHighlightingEnabled()) {
             this.clearDecorations(editor);
             return;
@@ -29,6 +33,13 @@ export class DecoratorManager {
         // Extract just the ranges for decoration
         const decorationRanges = ranges.map(m => m.range);
         editor.setDecorations(this.decorationType, decorationRanges);
+
+        // Apply marker hiding if enabled
+        if (markerLines && this.configManager.shouldHideMarkers()) {
+            editor.setDecorations(this.markerHideDecorationType, markerLines);
+        } else {
+            editor.setDecorations(this.markerHideDecorationType, []);
+        }
     }
 
     /**
@@ -36,6 +47,7 @@ export class DecoratorManager {
      */
     public clearDecorations(editor: vscode.TextEditor) {
         editor.setDecorations(this.decorationType, []);
+        editor.setDecorations(this.markerHideDecorationType, []);
     }
 
     /**
@@ -43,6 +55,7 @@ export class DecoratorManager {
      */
     public dispose() {
         this.decorationType.dispose();
+        this.markerHideDecorationType.dispose();
     }
 
     /**
@@ -83,5 +96,16 @@ export class DecoratorManager {
         }
 
         return vscode.window.createTextEditorDecorationType(options);
+    }
+
+    /**
+     * Create decoration type for hiding marker comments
+     */
+    private createMarkerHideDecorationType(): vscode.TextEditorDecorationType {
+        return vscode.window.createTextEditorDecorationType({
+            opacity: '0.3',
+            fontStyle: 'italic',
+            color: '#888888'
+        });
     }
 }
