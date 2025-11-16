@@ -169,3 +169,4 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 **Current Phase**: 0 → 1 Transition
 **Next Milestone**: Working minimal transpiler
 - all proposals are locate din @features/ folder. All the feature descriptions we want to implement in this new language are going to be split there per file. For example, Lambda are going to be like features/lambdamd.
+- we don't need backward compatibility as therer were no release, we should keep eerytihg simple and clean, dorp outdated implementaiton

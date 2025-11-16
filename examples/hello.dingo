@@ -1,0 +1,11 @@
+package main
+
+func main() {
+	let message = "Hello, Dingo!"
+	println(message)
+	return
+}
+
+func add(a: int, b: int) int {
+	return a + b
+}

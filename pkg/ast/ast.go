@@ -1,519 +1,226 @@
-// Package ast defines the Abstract Syntax Tree for Dingo language
+// Package ast defines Dingo-specific AST extensions on top of go/ast
+//
+// Strategy: Reuse 95% of go/ast infrastructure, only define custom nodes
+// for Dingo-specific features that don't exist in Go.
+//
+// Benefits:
+// - Leverage go/printer for code generation
+// - Use go/token.FileSet for position tracking
+// - Reuse go/ast.Walk, go/ast.Inspect
+// - Familiar API for Go developers
 package ast
 
 import (
+	"go/ast"
 	"go/token"
 )
 
-// Node is the base interface for all AST nodes
-type Node interface {
-	Pos() token.Pos    // position of first character belonging to the node
-	End() token.Pos    // position of first character immediately after the node
-	String() string    // string representation for debugging
-}
-
-// Expr represents an expression node
-type Expr interface {
-	Node
-	exprNode()
-}
-
-// Stmt represents a statement node
-type Stmt interface {
-	Node
-	stmtNode()
-}
-
-// Decl represents a declaration node
-type Decl interface {
-	Node
-	declNode()
-}
-
 // ============================================================================
-// File and Package
+// Dingo-Specific Expression Nodes
 // ============================================================================
-
-// File represents a Dingo source file
-type File struct {
-	Package    *PackageDecl  // package declaration
-	Imports    []*ImportDecl // import declarations
-	Decls      []Decl        // top-level declarations
-	Comments   []*CommentGroup
-	StartPos   token.Pos
-	EndPos     token.Pos
-}
-
-func (f *File) Pos() token.Pos { return f.StartPos }
-func (f *File) End() token.Pos { return f.EndPos }
-func (f *File) String() string { return "File" }
-
-// PackageDecl represents a package declaration
-type PackageDecl struct {
-	Name     *Ident
-	StartPos token.Pos
-}
-
-func (p *PackageDecl) Pos() token.Pos { return p.StartPos }
-func (p *PackageDecl) End() token.Pos { return p.Name.End() }
-func (p *PackageDecl) String() string { return "package " + p.Name.Name }
-func (p *PackageDecl) declNode()      {}
-
-// ImportDecl represents an import declaration
-type ImportDecl struct {
-	Path     *BasicLit // string literal
-	Alias    *Ident    // optional alias
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (i *ImportDecl) Pos() token.Pos { return i.StartPos }
-func (i *ImportDecl) End() token.Pos { return i.EndPos }
-func (i *ImportDecl) String() string { return "import" }
-func (i *ImportDecl) declNode()      {}
-
-// ============================================================================
-// Declarations
-// ============================================================================
-
-// FuncDecl represents a function declaration
-type FuncDecl struct {
-	Name       *Ident
-	TypeParams []*TypeParam  // generic type parameters (for future)
-	Params     []*Field      // function parameters
-	Results    []*Field      // return types
-	Body       *BlockStmt
-	StartPos   token.Pos
-	EndPos     token.Pos
-}
-
-func (f *FuncDecl) Pos() token.Pos { return f.StartPos }
-func (f *FuncDecl) End() token.Pos { return f.EndPos }
-func (f *FuncDecl) String() string { return "func " + f.Name.Name }
-func (f *FuncDecl) declNode()      {}
-
-// VarDecl represents a variable declaration (let/var)
-type VarDecl struct {
-	Names    []*Ident  // variable names
-	Type     TypeExpr  // optional type annotation
-	Values   []Expr    // initial values
-	Mutable  bool      // true for 'var', false for 'let'
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (v *VarDecl) Pos() token.Pos { return v.StartPos }
-func (v *VarDecl) End() token.Pos { return v.EndPos }
-func (v *VarDecl) String() string { return "var/let" }
-func (v *VarDecl) declNode()      {}
-func (v *VarDecl) stmtNode()      {} // VarDecl can also be a statement
-
-// TypeDecl represents a type declaration
-type TypeDecl struct {
-	Name     *Ident
-	Type     TypeExpr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (t *TypeDecl) Pos() token.Pos { return t.StartPos }
-func (t *TypeDecl) End() token.Pos { return t.EndPos }
-func (t *TypeDecl) String() string { return "type " + t.Name.Name }
-func (t *TypeDecl) declNode()      {}
-
-// Field represents a parameter or struct field
-type Field struct {
-	Name     *Ident   // can be nil for return types
-	Type     TypeExpr
-	Tags     string   // struct tags (for Go interop)
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (f *Field) Pos() token.Pos { return f.StartPos }
-func (f *Field) End() token.Pos { return f.EndPos }
-func (f *Field) String() string {
-	if f.Name != nil {
-		return f.Name.Name
-	}
-	return "field"
-}
-
-// TypeParam represents a generic type parameter
-type TypeParam struct {
-	Name       *Ident
-	Constraint TypeExpr // optional constraint
-	StartPos   token.Pos
-	EndPos     token.Pos
-}
-
-func (t *TypeParam) Pos() token.Pos { return t.StartPos }
-func (t *TypeParam) End() token.Pos { return t.EndPos }
-func (t *TypeParam) String() string { return t.Name.Name }
-
-// ============================================================================
-// Statements
-// ============================================================================
-
-// BlockStmt represents a block of statements
-type BlockStmt struct {
-	Stmts    []Stmt
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (b *BlockStmt) Pos() token.Pos { return b.StartPos }
-func (b *BlockStmt) End() token.Pos { return b.EndPos }
-func (b *BlockStmt) String() string { return "block" }
-func (b *BlockStmt) stmtNode()      {}
-
-// ExprStmt represents an expression used as a statement
-type ExprStmt struct {
-	X Expr
-}
-
-func (e *ExprStmt) Pos() token.Pos { return e.X.Pos() }
-func (e *ExprStmt) End() token.Pos { return e.X.End() }
-func (e *ExprStmt) String() string { return "expr stmt" }
-func (e *ExprStmt) stmtNode()      {}
-
-// ReturnStmt represents a return statement
-type ReturnStmt struct {
-	Results  []Expr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (r *ReturnStmt) Pos() token.Pos { return r.StartPos }
-func (r *ReturnStmt) End() token.Pos { return r.EndPos }
-func (r *ReturnStmt) String() string { return "return" }
-func (r *ReturnStmt) stmtNode()      {}
-
-// IfStmt represents an if statement
-type IfStmt struct {
-	Init     Stmt      // optional initialization statement
-	Cond     Expr      // condition
-	Body     *BlockStmt
-	Else     Stmt      // can be *BlockStmt or *IfStmt
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (i *IfStmt) Pos() token.Pos { return i.StartPos }
-func (i *IfStmt) End() token.Pos { return i.EndPos }
-func (i *IfStmt) String() string { return "if" }
-func (i *IfStmt) stmtNode()      {}
-
-// ForStmt represents a for loop
-type ForStmt struct {
-	Init     Stmt      // initialization
-	Cond     Expr      // condition
-	Post     Stmt      // post iteration
-	Body     *BlockStmt
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (f *ForStmt) Pos() token.Pos { return f.StartPos }
-func (f *ForStmt) End() token.Pos { return f.EndPos }
-func (f *ForStmt) String() string { return "for" }
-func (f *ForStmt) stmtNode()      {}
-
-// AssignStmt represents an assignment statement
-type AssignStmt struct {
-	Lhs      []Expr    // left-hand side
-	Op       token.Token // assignment operator (=, +=, etc.)
-	Rhs      []Expr    // right-hand side
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (a *AssignStmt) Pos() token.Pos { return a.StartPos }
-func (a *AssignStmt) End() token.Pos { return a.EndPos }
-func (a *AssignStmt) String() string { return "assign" }
-func (a *AssignStmt) stmtNode()      {}
-
-// ============================================================================
-// Expressions
-// ============================================================================
-
-// Ident represents an identifier
-type Ident struct {
-	Name     string
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (i *Ident) Pos() token.Pos { return i.StartPos }
-func (i *Ident) End() token.Pos { return i.EndPos }
-func (i *Ident) String() string { return i.Name }
-func (i *Ident) exprNode()      {}
-
-// BasicLit represents a literal value (number, string, bool, etc.)
-type BasicLit struct {
-	Kind     token.Token // token.INT, token.FLOAT, token.STRING, etc.
-	Value    string
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (b *BasicLit) Pos() token.Pos { return b.StartPos }
-func (b *BasicLit) End() token.Pos { return b.EndPos }
-func (b *BasicLit) String() string { return b.Value }
-func (b *BasicLit) exprNode()      {}
-
-// BinaryExpr represents a binary operation (a + b, a == b, etc.)
-type BinaryExpr struct {
-	X        Expr
-	Op       token.Token
-	Y        Expr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (b *BinaryExpr) Pos() token.Pos { return b.StartPos }
-func (b *BinaryExpr) End() token.Pos { return b.EndPos }
-func (b *BinaryExpr) String() string { return "binary expr" }
-func (b *BinaryExpr) exprNode()      {}
-
-// UnaryExpr represents a unary operation (!a, -b, etc.)
-type UnaryExpr struct {
-	Op       token.Token
-	X        Expr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (u *UnaryExpr) Pos() token.Pos { return u.StartPos }
-func (u *UnaryExpr) End() token.Pos { return u.EndPos }
-func (u *UnaryExpr) String() string { return "unary expr" }
-func (u *UnaryExpr) exprNode()      {}
-
-// CallExpr represents a function call
-type CallExpr struct {
-	Func     Expr   // function expression
-	Args     []Expr // arguments
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (c *CallExpr) Pos() token.Pos { return c.StartPos }
-func (c *CallExpr) End() token.Pos { return c.EndPos }
-func (c *CallExpr) String() string { return "call" }
-func (c *CallExpr) exprNode()      {}
-
-// SelectorExpr represents a selector (a.b)
-type SelectorExpr struct {
-	X        Expr
-	Sel      *Ident
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (s *SelectorExpr) Pos() token.Pos { return s.StartPos }
-func (s *SelectorExpr) End() token.Pos { return s.EndPos }
-func (s *SelectorExpr) String() string { return "selector" }
-func (s *SelectorExpr) exprNode()      {}
-
-// IndexExpr represents an index operation (a[i])
-type IndexExpr struct {
-	X        Expr
-	Index    Expr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (i *IndexExpr) Pos() token.Pos { return i.StartPos }
-func (i *IndexExpr) End() token.Pos { return i.EndPos }
-func (i *IndexExpr) String() string { return "index" }
-func (i *IndexExpr) exprNode()      {}
-
-// ============================================================================
-// Dingo-Specific Expressions (Phase 1 Features)
-// ============================================================================
+// These extend go/ast with new expression types for Dingo features
 
 // ErrorPropagationExpr represents the `?` operator (expr?)
+// Example: let user = fetchUser(id)?
+//
+// Implements ast.Expr interface so it can be used anywhere a Go expression can
 type ErrorPropagationExpr struct {
-	X        Expr
-	StartPos token.Pos
-	EndPos   token.Pos
+	X    ast.Expr  // The expression being propagated (e.g., fetchUser(id))
+	QPos token.Pos // Position of the '?' token
 }
 
-func (e *ErrorPropagationExpr) Pos() token.Pos { return e.StartPos }
-func (e *ErrorPropagationExpr) End() token.Pos { return e.EndPos }
-func (e *ErrorPropagationExpr) String() string { return "error propagation (?)" }
-func (e *ErrorPropagationExpr) exprNode()      {}
+func (e *ErrorPropagationExpr) Pos() token.Pos { return e.X.Pos() }
+func (e *ErrorPropagationExpr) End() token.Pos { return e.QPos + 1 }
 
 // NullCoalescingExpr represents the `??` operator (a ?? b)
+// Example: let name = user.name ?? "Unknown"
+//
+// Implements ast.Expr interface
 type NullCoalescingExpr struct {
-	X        Expr
-	Y        Expr
-	StartPos token.Pos
-	EndPos   token.Pos
+	X      ast.Expr  // Left operand (nullable value)
+	OpPos  token.Pos // Position of '??'
+	Y      ast.Expr  // Right operand (default value)
 }
 
-func (n *NullCoalescingExpr) Pos() token.Pos { return n.StartPos }
-func (n *NullCoalescingExpr) End() token.Pos { return n.EndPos }
-func (n *NullCoalescingExpr) String() string { return "null coalescing (??)" }
-func (n *NullCoalescingExpr) exprNode()      {}
+func (n *NullCoalescingExpr) Pos() token.Pos { return n.X.Pos() }
+func (n *NullCoalescingExpr) End() token.Pos { return n.Y.End() }
 
-// TernaryExpr represents the ternary operator (cond ? a : b)
+// TernaryExpr represents the ternary operator (cond ? then : else)
+// Example: let status = age >= 18 ? "adult" : "minor"
+//
+// Implements ast.Expr interface
 type TernaryExpr struct {
-	Cond     Expr
-	Then     Expr
-	Else     Expr
-	StartPos token.Pos
-	EndPos   token.Pos
+	Cond     ast.Expr  // Condition expression
+	Question token.Pos // Position of '?'
+	Then     ast.Expr  // Expression if true
+	Colon    token.Pos // Position of ':'
+	Else     ast.Expr  // Expression if false
 }
 
-func (t *TernaryExpr) Pos() token.Pos { return t.StartPos }
-func (t *TernaryExpr) End() token.Pos { return t.EndPos }
-func (t *TernaryExpr) String() string { return "ternary (? :)" }
-func (t *TernaryExpr) exprNode()      {}
+func (t *TernaryExpr) Pos() token.Pos { return t.Cond.Pos() }
+func (t *TernaryExpr) End() token.Pos { return t.Else.End() }
 
-// LambdaExpr represents a lambda function
+// LambdaExpr represents lambda/arrow functions
+// Examples:
+//   - Rust style: |a, b| a + b
+//   - Arrow style: (a, b) => a + b
+//   - Kotlin style: { it.age > 18 }
+//
+// Implements ast.Expr interface
 type LambdaExpr struct {
-	Params   []*Field
-	Body     Expr      // single expression or BlockStmt
-	StartPos token.Pos
-	EndPos   token.Pos
+	Pipe   token.Pos       // Position of '|' or '(' or '{'
+	Params *ast.FieldList  // Parameters (reuse go/ast.FieldList!)
+	Arrow  token.Pos       // Position of '=>' or '->' (if present)
+	Body   ast.Expr        // Body (can be ast.BlockStmt or any expression)
+	Rpipe  token.Pos       // Position of closing '|' or ')' or '}'
 }
 
-func (l *LambdaExpr) Pos() token.Pos { return l.StartPos }
-func (l *LambdaExpr) End() token.Pos { return l.EndPos }
-func (l *LambdaExpr) String() string { return "lambda" }
-func (l *LambdaExpr) exprNode()      {}
+func (l *LambdaExpr) Pos() token.Pos { return l.Pipe }
+func (l *LambdaExpr) End() token.Pos {
+	if l.Rpipe.IsValid() {
+		return l.Rpipe + 1
+	}
+	return l.Body.End()
+}
 
 // ============================================================================
-// Type Expressions
+// Dingo-Specific Type Nodes
 // ============================================================================
 
-// TypeExpr represents a type expression
-type TypeExpr interface {
-	Node
-	typeExpr()
-}
-
-// TypeIdent represents a simple type identifier (int, string, User, etc.)
-type TypeIdent struct {
-	Name     string
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (t *TypeIdent) Pos() token.Pos { return t.StartPos }
-func (t *TypeIdent) End() token.Pos { return t.EndPos }
-func (t *TypeIdent) String() string { return t.Name }
-func (t *TypeIdent) typeExpr()      {}
-
-// ArrayType represents an array or slice type ([]T, [N]T)
-type ArrayType struct {
-	Len      Expr     // nil for slices
-	ElemType TypeExpr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (a *ArrayType) Pos() token.Pos { return a.StartPos }
-func (a *ArrayType) End() token.Pos { return a.EndPos }
-func (a *ArrayType) String() string { return "[]" }
-func (a *ArrayType) typeExpr()      {}
-
-// MapType represents a map type (map[K]V)
-type MapType struct {
-	KeyType   TypeExpr
-	ValueType TypeExpr
-	StartPos  token.Pos
-	EndPos    token.Pos
-}
-
-func (m *MapType) Pos() token.Pos { return m.StartPos }
-func (m *MapType) End() token.Pos { return m.EndPos }
-func (m *MapType) String() string { return "map" }
-func (m *MapType) typeExpr()      {}
-
-// FuncType represents a function type
-type FuncType struct {
-	Params   []*Field
-	Results  []*Field
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (f *FuncType) Pos() token.Pos { return f.StartPos }
-func (f *FuncType) End() token.Pos { return f.EndPos }
-func (f *FuncType) String() string { return "func type" }
-func (f *FuncType) typeExpr()      {}
-
-// PointerType represents a pointer type (*T)
-type PointerType struct {
-	ElemType TypeExpr
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (p *PointerType) Pos() token.Pos { return p.StartPos }
-func (p *PointerType) End() token.Pos { return p.EndPos }
-func (p *PointerType) String() string { return "*" }
-func (p *PointerType) typeExpr()      {}
-
-// ResultType represents Result<T, E> type (Dingo-specific)
+// ResultType represents Result<T, E> type
+// Example: func fetchUser(id: string) -> Result<User, Error>
+//
+// Note: This is only used during parsing. The transformer will convert
+// Result<T, E> to the appropriate Go struct type.
 type ResultType struct {
-	ValueType TypeExpr
-	ErrorType TypeExpr
-	StartPos  token.Pos
-	EndPos    token.Pos
+	Result   token.Pos // Position of 'Result' keyword
+	Lbrack   token.Pos // Position of '<'
+	Value    ast.Expr  // Value type (T)
+	Comma    token.Pos // Position of ','
+	Error    ast.Expr  // Error type (E)
+	Rbrack   token.Pos // Position of '>'
 }
 
-func (r *ResultType) Pos() token.Pos { return r.StartPos }
-func (r *ResultType) End() token.Pos { return r.EndPos }
-func (r *ResultType) String() string { return "Result<T, E>" }
-func (r *ResultType) typeExpr()      {}
+func (r *ResultType) Pos() token.Pos { return r.Result }
+func (r *ResultType) End() token.Pos { return r.Rbrack + 1 }
 
-// OptionType represents Option<T> type (Dingo-specific)
+// OptionType represents Option<T> type
+// Example: func findUser(id: string) -> Option<User>
+//
+// Note: This is only used during parsing. The transformer will convert
+// Option<T> to the appropriate Go pointer or struct type.
 type OptionType struct {
-	ValueType TypeExpr
-	StartPos  token.Pos
-	EndPos    token.Pos
+	Option token.Pos // Position of 'Option' keyword
+	Lbrack token.Pos // Position of '<'
+	Value  ast.Expr  // Value type (T)
+	Rbrack token.Pos // Position of '>'
 }
 
-func (o *OptionType) Pos() token.Pos { return o.StartPos }
-func (o *OptionType) End() token.Pos { return o.EndPos }
-func (o *OptionType) String() string { return "Option<T>" }
-func (o *OptionType) typeExpr()      {}
+func (o *OptionType) Pos() token.Pos { return o.Option }
+func (o *OptionType) End() token.Pos { return o.Rbrack + 1 }
 
 // ============================================================================
-// Comments
+// Helper Functions
 // ============================================================================
 
-// Comment represents a single comment
-type Comment struct {
-	Text     string
-	StartPos token.Pos
-	EndPos   token.Pos
-}
-
-func (c *Comment) Pos() token.Pos { return c.StartPos }
-func (c *Comment) End() token.Pos { return c.EndPos }
-func (c *Comment) String() string { return c.Text }
-
-// CommentGroup represents a sequence of comments
-type CommentGroup struct {
-	List []*Comment
-}
-
-func (c *CommentGroup) Pos() token.Pos {
-	if len(c.List) > 0 {
-		return c.List[0].Pos()
+// IsDingoNode reports whether a node is a Dingo-specific extension
+func IsDingoNode(node ast.Node) bool {
+	switch node.(type) {
+	case *ErrorPropagationExpr, *NullCoalescingExpr, *TernaryExpr, *LambdaExpr:
+		return true
+	case *ResultType, *OptionType:
+		return true
+	default:
+		return false
 	}
-	return token.NoPos
 }
 
-func (c *CommentGroup) End() token.Pos {
-	if len(c.List) > 0 {
-		return c.List[len(c.List)-1].End()
+// IsDingoType reports whether a type node is Dingo-specific
+func IsDingoType(node ast.Node) bool {
+	switch node.(type) {
+	case *ResultType, *OptionType:
+		return true
+	default:
+		return false
 	}
-	return token.NoPos
 }
 
-func (c *CommentGroup) String() string { return "comment group" }
+// ============================================================================
+// Extended Walk for Dingo Nodes
+// ============================================================================
+
+// Walk extends go/ast.Walk to handle Dingo-specific nodes
+// It delegates to go/ast.Inspect for standard nodes and handles custom nodes
+func Walk(node ast.Node, f func(ast.Node) bool) {
+	ast.Inspect(node, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+
+		// Call visitor function
+		if !f(n) {
+			return false
+		}
+
+		// Handle Dingo-specific nodes
+		switch x := n.(type) {
+		case *ErrorPropagationExpr:
+			ast.Inspect(x.X, f)
+			return false
+
+		case *NullCoalescingExpr:
+			ast.Inspect(x.X, f)
+			ast.Inspect(x.Y, f)
+			return false
+
+		case *TernaryExpr:
+			ast.Inspect(x.Cond, f)
+			ast.Inspect(x.Then, f)
+			ast.Inspect(x.Else, f)
+			return false
+
+		case *LambdaExpr:
+			if x.Params != nil {
+				ast.Inspect(x.Params, f)
+			}
+			ast.Inspect(x.Body, f)
+			return false
+
+		case *ResultType:
+			ast.Inspect(x.Value, f)
+			ast.Inspect(x.Error, f)
+			return false
+
+		case *OptionType:
+			ast.Inspect(x.Value, f)
+			return false
+		}
+
+		// For standard go/ast nodes, continue normal traversal
+		return true
+	})
+}
+
+// ============================================================================
+// Notes on Design
+// ============================================================================
+
+// Why this hybrid approach works:
+//
+// 1. Parser Phase:
+//    - Dingo source -> Dingo AST (mix of go/ast + custom nodes)
+//    - Example: fetchUser(id)? becomes ErrorPropagationExpr{X: CallExpr{...}}
+//
+// 2. Transform Phase:
+//    - Dingo AST -> Pure go/ast
+//    - Example: ErrorPropagationExpr -> IfStmt checking for errors
+//
+// 3. Generation Phase:
+//    - Pure go/ast -> Go source code
+//    - Use standard go/printer.Fprint()
+//
+// This means:
+// - We get all go/ast tooling for free
+// - Custom nodes are isolated and easy to transform
+// - Generated Go code uses 100% standard go/ast (can use go/printer directly)
+// - Source maps work naturally (both Dingo and Go use token.Pos)
