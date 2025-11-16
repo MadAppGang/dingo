@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MarkerDetector } from './markerDetector';
 import { DecoratorManager } from './decoratorManager';
 import { ConfigManager } from './config';
+import { GoldenFileSupport } from './goldenFileSupport';
 
 let decoratorManager: DecoratorManager | null = null;
 let markerDetector: MarkerDetector | null = null;
@@ -74,6 +75,14 @@ export function activate(context: vscode.ExtensionContext) {
 
             const newState = !current ? 'enabled' : 'disabled';
             vscode.window.showInformationMessage(`Dingo generated code highlighting ${newState}`);
+        })
+    );
+
+    // Command: Compare with source/golden file
+    const goldenFileSupport = new GoldenFileSupport();
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dingo.compareWithSource', () => {
+            goldenFileSupport.compareWithSource();
         })
     );
 

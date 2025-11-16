@@ -30,8 +30,21 @@ Syntax highlighting and language support for [Dingo](https://github.com/youruser
 - **Real-time updates** with debounced performance
 - **Support for `.go.golden` test files**
 
+### Enhanced Dingo Syntax (NEW in v0.2.0)
+- **Error messages**: Special highlighting for `expr? "custom message"` syntax
+- **Generated variables**: Muted colors for `__err0`, `__tmp0` variables
+- **Result/Option types**: Improved highlighting for `Result<T,E>` and `Option<T>`
+- **Constructors**: Distinct colors for `Ok()`, `Err()`, `Some()`, `None()`
+- **Error propagation**: More visually distinct `?` operator
+
+### Golden File Support (NEW in v0.2.0)
+- **Side-by-side comparison**: Compare `.dingo` files with `.go.golden` test files
+- **Keyboard shortcut**: `Ctrl+Shift+D` (or `Cmd+Shift+D` on Mac)
+- **Syntax highlighting**: `.go.golden` files get full Dingo syntax support
+
 ### Commands
 - `Dingo: Toggle Generated Code Highlighting` - Quickly enable/disable highlighting
+- `Dingo: Compare with Source File` - Open side-by-side diff view (keyboard: `Ctrl+Shift+D`)
 
 ## Installation
 

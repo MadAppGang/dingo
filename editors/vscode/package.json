@@ -13,7 +13,8 @@
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Themes"
   ],
   "keywords": [
     "dingo",
@@ -21,7 +22,11 @@
     "golang",
     "result",
     "option",
-    "error-handling"
+    "error-handling",
+    "syntax-highlighting",
+    "transpiler",
+    "meta-language",
+    "type-safety"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -109,6 +114,19 @@
       {
         "command": "dingo.toggleGeneratedCodeHighlighting",
         "title": "Dingo: Toggle Generated Code Highlighting"
+      },
+      {
+        "command": "dingo.compareWithSource",
+        "title": "Dingo: Compare with Source File",
+        "icon": "$(diff)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "dingo.compareWithSource",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "resourceExtname == .dingo || resourceExtname == .golden"
       }
     ]
   },

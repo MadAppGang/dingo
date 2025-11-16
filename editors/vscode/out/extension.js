@@ -39,6 +39,7 @@ const vscode = __importStar(require("vscode"));
 const markerDetector_1 = require("./markerDetector");
 const decoratorManager_1 = require("./decoratorManager");
 const config_1 = require("./config");
+const goldenFileSupport_1 = require("./goldenFileSupport");
 let decoratorManager = null;
 let markerDetector = null;
 let configManager = null;
@@ -89,6 +90,11 @@ function activate(context) {
         await config.update('highlightGeneratedCode', !current, vscode.ConfigurationTarget.Global);
         const newState = !current ? 'enabled' : 'disabled';
         vscode.window.showInformationMessage(`Dingo generated code highlighting ${newState}`);
+    }));
+    // Command: Compare with source/golden file
+    const goldenFileSupport = new goldenFileSupport_1.GoldenFileSupport();
+    context.subscriptions.push(vscode.commands.registerCommand('dingo.compareWithSource', () => {
+        goldenFileSupport.compareWithSource();
     }));
     // Highlight all currently open editors
     vscode.window.visibleTextEditors.forEach((editor) => {

@@ -1,22 +1,52 @@
 {
-  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Dingo",
   "scopeName": "source.dingo",
-  "fileTypes": ["dingo"],
+  "fileTypes": [
+    "dingo"
+  ],
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#keywords" },
-    { "include": "#result-type" },
-    { "include": "#option-type" },
-    { "include": "#enum-variants" },
-    { "include": "#types" },
-    { "include": "#functions" },
-    { "include": "#lambdas" },
-    { "include": "#operators" },
-    { "include": "#strings" },
-    { "include": "#numbers" },
-    { "include": "#constants" },
-    { "include": "#attributes" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#result-type"
+    },
+    {
+      "include": "#option-type"
+    },
+    {
+      "include": "#enum-variants"
+    },
+    {
+      "include": "#generated-variables"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#lambdas"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#attributes"
+    }
   ],
   "repository": {
     "comments": {
@@ -53,7 +83,8 @@
         },
         {
           "name": "keyword.control.match.dingo",
-          "match": "\\b(match)\\b"
+          "match": "\\b(match)\\b",
+          "comment": "Pattern matching keyword"
         },
         {
           "name": "keyword.declaration.dingo",
@@ -72,30 +103,68 @@
     "result-type": {
       "patterns": [
         {
-          "name": "entity.name.type.result.dingo",
-          "match": "\\bResult\\s*<",
-          "captures": {
-            "0": { "name": "support.type.result.dingo" }
-          }
+          "name": "meta.type.result.dingo",
+          "begin": "\\b(Result)\\s*(<)",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.result.dingo"
+            },
+            "2": {
+              "name": "punctuation.definition.typeparameters.begin.dingo"
+            }
+          },
+          "end": "(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.typeparameters.end.dingo"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#types"
+            },
+            {
+              "name": "punctuation.separator.dingo",
+              "match": ","
+            }
+          ]
         },
         {
-          "name": "support.function.result.dingo",
-          "match": "\\b(Ok|Err)\\s*(?=\\()"
+          "name": "support.function.constructor.result.dingo",
+          "match": "\\b(Ok|Err)\\b",
+          "comment": "Result constructors"
         }
       ]
     },
     "option-type": {
       "patterns": [
         {
-          "name": "entity.name.type.option.dingo",
-          "match": "\\bOption\\s*<",
-          "captures": {
-            "0": { "name": "support.type.option.dingo" }
-          }
+          "name": "meta.type.option.dingo",
+          "begin": "\\b(Option)\\s*(<)",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.option.dingo"
+            },
+            "2": {
+              "name": "punctuation.definition.typeparameters.begin.dingo"
+            }
+          },
+          "end": "(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.typeparameters.end.dingo"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#types"
+            }
+          ]
         },
         {
-          "name": "support.function.option.dingo",
-          "match": "\\b(Some|None)\\b"
+          "name": "support.function.constructor.option.dingo",
+          "match": "\\b(Some|None)\\b",
+          "comment": "Option constructors"
         }
       ]
     },
@@ -103,7 +172,8 @@
       "patterns": [
         {
           "name": "constant.language.enum-variant.dingo",
-          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b(?=\\s*(?:\\(|\\{|,|=>|\\}))"
+          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b(?=\\s*(?:\\(|\\{|,|=>|\\}))",
+          "comment": "Enum variant in pattern matching"
         }
       ]
     },
@@ -131,7 +201,8 @@
         },
         {
           "name": "entity.name.type.dingo",
-          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
+          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b",
+          "comment": "User-defined types (PascalCase)"
         }
       ]
     },
@@ -141,22 +212,32 @@
           "name": "meta.function.declaration.dingo",
           "begin": "\\b(func)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?:<[^>]*>)?\\s*\\(",
           "beginCaptures": {
-            "1": { "name": "keyword.declaration.function.dingo" },
-            "2": { "name": "entity.name.function.dingo" }
+            "1": {
+              "name": "keyword.declaration.function.dingo"
+            },
+            "2": {
+              "name": "entity.name.function.dingo"
+            }
           },
           "end": "\\)",
           "patterns": [
-            { "include": "#parameters" },
-            { "include": "#types" }
+            {
+              "include": "#parameters"
+            },
+            {
+              "include": "#types"
+            }
           ]
         },
         {
           "name": "entity.name.function.call.dingo",
-          "match": "\\b([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+          "match": "\\b([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "comment": "Function call"
         },
         {
           "name": "entity.name.function.method.dingo",
-          "match": "\\.([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+          "match": "\\.([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "comment": "Method call"
         }
       ]
     },
@@ -166,15 +247,22 @@
           "name": "meta.function.lambda.dingo",
           "begin": "\\|",
           "beginCaptures": {
-            "0": { "name": "punctuation.definition.parameters.begin.lambda.dingo" }
+            "0": {
+              "name": "punctuation.definition.parameters.begin.lambda.dingo"
+            }
           },
           "end": "\\|",
           "endCaptures": {
-            "0": { "name": "punctuation.definition.parameters.end.lambda.dingo" }
+            "0": {
+              "name": "punctuation.definition.parameters.end.lambda.dingo"
+            }
           },
           "patterns": [
-            { "include": "#parameters" }
-          ]
+            {
+              "include": "#parameters"
+            }
+          ],
+          "comment": "Rust-style lambda parameters |a, b|"
         }
       ]
     },
@@ -186,12 +274,59 @@
         }
       ]
     },
+    "generated-variables": {
+      "patterns": [
+        {
+          "name": "variable.other.generated.error.dingo",
+          "match": "\\b__err\\d+\\b",
+          "comment": "Generated error variable from transpiler"
+        },
+        {
+          "name": "variable.other.generated.temp.dingo",
+          "match": "\\b__tmp\\d+\\b",
+          "comment": "Generated temporary variable from transpiler"
+        }
+      ]
+    },
     "operators": {
       "patterns": [
         {
+          "name": "meta.error-propagation.with-message.dingo",
+          "begin": "(\\?)\\s*(?=\")",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.operator.error-propagation.dingo"
+            }
+          },
+          "end": "(?<=\")",
+          "patterns": [
+            {
+              "name": "string.quoted.double.error-message.dingo",
+              "begin": "\"",
+              "end": "\"",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.begin.dingo"
+                }
+              },
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.dingo"
+                }
+              },
+              "patterns": [
+                {
+                  "name": "constant.character.escape.dingo",
+                  "match": "\\\\."
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "keyword.operator.error-propagation.dingo",
-          "match": "\\?",
-          "comment": "Error propagation operator - automatically unwraps Result/Option or returns early"
+          "match": "\\?(?!\")",
+          "comment": "Error propagation operator - unwrap Result/Option or return early"
         },
         {
           "name": "keyword.operator.null-coalescing.dingo",
@@ -246,14 +381,16 @@
           "patterns": [
             {
               "name": "constant.character.escape.dingo",
-              "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[abfnrtv\\\\'\"])"
+              "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[abfnrtv\\\\'\\\"])"
             },
             {
               "name": "meta.string.interpolation.dingo",
               "begin": "\\$\\{",
               "end": "\\}",
               "patterns": [
-                { "include": "$self" }
+                {
+                  "include": "$self"
+                }
               ]
             },
             {
@@ -269,14 +406,15 @@
           "patterns": [
             {
               "name": "constant.character.escape.dingo",
-              "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[abfnrtv\\\\'\"])"
+              "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[abfnrtv\\\\'\\\"])"
             }
           ]
         },
         {
           "name": "string.quoted.raw.dingo",
           "begin": "`",
-          "end": "`"
+          "end": "`",
+          "comment": "Raw string literal (no escaping)"
         }
       ]
     },
@@ -327,9 +465,11 @@
               "name": "entity.name.function.attribute.dingo",
               "match": "[a-zA-Z_][a-zA-Z0-9_]*"
             }
-          ]
+          ],
+          "comment": "Attribute syntax like"
         }
       ]
     }
-  }
+  },
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json"
 }

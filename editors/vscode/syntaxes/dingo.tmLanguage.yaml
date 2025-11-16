@@ -12,6 +12,7 @@ patterns:
   - include: '#result-type'
   - include: '#option-type'
   - include: '#enum-variants'
+  - include: '#generated-variables'
   - include: '#types'
   - include: '#functions'
   - include: '#lambdas'
@@ -61,26 +62,42 @@ repository:
   # ===== RESULT TYPE =====
   result-type:
     patterns:
-      - name: entity.name.type.result.dingo
-        match: \bResult\s*<
-        captures:
-          0: { name: support.type.result.dingo }
-        comment: Result<T, E> type annotation
+      # Result<T, E> type with type parameters
+      - name: meta.type.result.dingo
+        begin: \b(Result)\s*(<)
+        beginCaptures:
+          1: { name: support.type.result.dingo }
+          2: { name: punctuation.definition.typeparameters.begin.dingo }
+        end: (>)
+        endCaptures:
+          1: { name: punctuation.definition.typeparameters.end.dingo }
+        patterns:
+          - include: '#types'
+          - name: punctuation.separator.dingo
+            match: ","
 
-      - name: support.function.result.dingo
-        match: \b(Ok|Err)\s*(?=\()
+      # Result constructors
+      - name: support.function.constructor.result.dingo
+        match: \b(Ok|Err)\b
         comment: Result constructors
 
   # ===== OPTION TYPE =====
   option-type:
     patterns:
-      - name: entity.name.type.option.dingo
-        match: \bOption\s*<
-        captures:
-          0: { name: support.type.option.dingo }
-        comment: Option<T> type annotation
+      # Option<T> type with type parameter
+      - name: meta.type.option.dingo
+        begin: \b(Option)\s*(<)
+        beginCaptures:
+          1: { name: support.type.option.dingo }
+          2: { name: punctuation.definition.typeparameters.begin.dingo }
+        end: (>)
+        endCaptures:
+          1: { name: punctuation.definition.typeparameters.end.dingo }
+        patterns:
+          - include: '#types'
 
-      - name: support.function.option.dingo
+      # Option constructors
+      - name: support.function.constructor.option.dingo
         match: \b(Some|None)\b
         comment: Option constructors
 
@@ -154,11 +171,43 @@ repository:
       - name: variable.parameter.dingo
         match: \b[a-z_][a-zA-Z0-9_]*\b
 
+  # ===== GENERATED VARIABLES =====
+  generated-variables:
+    patterns:
+      # Generated error variables
+      - name: variable.other.generated.error.dingo
+        match: \b__err\d+\b
+        comment: Generated error variable from transpiler
+
+      # Generated temporary variables
+      - name: variable.other.generated.temp.dingo
+        match: \b__tmp\d+\b
+        comment: Generated temporary variable from transpiler
+
   # ===== OPERATORS =====
   operators:
     patterns:
+      # Error propagation with custom message: expr? "message"
+      - name: meta.error-propagation.with-message.dingo
+        begin: (\?)\s*(?=")
+        beginCaptures:
+          1: { name: keyword.operator.error-propagation.dingo }
+        end: (?<=")
+        patterns:
+          - name: string.quoted.double.error-message.dingo
+            begin: '"'
+            end: '"'
+            beginCaptures:
+              0: { name: punctuation.definition.string.begin.dingo }
+            endCaptures:
+              0: { name: punctuation.definition.string.end.dingo }
+            patterns:
+              - name: constant.character.escape.dingo
+                match: \\.
+
+      # Standalone error propagation: expr?
       - name: keyword.operator.error-propagation.dingo
-        match: \?
+        match: \?(?!")
         comment: Error propagation operator - unwrap Result/Option or return early
 
       - name: keyword.operator.null-coalescing.dingo
