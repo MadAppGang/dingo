@@ -5,3 +5,7 @@ node_modules/**
 *.md
 !README.md
 .vscodeignore
+src/**
+tsconfig.json
+.eslintrc.json
+**/*.map

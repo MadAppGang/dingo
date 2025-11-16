@@ -4,7 +4,8 @@ Syntax highlighting and language support for [Dingo](https://github.com/youruser
 
 ## Features
 
-- **Syntax Highlighting** for all Dingo language features:
+### Syntax Highlighting
+- **Dingo language features**:
   - `Result<T, E>` and `Option<T>` types
   - `?` error propagation operator
   - `match` pattern matching expressions
@@ -16,6 +17,21 @@ Syntax highlighting and language support for [Dingo](https://github.com/youruser
 - **Auto-closing Pairs** for brackets, quotes, and strings
 - **Comment Support** with `//` and `/* */`
 - **Code Folding** for regions and blocks
+
+### Generated Code Highlighting (NEW in v0.2.0)
+- **Visual highlighting** of transpiler-generated code in `.go` files
+- **Marker detection** for `DINGO:GENERATED:START/END` blocks
+- **Configurable styles**:
+  - Subtle: Light background (default)
+  - Bold: Background + border
+  - Outline: Border only
+  - Disabled: No highlighting
+- **Theme-aware colors** that work in light and dark modes
+- **Real-time updates** with debounced performance
+- **Support for `.go.golden` test files**
+
+### Commands
+- `Dingo: Toggle Generated Code Highlighting` - Quickly enable/disable highlighting
 
 ## Installation
 
@@ -41,9 +57,23 @@ Search for "Dingo" in the VS Code Extensions marketplace.
 
 To work on the extension:
 
-1. Open the `editors/vscode` folder in VS Code
-2. Press `F5` to launch the Extension Development Host
-3. Open a `.dingo` file to see syntax highlighting
+1. Install dependencies:
+   ```bash
+   cd editors/vscode
+   npm install
+   ```
+
+2. Compile TypeScript:
+   ```bash
+   npm run compile
+   # Or for watch mode:
+   npm run watch
+   ```
+
+3. Test in VS Code:
+   - Open the `editors/vscode` folder in VS Code
+   - Press `F5` to launch the Extension Development Host
+   - Open a `.dingo` or `.go` file to see highlighting
 
 ## Syntax Examples
 
@@ -80,18 +110,47 @@ let evens = numbers.filter(|n| n % 2 == 0)
 let doubled = evens.map(|n| n * 2)
 ```
 
+## Configuration
+
+The extension provides several settings to customize generated code highlighting:
+
+### `dingo.highlightGeneratedCode`
+- **Type**: boolean
+- **Default**: `true`
+- **Description**: Enable or disable highlighting of generated code sections
+
+### `dingo.generatedCodeStyle`
+- **Type**: `"subtle"` | `"bold"` | `"outline"` | `"disabled"`
+- **Default**: `"subtle"`
+- **Description**: Visual style for generated code highlighting
+  - `subtle`: Light background only (recommended)
+  - `bold`: Background color with border
+  - `outline`: Border outline only
+  - `disabled`: No highlighting
+
+### `dingo.generatedCodeColor`
+- **Type**: string (hex color)
+- **Default**: `"#3b82f620"`
+- **Description**: Background color for generated code (hex with alpha channel)
+
+### `dingo.generatedCodeBorderColor`
+- **Type**: string (hex color)
+- **Default**: `"#3b82f660"`
+- **Description**: Border color for bold/outline styles
+
 ## Building from Source
 
 ```bash
 cd editors/vscode
 npm install
-npm run build
+npm run compile
+npm run build-grammar
 npm run package
 ```
 
 This creates a `.vsix` file that can be installed via:
 ```bash
-code --install-extension dingo-0.1.0.vsix
+code --install-extension dingo-0.2.0.vsix
 ```
 
 ## Maintaining the Extension

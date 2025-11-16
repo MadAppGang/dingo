@@ -2,7 +2,7 @@
   "name": "dingo",
   "displayName": "Dingo Language Support",
   "description": "Syntax highlighting and language support for Dingo - a modern meta-language for Go",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "dingo",
   "icon": "icons/dingo-icon.png",
   "repository": {
@@ -23,6 +23,11 @@
     "option",
     "error-handling"
   ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:dingo",
+    "onLanguage:go"
+  ],
   "contributes": {
     "languages": [
       {
@@ -39,6 +44,16 @@
           "light": "./icons/dingo-light.png",
           "dark": "./icons/dingo-dark.png"
         }
+      },
+      {
+        "id": "go-golden",
+        "aliases": [
+          "Go Golden Test"
+        ],
+        "extensions": [
+          ".go.golden"
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
@@ -46,16 +61,70 @@
         "language": "dingo",
         "scopeName": "source.dingo",
         "path": "./syntaxes/dingo.tmLanguage.json"
+      },
+      {
+        "language": "go-golden",
+        "scopeName": "source.go",
+        "path": "./syntaxes/dingo.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Dingo",
+      "properties": {
+        "dingo.highlightGeneratedCode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable highlighting of generated code sections in .go files"
+        },
+        "dingo.generatedCodeStyle": {
+          "type": "string",
+          "enum": [
+            "subtle",
+            "bold",
+            "outline",
+            "disabled"
+          ],
+          "default": "subtle",
+          "enumDescriptions": [
+            "Light background color only (recommended)",
+            "Background color with border",
+            "Border outline only",
+            "Disable highlighting"
+          ],
+          "description": "Visual style for generated code highlighting"
+        },
+        "dingo.generatedCodeColor": {
+          "type": "string",
+          "default": "#3b82f620",
+          "description": "Background color for generated code (hex with alpha channel)"
+        },
+        "dingo.generatedCodeBorderColor": {
+          "type": "string",
+          "default": "#3b82f660",
+          "description": "Border color for bold/outline styles"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "dingo.toggleGeneratedCodeHighlighting",
+        "title": "Dingo: Toggle Generated Code Highlighting"
       }
     ]
   },
   "scripts": {
-    "build": "node scripts/build-grammar.js",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build-grammar": "node scripts/build-grammar.js",
     "package": "vsce package",
     "publish": "vsce publish"
   },
   "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
     "@vscode/vsce": "^2.22.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.0.0"
   }
 }
