@@ -61,6 +61,19 @@ type FeatureConfig struct {
 	// ErrorPropagationSyntax selects the error propagation operator
 	// Valid values: "question", "bang", "try"
 	ErrorPropagationSyntax SyntaxStyle `toml:"error_propagation_syntax"`
+
+	// ReuseErrVariable controls whether to reuse a single "err" variable
+	// instead of generating __err0, __err1, etc. in the same scope
+	// When true: always uses "err" (cleaner, more idiomatic)
+	// When false: generates unique names (safer, avoids shadowing)
+	ReuseErrVariable bool `toml:"reuse_err_variable"`
+
+	// NilSafetyChecks controls nil pointer validation in pattern destructuring
+	// Valid values: "off", "on", "debug"
+	// - "off": No nil checks (trust constructors, maximum performance)
+	// - "on": Always check with runtime panic (safe, default)
+	// - "debug": Check only when DINGO_DEBUG env var is set
+	NilSafetyChecks string `toml:"nil_safety_checks"`
 }
 
 // SourceMapConfig controls source map generation
@@ -73,11 +86,22 @@ type SourceMapConfig struct {
 	Format SourceMapFormat `toml:"format"`
 }
 
+// NilSafetyMode represents nil safety check modes
+type NilSafetyMode int
+
+const (
+	NilSafetyOff NilSafetyMode = iota
+	NilSafetyOn
+	NilSafetyDebug
+)
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		Features: FeatureConfig{
 			ErrorPropagationSyntax: SyntaxQuestion, // Default to ? operator
+			ReuseErrVariable:       true,           // Default to reusing "err" for cleaner code
+			NilSafetyChecks:        "on",           // Default to safe mode
 		},
 		SourceMap: SourceMapConfig{
 			Enabled: true,
@@ -147,6 +171,17 @@ func (c *Config) Validate() error {
 			c.Features.ErrorPropagationSyntax)
 	}
 
+	// Validate nil safety mode
+	if c.Features.NilSafetyChecks != "" {
+		switch c.Features.NilSafetyChecks {
+		case "off", "on", "debug":
+			// Valid
+		default:
+			return fmt.Errorf("invalid nil_safety_checks: %q (must be 'off', 'on', or 'debug')",
+				c.Features.NilSafetyChecks)
+		}
+	}
+
 	// Validate source map format
 	switch c.SourceMap.Format {
 	case FormatInline, FormatSeparate, FormatBoth, FormatNone:
@@ -157,4 +192,18 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// GetNilSafetyMode parses the nil safety string into enum
+func (c *Config) GetNilSafetyMode() NilSafetyMode {
+	switch c.Features.NilSafetyChecks {
+	case "off":
+		return NilSafetyOff
+	case "on":
+		return NilSafetyOn
+	case "debug":
+		return NilSafetyDebug
+	default:
+		return NilSafetyOn // Default to safe mode
+	}
 }

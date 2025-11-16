@@ -1,0 +1,33 @@
+# Dingo Configuration File
+# This file controls the behavior of the Dingo transpiler
+
+[features]
+# Error propagation operator syntax
+# Valid values: "question" (?), "bang" (!), "try" (try keyword)
+error_propagation_syntax = "question"
+
+# Reuse "err" variable instead of generating __err0, __err1, etc.
+# When true: Generates cleaner code with reused "err" variable (more idiomatic)
+# When false: Generates unique names like __err0, __err1 (safer, avoids shadowing)
+# Default: true
+reuse_err_variable = true
+
+# Nil safety checks for pattern destructuring in sum types
+# Valid values: "off", "on", "debug"
+# - off: No nil checks (trust constructors, maximum performance)
+# - on: Always check with runtime panic (safe, recommended)
+# - debug: Check only when DINGO_DEBUG environment variable is set
+# Default: "on"
+nil_safety_checks = "on"
+
+[sourcemaps]
+# Enable source map generation for better debugging and IDE support
+enabled = true
+
+# Source map output format
+# Valid values: "inline", "separate", "both", "none"
+# - inline: Embeds source maps as comments in .go files
+# - separate: Writes .go.map files
+# - both: Generates both inline and separate files
+# - none: Disables source maps
+format = "inline"

@@ -51,3 +51,8 @@ func (f *File) GetDingoNode(node ast.Node) (DingoNode, bool) {
 func (f *File) HasDingoNodes() bool {
 	return len(f.DingoNodes) > 0
 }
+
+// RemoveDingoNode removes a Dingo node from the map (cleanup after transformation)
+func (f *File) RemoveDingoNode(node ast.Node) {
+	delete(f.DingoNodes, node)
+}
