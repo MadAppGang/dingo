@@ -15,7 +15,8 @@ export default defineConfig({
   markdown: {
     shikiConfig: {
       theme: 'dark-plus',
-      langs: ['go', 'typescript', 'javascript', 'dingo'],
+      // Removed langs config - Shiki v3 loads all bundled languages by default
+      // Custom 'dingo' language can be added later with proper LanguageRegistration
     },
   },
 
