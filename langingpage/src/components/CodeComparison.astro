@@ -1,0 +1,43 @@
+---
+// Side-by-side code comparison with Before/After labels
+// Reference: reference/src/components/CodeComparison.tsx
+import CodeBlock from './CodeBlock.astro';
+
+interface Props {
+  before: string;
+  after: string;
+  language: string;
+}
+
+const { before, after, language } = Astro.props;
+---
+
+<div class="grid grid-cols-2 gap-8 p-8">
+  <!-- Before -->
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+        <!-- X icon -->
+        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </div>
+      <h3 class="text-gray-700">Before</h3>
+    </div>
+    <CodeBlock code={before} language={language} />
+  </div>
+
+  <!-- After -->
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+        <!-- Check icon -->
+        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h3 class="text-gray-700">After</h3>
+    </div>
+    <CodeBlock code={after} language={language} />
+  </div>
+</div>
