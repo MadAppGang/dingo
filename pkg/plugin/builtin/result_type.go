@@ -303,7 +303,8 @@ func (p *ResultTypePlugin) emitResultTagEnum() {
 
 	// const ( ResultTag_Ok ResultTag = iota; ResultTag_Err )
 	tagConstDecl := &ast.GenDecl{
-		Tok: token.CONST,
+		Tok:    token.CONST,
+		Lparen: 1, // Required for const block
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
 				Names: []*ast.Ident{ast.NewIdent("ResultTag_Ok")},
@@ -316,6 +317,7 @@ func (p *ResultTypePlugin) emitResultTagEnum() {
 				Names: []*ast.Ident{ast.NewIdent("ResultTag_Err")},
 			},
 		},
+		Rparen: 2, // Required for const block
 	}
 	p.pendingDecls = append(p.pendingDecls, tagConstDecl)
 }
@@ -497,6 +499,29 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 						},
 					},
 				},
+				// if r.ok_0 == nil { panic("Result contains nil Ok value") }
+				&ast.IfStmt{
+					Cond: &ast.BinaryExpr{
+						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
+						Op: token.EQL,
+						Y:  ast.NewIdent("nil"),
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: ast.NewIdent("panic"),
+									Args: []ast.Expr{
+										&ast.BasicLit{
+											Kind:  token.STRING,
+											Value: `"Result contains nil Ok value"`,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 				// return *r.ok_0
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
@@ -609,6 +634,29 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 						},
 					},
 				},
+				// if r.err_0 == nil { panic("Result contains nil Err value") }
+				&ast.IfStmt{
+					Cond: &ast.BinaryExpr{
+						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
+						Op: token.EQL,
+						Y:  ast.NewIdent("nil"),
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: ast.NewIdent("panic"),
+									Args: []ast.Expr{
+										&ast.BasicLit{
+											Kind:  token.STRING,
+											Value: `"Result contains nil Err value"`,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 				// return *r.err_0
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
@@ -623,7 +671,9 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 	p.pendingDecls = append(p.pendingDecls, unwrapErrMethod)
 
 	// Task 1.3: Add complete helper method set
-	p.emitAdvancedHelperMethods(resultTypeName, okType, errType)
+	// TODO(Stage 3): Implement advanced helper methods (Map, MapErr, Filter, AndThen, OrElse)
+	// Currently disabled to prevent nil panics - these methods require generic type handling
+	// p.emitAdvancedHelperMethods(resultTypeName, okType, errType)
 }
 
 // emitAdvancedHelperMethods generates Map, MapErr, Filter, AndThen, OrElse, And, Or methods

@@ -240,6 +240,30 @@ EOF
 - Writing to the specified output files
 - Returning a brief status confirmation
 
+## Output Requirements
+
+### When Used by Orchestrator (`/dev` command)
+
+If your prompt contains specific OUTPUT FILES and RETURN MESSAGE requirements:
+
+**Follow them EXACTLY**:
+1. Write full detailed review to the specified output file(s)
+2. Return ONLY the brief format specified (typically 2-3 lines with STATUS and counts)
+3. **NEVER return full review content** in your final message - only the summary
+
+**Example Return Message** (when used by orchestrator):
+```
+STATUS: CHANGES_NEEDED
+CRITICAL: 2 | IMPORTANT: 5 | MINOR: 8
+Full review: ai-docs/sessions/20251117-233209/03-reviews/iteration-01/internal-review.md
+```
+
+**Critical**: The orchestrator's context window is precious. Keep your return message brief.
+
+### Standalone Usage (Direct Review)
+
+When invoked directly (not by orchestrator), provide the full review in your response.
+
 ## Review Output Format
 
 Structure your reviews as:

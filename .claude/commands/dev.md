@@ -291,11 +291,14 @@ INPUT FILES:
 YOUR TASK:
 Review all code changes. If this is a re-review, verify previous issues were fixed.
 
-OUTPUT FILES:
+OUTPUT FILES (write full details here):
 - $REVIEW_ITER/internal-review.md - Detailed review with categorized issues (CRITICAL, IMPORTANT, MINOR)
-- $REVIEW_ITER/internal-summary.txt - Format: "STATUS: APPROVED" or "STATUS: CHANGES_NEEDED\nCRITICAL_COUNT: N\nIMPORTANT_COUNT: N"
 
-Return ONLY a one-line status.
+RETURN MESSAGE (keep this brief - max 3 lines):
+Return ONLY this format:
+STATUS: [APPROVED or CHANGES_NEEDED]
+CRITICAL: N | IMPORTANT: N | MINOR: N
+Full review: $REVIEW_ITER/internal-review.md
 ```
 
 **For external models** (run in parallel):
@@ -326,18 +329,16 @@ YOUR TASK (PROXY MODE):
 4. Receive the response from the external model
 5. Format and write the review to the output file
 
-OUTPUT FILES (you MUST write):
+OUTPUT FILES (write full details here):
 - $REVIEW_ITER/{MODEL_ID}-review.md - Complete review with:
   * Categorized issues (CRITICAL, IMPORTANT, MINOR)
   * Specific file locations and line numbers
-  * At the END, include this summary section:
-    ---
-    STATUS: APPROVED or CHANGES_NEEDED
-    CRITICAL_COUNT: N
-    IMPORTANT_COUNT: N
-    MINOR_COUNT: N
 
-Return ONLY: "Review by {MODEL_NAME} complete: {STATUS}"
+RETURN MESSAGE (keep this brief - max 3 lines):
+Return ONLY this format:
+{MODEL_NAME} STATUS: [APPROVED or CHANGES_NEEDED]
+CRITICAL: N | IMPORTANT: N | MINOR: N
+Full review: $REVIEW_ITER/{MODEL_ID}-review.md
 ```
 
 **CRITICAL - Agent Selection and Execution**:
@@ -348,12 +349,26 @@ Return ONLY: "Review by {MODEL_NAME} complete: {STATUS}"
 - External reviewers receive "PROXY MODE" instruction with model ID/name
 - All agents (internal and external) return file paths and brief status only
 
-### Step 3.4: Collect Review Status
-Read ONLY the summary/status from each review file (last few lines):
-- Extract STATUS and issue counts
+### Step 3.4: Collect Review Status (NO FILE READS)
+
+**CRITICAL**: Do NOT read any review files. All agents returned brief summaries in their final messages.
+
+Parse the agent return messages you already received:
+- Extract STATUS and issue counts from each agent's return message
 - Count approvals vs changes needed
 
-Display to user: "Reviews complete: {N} approved, {M} need changes"
+Display to user:
+```
+Code Review Complete
+--------------------
+{N} reviewers: {M} approved, {K} need changes
+
+[List each reviewer with their status from return messages]
+
+Full reviews: $REVIEW_ITER/
+```
+
+**DO NOT USE Read TOOL FOR REVIEW FILES** - you already have all status info from agent return messages.
 
 ### Step 3.5: Consolidate Feedback (if changes needed)
 If ANY review needs changes, invoke code-reviewer:
@@ -371,15 +386,18 @@ YOUR TASK:
 3. Identify conflicts between reviewers
 4. Prioritize issues by severity and frequency
 
-OUTPUT FILES:
+OUTPUT FILES (write full details here):
 - $REVIEW_ITER/consolidated.md - Organized consolidated feedback with priority sections
 - $REVIEW_ITER/action-items.md - Numbered list of specific fixes needed (just the critical/important ones)
-- $REVIEW_ITER/consolidated-summary.txt - Format: "TOTAL_ISSUES: N\nCRITICAL: N\nIMPORTANT: N"
 
-Return ONLY a one-sentence confirmation.
+RETURN MESSAGE (keep this brief - max 3 lines):
+Return ONLY this format:
+Consolidated {N} reviews: CRITICAL: N | IMPORTANT: N | MINOR: N
+Action items: $REVIEW_ITER/action-items.md
+Full consolidation: $REVIEW_ITER/consolidated.md
 ```
 
-Read and display ONLY `$REVIEW_ITER/consolidated-summary.txt`.
+**DO NOT READ consolidated files** - the agent already returned the summary in its message.
 
 ## Phase 4: Fix Loop
 
@@ -401,14 +419,16 @@ INPUT FILES:
 YOUR TASK:
 Fix all CRITICAL and IMPORTANT issues. Do NOT break existing functionality.
 
-OUTPUT FILES:
+OUTPUT FILES (write full details here):
 - $REVIEW_ITER/fixes-applied.md - List what you fixed
-- $REVIEW_ITER/fix-status.txt - Single line: "ALL_FIXED" or "PARTIAL: {reason}"
 
-Return ONLY a brief one-line status.
+RETURN MESSAGE (keep this brief - max 2 lines):
+Return ONLY this format:
+Fixed {N} issues: [ALL_FIXED or PARTIAL: reason]
+Details: $REVIEW_ITER/fixes-applied.md
 ```
 
-Read ONLY `$REVIEW_ITER/fix-status.txt`.
+**DO NOT READ fixes-applied.md** - the agent already returned the status in its message.
 
 ### Step 4.3: Increment and Re-review
 Increment review iteration counter in session state.
@@ -442,15 +462,18 @@ YOUR TASK:
 2. Implement tests
 3. Run tests and capture results
 
-OUTPUT FILES:
+OUTPUT FILES (write full details here):
 - $SESSION_DIR/04-testing/test-plan.md - What you're testing and why
 - $SESSION_DIR/04-testing/test-results.md - Detailed test output
-- $SESSION_DIR/04-testing/test-summary.txt - Format: "STATUS: PASS" or "STATUS: FAIL\nFAILED_TESTS: N\nTOTAL_TESTS: N"
 
-Return ONLY a brief status message.
+RETURN MESSAGE (keep this brief - max 3 lines):
+Return ONLY this format:
+Tests: [PASS or FAIL]
+Results: Passed N/M tests
+Full details: $SESSION_DIR/04-testing/test-results.md
 ```
 
-Read ONLY `$SESSION_DIR/04-testing/test-summary.txt`.
+**DO NOT READ test files** - the agent already returned the summary in its message.
 
 ### Step 5.2: Handle Test Failures
 If tests fail:
@@ -463,13 +486,16 @@ INPUT FILES:
 - Test results: $SESSION_DIR/04-testing/test-results.md
 - Test plan: $SESSION_DIR/04-testing/test-plan.md
 
-OUTPUT FILES:
+OUTPUT FILES (write full details here):
 - $SESSION_DIR/04-testing/fixes-iteration-{N}.md
 
-Return brief status.
+RETURN MESSAGE (keep this brief - max 2 lines):
+Return ONLY this format:
+Fixed {N} test failures
+Details: $SESSION_DIR/04-testing/fixes-iteration-{N}.md
 ```
 
-2. Re-run golang-tester (update test-results and test-summary)
+2. Re-run golang-tester (will return updated status in message)
 
 3. If still failing after 3 iterations, also run code-reviewer to check for issues introduced by fixes
 
@@ -508,9 +534,12 @@ Ask user:
 
 ## Critical Rules for Orchestrator
 
-1. **Never read full content**: Only read summary/status files (*.txt, *-summary.*, *.json)
+1. **NEVER read agent output files**: Agents return brief summaries in their final messages. Full details stay in files.
+   - ❌ DO NOT use Read tool on: review files, test results, implementation notes
+   - ✅ DO use Read tool for: session state, user input, plan summaries (written by orchestrator)
+   - **Exception**: Only read files written by YOU (the orchestrator), never by agents
 2. **Always pass file paths**: Agents read their own inputs from files
-3. **Brief confirmations only**: Agents return max 3 sentence confirmations
+3. **Brief agent returns**: All agents MUST return max 3-line summaries in their final message
 4. **Update session state**: After each phase, update session-state.json
 5. **Use TodoWrite**: Create todos for phases, not individual agent steps
 6. **Parallel execution**: Run all reviews in parallel with multiple Task tool calls in a SINGLE message
@@ -518,6 +547,7 @@ Ask user:
    - External reviews: Task tool → code-reviewer agent (PROXY MODE with model ID)
    - **NEVER use Bash tool for reviews** - agents handle their own tools
 7. **Preserve session dir**: Never delete session directory, it's the audit trail
+8. **Context efficiency**: Your context window is for coordination, not content. Keep agent outputs in files.
 
 ## TodoWrite Structure
 
