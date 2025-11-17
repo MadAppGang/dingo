@@ -538,9 +538,11 @@ Both are open. Both evolve. Both belong to the community.
 
 ---
 
+---
+
 **Built by developers who love Go but believe in freedom.**
 
-*Dingo: Go that escaped.*
+*Go that escaped.*
 
 **License:** TBD (probably MIT or Apache 2.0)
 **Website:** [dingolang.com](https://dingolang.com)
