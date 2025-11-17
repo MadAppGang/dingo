@@ -1,7 +1,11 @@
 ---
-// Side-by-side code comparison with Before/After labels
+// Side-by-side code comparison with Dingo/Goal labels
 // Reference: reference/src/components/CodeComparison.tsx
+// Following ai-docs/recipes/images.md for retina image handling
 import CodeBlock from './CodeBlock.astro';
+import { Image } from 'astro:assets';
+import dingoLogo from '../assets/dingo-logo-small.png';
+import golangLogo from '../assets/golang-logo-small.png';
 
 interface Props {
   before: string;
@@ -13,30 +17,38 @@ const { before, after, language } = Astro.props;
 ---
 
 <div class="grid grid-cols-2 gap-8 p-8">
-  <!-- Before -->
+  <!-- Dingo -->
   <div class="flex flex-col gap-4">
-    <div class="flex items-center gap-2">
-      <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-        <!-- X icon -->
-        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 flex items-center justify-center">
+        <Image
+          src={dingoLogo}
+          alt="Dingo logo"
+          class="w-12 h-12 object-contain rounded-lg"
+          width={48}
+          height={48}
+          densities={[1, 2]}
+        />
       </div>
-      <h3 class="text-gray-700">Before</h3>
+      <h3 class="text-lg font-semibold text-gray-800">Dingo</h3>
     </div>
     <CodeBlock code={before} language={language} />
   </div>
 
-  <!-- After -->
+  <!-- Goal (Go) -->
   <div class="flex flex-col gap-4">
-    <div class="flex items-center gap-2">
-      <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-        <!-- Check icon -->
-        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 flex items-center justify-center">
+        <Image
+          src={golangLogo}
+          alt="Go logo"
+          class="w-12 h-12 object-contain"
+          width={48}
+          height={48}
+          densities={[1, 2]}
+        />
       </div>
-      <h3 class="text-gray-700">After</h3>
+      <h3 class="text-lg font-semibold text-gray-800">Goal</h3>
     </div>
     <CodeBlock code={after} language={language} />
   </div>

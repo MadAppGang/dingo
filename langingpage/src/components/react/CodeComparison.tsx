@@ -1,6 +1,10 @@
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { X, Check } from 'lucide-react';
+// Retina image handling: 1x and 2x versions for sharp display on all screens
+import dingoLogo1x from '../../assets/dingo-logo-small.png';
+import dingoLogo2x from '../../assets/dingo-logo-2x.png';
+import golangLogo1x from '../../assets/golang-logo-small.png';
+import golangLogo2x from '../../assets/golang-logo-2x.png';
 
 interface CodeComparisonProps {
   before: string;
@@ -42,24 +46,38 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 export function CodeComparison({ before, after, language }: CodeComparisonProps) {
   return (
     <div className="grid grid-cols-2 gap-8 p-8">
-      {/* Before */}
+      {/* Dingo */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-            <X className="w-4 h-4 text-red-600" />
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img
+              src={dingoLogo1x.src}
+              srcSet={`${dingoLogo1x.src} 1x, ${dingoLogo2x.src} 2x`}
+              alt="Dingo logo"
+              className="w-12 h-12 object-contain rounded-lg"
+              width={48}
+              height={48}
+            />
           </div>
-          <h3 className="text-gray-700">Before</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Dingo</h3>
         </div>
         <CodeBlock code={before} language={language} />
       </div>
 
-      {/* After */}
+      {/* Goal (Go) */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-            <Check className="w-4 h-4 text-green-600" />
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img
+              src={golangLogo1x.src}
+              srcSet={`${golangLogo1x.src} 1x, ${golangLogo2x.src} 2x`}
+              alt="Go logo"
+              className="w-12 h-12 object-contain"
+              width={48}
+              height={48}
+            />
           </div>
-          <h3 className="text-gray-700">After</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Goal</h3>
         </div>
         <CodeBlock code={after} language={language} />
       </div>
