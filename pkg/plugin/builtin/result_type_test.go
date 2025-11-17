@@ -172,10 +172,9 @@ func TestResultTypePlugin_TypeNameSanitization(t *testing.T) {
 		},
 	}
 
-	p := NewResultTypePlugin()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sanitized := p.sanitizeTypeName(tt.typeName)
+			sanitized := sanitizeTypeName(tt.typeName)
 			assert.Equal(t, tt.expected, sanitized)
 		})
 	}
@@ -356,15 +355,12 @@ func TestResultTypePlugin_NilChecks(t *testing.T) {
 
 // TestResultTypePlugin_TypeToString tests type to string conversion
 func TestResultTypePlugin_TypeToString(t *testing.T) {
-	p := NewResultTypePlugin()
-
 	t.Run("nil type", func(t *testing.T) {
-		result := p.typeToString(nil)
+		result := typeToString(nil)
 		assert.Equal(t, "unknown", result)
 	})
 
-	// Additional type conversion tests would require setting up types.Type instances
-	// which is complex - defer to integration tests
+	// Additional type conversion tests are in type_utils_test.go
 }
 
 // testLogger is defined in functional_utils_test.go

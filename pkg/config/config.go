@@ -99,15 +99,9 @@ type FeatureConfig struct {
 	// - "explicit": Require parentheses for ambiguous mixing
 	OperatorPrecedence string `toml:"operator_precedence"`
 
-	// AutoWrapGoErrors controls automatic wrapping of Go (T, error) functions in Result<T, E>
-	// When true: Functions returning (T, error) are automatically wrapped in Result<T, E>
-	// When false: Manual wrapping required using Ok()/Err() constructors
-	AutoWrapGoErrors bool `toml:"auto_wrap_go_errors"`
-
-	// AutoWrapGoNils controls automatic wrapping of nullable Go types in Option<T>
-	// When true: Nullable types (*T, interface{}, etc) are automatically wrapped in Option<T>
-	// When false: Manual wrapping required using Some()/None constructors
-	AutoWrapGoNils bool `toml:"auto_wrap_go_nils"`
+	// REMOVED: AutoWrapGoErrors and AutoWrapGoNils
+	// These flags were never implemented and are misleading.
+	// Follow YAGNI principle - add when actually needed in Phase 3+
 }
 
 // SourceMapConfig controls source map generation
@@ -133,15 +127,13 @@ const (
 func DefaultConfig() *Config {
 	return &Config{
 		Features: FeatureConfig{
-			ErrorPropagationSyntax: SyntaxQuestion,   // Default to ? operator
-			ReuseErrVariable:       true,             // Default to reusing "err" for cleaner code
-			NilSafetyChecks:        "on",             // Default to safe mode
-			LambdaSyntax:           "rust",           // Default to Rust-style |x| expr
-			SafeNavigationUnwrap:   "smart",          // Default to smart unwrapping
-			NullCoalescingPointers: true,             // Default to supporting Go pointers
-			OperatorPrecedence:     "standard",       // Default to standard precedence
-			AutoWrapGoErrors:       true,             // Default to auto-wrapping (user chose configurable)
-			AutoWrapGoNils:         false,            // Default to manual wrapping for nil (less invasive)
+			ErrorPropagationSyntax: SyntaxQuestion, // Default to ? operator
+			ReuseErrVariable:       true,           // Default to reusing "err" for cleaner code
+			NilSafetyChecks:        "on",           // Default to safe mode
+			LambdaSyntax:           "rust",         // Default to Rust-style |x| expr
+			SafeNavigationUnwrap:   "smart",        // Default to smart unwrapping
+			NullCoalescingPointers: true,           // Default to supporting Go pointers
+			OperatorPrecedence:     "standard",     // Default to standard precedence
 		},
 		SourceMap: SourceMapConfig{
 			Enabled: true,

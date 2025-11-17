@@ -11,7 +11,29 @@ import (
 	"strings"
 )
 
-// TypeInferenceService provides centralized type information for all plugins
+// TypeInferenceService provides centralized type information for all plugins.
+//
+// IMPORTANT: Cache Lifecycle and Invalidation
+//
+// The typeCache is keyed by ast.Expr pointer addresses. Since AST transformations
+// using astutil.Apply() create NEW node instances, cache entries become stale and
+// invalid after any AST mutation. To prevent returning incorrect types or panicking
+// on missing entries:
+//
+//  1. Cache is ONLY valid within a single transformation pass
+//  2. Call Refresh() after ANY AST modification to invalidate cache
+//  3. The generation counter tracks cache freshness
+//  4. Never reuse TypeInferenceService across multiple file transformations
+//
+// Example correct usage:
+//
+//	service := NewTypeInferenceService(fset, file, logger)
+//	typ, _ := service.InferType(expr)  // Cache miss, type checked
+//	typ2, _ := service.InferType(expr) // Cache hit, returns cached
+//	// ... AST modified via astutil.Apply ...
+//	service.Refresh(modifiedFile)     // Cache invalidated
+//	typ3, _ := service.InferType(expr) // Cache miss again (new expr pointer)
+//	service.Close()                    // Release resources
 type TypeInferenceService struct {
 	fset   *token.FileSet
 	logger interface{} // plugin.Logger interface stored to avoid circular import
@@ -21,14 +43,15 @@ type TypeInferenceService struct {
 	pkg    *types.Package
 	config *types.Config
 
-	// Performance cache
+	// Performance cache (STALE after AST mutations - see doc comment above)
 	typeCache    map[ast.Expr]types.Type
 	cacheEnabled bool
+	generation   int // Incremented on Refresh() to detect stale cache usage
 
 	// Synthetic type registry (for Result, Option, etc)
 	syntheticTypes map[string]*SyntheticTypeInfo
 
-	// CRITICAL FIX #5: Error collection instead of silent swallowing
+	// Error collection (populated during type checking)
 	errors []error
 
 	// Statistics (for performance monitoring)
@@ -123,11 +146,20 @@ func NewTypeInferenceService(fset *token.FileSet, file *ast.File, logger interfa
 	return service, nil
 }
 
-// Refresh refreshes type information after AST modifications
+// Refresh refreshes type information after AST modifications.
+//
+// CRITICAL: Must be called after any AST transformation that creates new nodes.
+// This completely invalidates the typeCache since AST node pointers have changed.
+// The generation counter is incremented to help detect stale cache usage patterns.
 func (ti *TypeInferenceService) Refresh(file *ast.File) error {
-	// CRITICAL FIX #5: Clear ALL cached data, including errors
+	// CRITICAL FIX #1: Clear ALL cached data since AST nodes have new addresses
 	ti.typeCache = make(map[ast.Expr]types.Type)
 	ti.errors = make([]error, 0)
+	ti.generation++ // Increment to track cache invalidation cycles
+
+	// Reset statistics for this generation
+	ti.typeChecks = 0
+	ti.cacheHits = 0
 
 	// Re-run type checking
 	info := &types.Info{
@@ -146,7 +178,7 @@ func (ti *TypeInferenceService) Refresh(file *ast.File) error {
 
 	pkg, err := ti.config.Check(packageName, ti.fset, []*ast.File{file}, info)
 	if err != nil {
-		// Continue even with type errors
+		// Continue even with type errors - they're collected in ti.errors
 	}
 
 	ti.info = info
@@ -364,10 +396,17 @@ func (ti *TypeInference) chanDirToAST(dir types.ChanDir) ast.ChanDir {
 	}
 }
 
-// InferType determines the type of an expression with caching
+// InferType determines the type of an expression with caching.
+//
+// CRITICAL FIX #3: Returns error if service is not healthy (closed or uninitialized).
 func (ti *TypeInferenceService) InferType(expr ast.Expr) (types.Type, error) {
+	// CRITICAL FIX #3: Prevent panics after Close()
+	if !ti.IsHealthy() {
+		return nil, fmt.Errorf("type inference service is not healthy (closed or uninitialized)")
+	}
+
 	// Check cache first
-	if ti.cacheEnabled {
+	if ti.cacheEnabled && ti.typeCache != nil {
 		if cached, ok := ti.typeCache[expr]; ok {
 			ti.cacheHits++
 			return cached, nil
@@ -383,15 +422,22 @@ func (ti *TypeInferenceService) InferType(expr ast.Expr) (types.Type, error) {
 	}
 
 	// Cache the result
-	if ti.cacheEnabled {
+	if ti.cacheEnabled && ti.typeCache != nil {
 		ti.typeCache[expr] = typ
 	}
 
 	return typ, nil
 }
 
-// IsResultType detects Result<T, E> types and extracts T and E
+// IsResultType detects Result<T, E> types and extracts T and E.
+//
+// CRITICAL FIX #3: Safe to call after Close() - returns false if not healthy.
 func (ti *TypeInferenceService) IsResultType(typ types.Type) (T, E types.Type, ok bool) {
+	// CRITICAL FIX #3: Safe degradation if closed
+	if !ti.IsHealthy() {
+		return nil, nil, false
+	}
+
 	// Check if type is a named type matching Result_* pattern
 	named, isNamed := typ.(*types.Named)
 	if !isNamed {
@@ -428,8 +474,15 @@ func (ti *TypeInferenceService) IsResultType(typ types.Type) (T, E types.Type, o
 	return nil, nil, false
 }
 
-// IsOptionType detects Option<T> types and extracts T
+// IsOptionType detects Option<T> types and extracts T.
+//
+// CRITICAL FIX #3: Safe to call after Close() - returns false if not healthy.
 func (ti *TypeInferenceService) IsOptionType(typ types.Type) (T types.Type, ok bool) {
+	// CRITICAL FIX #3: Safe degradation if closed
+	if !ti.IsHealthy() {
+		return nil, false
+	}
+
 	named, isNamed := typ.(*types.Named)
 	if !isNamed {
 		return nil, false
@@ -552,19 +605,42 @@ func (ti *TypeInferenceService) Stats() TypeInferenceStats {
 	}
 }
 
-// CRITICAL FIX #5: Add error inspection methods
+// Error Inspection Methods
 
-// HasErrors returns true if any type checking errors were collected
+// HasErrors returns true if any type checking errors were collected.
+// This indicates the service may be in a degraded state with incomplete type information.
 func (ti *TypeInferenceService) HasErrors() bool {
 	return len(ti.errors) > 0
 }
 
-// GetErrors returns all collected type checking errors
+// GetErrors returns all collected type checking errors.
+// Errors are collected during type checking via the config.Error callback.
+// Common causes: incomplete imports, undefined types, syntax errors in parsed code.
 func (ti *TypeInferenceService) GetErrors() []error {
 	return ti.errors
 }
 
-// ClearErrors clears collected errors
+// IsHealthy returns true if the service is in a usable state.
+// A service is healthy if:
+//  1. It has been properly initialized (info != nil)
+//  2. It has not been closed (info != nil, typeCache != nil)
+//  3. Optionally: It has no type checking errors (if strictMode would be enabled)
+//
+// Currently returns true if initialized and not closed, even with type errors.
+// Type errors are common in editor environments with incomplete code.
+func (ti *TypeInferenceService) IsHealthy() bool {
+	// Check if closed
+	if ti.info == nil || ti.typeCache == nil {
+		return false
+	}
+
+	// Service is usable even with type errors (degraded mode)
+	// Plugins should check HasErrors() if they need perfect type info
+	return true
+}
+
+// ClearErrors clears collected errors.
+// Rarely needed - errors are automatically cleared on Refresh().
 func (ti *TypeInferenceService) ClearErrors() {
 	ti.errors = make([]error, 0)
 }
