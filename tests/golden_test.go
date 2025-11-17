@@ -11,6 +11,7 @@ import (
 	"github.com/MadAppGang/dingo/pkg/generator"
 	"github.com/MadAppGang/dingo/pkg/parser"
 	"github.com/MadAppGang/dingo/pkg/plugin"
+	"github.com/MadAppGang/dingo/pkg/preprocessor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,8 +88,13 @@ func TestGoldenFiles(t *testing.T) {
 			dingoSrc, err := os.ReadFile(dingoFile)
 			require.NoError(t, err, "Failed to read Dingo source: %s", dingoFile)
 
-			dingoAST, err := parser.ParseFile(fset, dingoFile, dingoSrc, 0)
-			require.NoError(t, err, "Failed to parse Dingo file: %s", dingoFile)
+			// Preprocess THEN parse
+			preprocessor := preprocessor.New(dingoSrc)
+			preprocessed, _, err := preprocessor.Process()
+			require.NoError(t, err, "Failed to preprocess Dingo file: %s", dingoFile)
+
+			dingoAST, err := parser.ParseFile(fset, dingoFile, []byte(preprocessed), 0)
+			require.NoError(t, err, "Failed to parse preprocessed Dingo file: %s", dingoFile)
 
 			// Create generator (plugins are registered internally)
 			registry := plugin.NewRegistry()

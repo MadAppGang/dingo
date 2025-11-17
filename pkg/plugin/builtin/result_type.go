@@ -56,6 +56,11 @@ func (p *ResultTypePlugin) Name() string {
 	return "result_type"
 }
 
+// SetContext sets the plugin context (ContextAware interface)
+func (p *ResultTypePlugin) SetContext(ctx *plugin.Context) {
+	p.ctx = ctx
+}
+
 // Process processes AST nodes to find and transform Result types
 func (p *ResultTypePlugin) Process(node ast.Node) error {
 	if p.ctx == nil {
@@ -1249,13 +1254,22 @@ func (p *ResultTypePlugin) getTypeName(expr ast.Expr) string {
 //   *User → ptr_User
 //   []byte → slice_byte
 //   map[string]int → map_string_int
+//   interface{} → any
 func (p *ResultTypePlugin) sanitizeTypeName(typeName string) string {
 	s := typeName
+
+	// Special cases
+	if s == "interface{}" {
+		return "any"
+	}
+
 	s = strings.ReplaceAll(s, "*", "ptr_")
 	s = strings.ReplaceAll(s, "[]", "slice_")
 	s = strings.ReplaceAll(s, "[", "_")
 	s = strings.ReplaceAll(s, "]", "_")
 	s = strings.ReplaceAll(s, ".", "_")
+	s = strings.ReplaceAll(s, "{", "")
+	s = strings.ReplaceAll(s, "}", "")
 	s = strings.ReplaceAll(s, " ", "")
 	s = strings.Trim(s, "_")
 	return s

@@ -59,12 +59,12 @@ func NewWithConfig(source []byte, config *Config) *Preprocessor {
 			NewTypeAnnotProcessor(),
 			// 1. Error propagation (expr?) - pass config to enable mode control
 			NewErrorPropProcessorWithConfig(config),
-			// 2. Keywords (let → var) - after error prop so it doesn't interfere
+			// 2. Enums (enum Name { ... }) - after error prop, before keywords
+			NewEnumProcessor(),
+			// 3. Keywords (let → var) - after error prop and enum so it doesn't interfere
 			NewKeywordProcessor(),
-			// 3. Lambdas (|x| expr)
+			// 4. Lambdas (|x| expr)
 			// NewLambdaProcessor(),
-			// 4. Sum types (enum)
-			// NewSumTypeProcessor(),
 			// 5. Pattern matching (match)
 			// NewPatternMatchProcessor(),
 			// 6. Operators (ternary, ??, ?.)

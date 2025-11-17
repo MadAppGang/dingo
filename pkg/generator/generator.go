@@ -53,6 +53,10 @@ func NewWithPlugins(fset *token.FileSet, registry *plugin.Registry, logger plugi
 		return nil, fmt.Errorf("failed to create plugin pipeline: %w", err)
 	}
 
+	// Register built-in plugins
+	resultPlugin := builtin.NewResultTypePlugin()
+	pipeline.RegisterPlugin(resultPlugin)
+
 	// Inject type inference factory to avoid circular dependency
 	pipeline.SetTypeInferenceFactory(func(fsetInterface interface{}, file *ast.File, loggerInterface plugin.Logger) (interface{}, error) {
 		fset, ok := fsetInterface.(*token.FileSet)
