@@ -1,10 +1,10 @@
 <div align="center">
 
+> **Go that escaped.**
+
 # Dingo
 
 <img src="docs/mascot.png" alt="Dingo mascot" width="200"/>
-
-**Go that escaped.**
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/License-TBD-blue.svg)](LICENSE)
