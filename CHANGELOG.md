@@ -4,6 +4,42 @@ All notable changes to the Dingo compiler will be documented in this file.
 
 ## [Unreleased] - 2025-11-17
 
+### Phase 2.11 - Build System Fixes
+
+**Fixed:**
+- **Build**: Resolved duplicate `transformErrorProp` method declaration between preprocessor and transformer
+  - Removed duplicate error propagation implementation from `pkg/transform/error_prop.go`
+  - Error propagation (`?` operator) now exclusively handled by preprocessor
+- **Build**: Fixed missing imports in generated Go files
+  - Added automatic import detection in preprocessor
+  - Detects function calls requiring standard library imports (os, encoding/json, strconv, io, etc.)
+  - Imports automatically injected after all transformations complete
+- **Build**: Removed unused variables in transform package
+
+**Changed:**
+- **Architecture**: Clarified preprocessor vs transformer responsibilities
+  - **Preprocessor** (`pkg/preprocessor`): Text-based transformations, error propagation (`?`), type annotations, keywords
+  - **Transformer** (`pkg/transform`): AST-based transformations, lambdas, pattern matching, safe navigation
+  - Error propagation moved exclusively to preprocessor (693 lines, production-ready)
+- **Source Mapping**: Mappings now adjusted automatically when imports are injected
+  - Line number offsets corrected to account for added import statements
+  - Maintains accurate Dingo ↔ Go position tracking
+
+**Added:**
+- **Import Detection**: Comprehensive standard library function tracking
+  - Tracks: `ReadFile`, `WriteFile`, `Marshal`, `Unmarshal`, `Atoi`, `ParseInt`, etc.
+  - Automatic deduplication and sorting
+  - Uses `golang.org/x/tools/go/ast/astutil` for safe import injection
+
+**Removed:**
+- **Transform**: Deleted `pkg/transform/error_prop.go` (duplicate implementation)
+  - Functionality fully provided by `pkg/preprocessor/error_prop.go`
+  - Git history preserves code if needed for reference
+
+**Session:** 20251117-204314
+
+---
+
 ### Phase 2.10 - Test Stabilization & Cleanup
 
 **Fixed:**

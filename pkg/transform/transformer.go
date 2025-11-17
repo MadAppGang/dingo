@@ -45,7 +45,11 @@ func (t *Transformer) Transform(file *ast.File) (*ast.File, error) {
 		return file, nil
 	}
 
-	return result.(*ast.File), nil
+	// CRITICAL-4 FIX: Safe type assertion with error handling
+	if f, ok := result.(*ast.File); ok {
+		return f, nil
+	}
+	return nil, fmt.Errorf("unexpected return type from astutil.Apply: got %T, expected *ast.File", result)
 }
 
 // visit is called for each node during AST traversal
@@ -100,28 +104,58 @@ func (t *Transformer) handleGenDecl(cursor *astutil.Cursor, decl *ast.GenDecl) b
 	return true
 }
 
-// transformErrorProp transforms error propagation placeholders
-func (t *Transformer) transformErrorProp(cursor *astutil.Cursor, call *ast.CallExpr) bool {
-	// TODO: Implement error propagation transformation
-	// For now, leave as-is
-	return true
-}
+// NOTE: Error propagation (? operator) is fully handled in pkg/preprocessor/error_prop.go
+// This transformer focuses on AST-level features: lambdas, pattern matching, safe navigation
 
 // transformLambda transforms lambda placeholders
 func (t *Transformer) transformLambda(cursor *astutil.Cursor, call *ast.CallExpr) bool {
 	// TODO: Implement lambda transformation
+	//
+	// CRITICAL-5: When implementing, you MUST call cursor.Replace(transformedNode)
+	// to replace the placeholder node with the actual transformation.
+	// Without calling Replace(), the transformation will be a no-op.
+	//
+	// Example implementation:
+	//   transformedNode := &ast.FuncLit{
+	//       Type: &ast.FuncType{ /* ... */ },
+	//       Body: &ast.BlockStmt{ /* ... */ },
+	//   }
+	//   cursor.Replace(transformedNode)
+	//
 	return true
 }
 
 // transformMatch transforms pattern matching placeholders
 func (t *Transformer) transformMatch(cursor *astutil.Cursor, call *ast.CallExpr) bool {
 	// TODO: Implement pattern matching transformation
+	//
+	// CRITICAL-5: When implementing, you MUST call cursor.Replace(transformedNode)
+	// to replace the placeholder node with the actual transformation.
+	// Without calling Replace(), the transformation will be a no-op.
+	//
+	// Example implementation:
+	//   transformedNode := &ast.TypeSwitchStmt{
+	//       /* ... pattern match to type switch conversion ... */
+	//   }
+	//   cursor.Replace(transformedNode)
+	//
 	return true
 }
 
 // transformSafeNav transforms safe navigation placeholders
 func (t *Transformer) transformSafeNav(cursor *astutil.Cursor, call *ast.CallExpr) bool {
 	// TODO: Implement safe navigation transformation
+	//
+	// CRITICAL-5: When implementing, you MUST call cursor.Replace(transformedNode)
+	// to replace the placeholder node with the actual transformation.
+	// Without calling Replace(), the transformation will be a no-op.
+	//
+	// Example implementation:
+	//   transformedNode := &ast.IfStmt{
+	//       /* ... safe nav to nil check conversion ... */
+	//   }
+	//   cursor.Replace(transformedNode)
+	//
 	return true
 }
 

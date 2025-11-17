@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"go/types"
 	"regexp"
+	"sort"
 	"strings"
-
-	"golang.org/x/tools/go/ast/astutil"
 )
 
 // Package-level compiled regexes (Issue 2: Regex Performance)
@@ -20,6 +18,75 @@ var (
 	returnPattern = regexp.MustCompile(`^\s*return\s+(.+)$`)
 	msgPattern    = regexp.MustCompile(`^(.*\?)\s*"((?:[^"\\]|\\.)*)"`)
 )
+
+// ImportTracker manages automatic import detection
+// Tracks function calls and determines which standard library packages are needed
+type ImportTracker struct {
+	needed  map[string]bool   // package path → needed
+	aliases map[string]string // funcName → package path
+}
+
+// Common standard library functions that require imports
+var stdLibFunctions = map[string]string{
+	// os package
+	"ReadFile":  "os",
+	"WriteFile": "os",
+	"Open":      "os",
+	"Create":    "os",
+	"Stat":      "os",
+	"Remove":    "os",
+	"Mkdir":     "os",
+	"MkdirAll":  "os",
+	"Getwd":     "os",
+	"Chdir":     "os",
+
+	// encoding/json
+	"Marshal":   "encoding/json",
+	"Unmarshal": "encoding/json",
+
+	// strconv
+	"Atoi":       "strconv",
+	"Itoa":       "strconv",
+	"ParseInt":   "strconv",
+	"ParseFloat": "strconv",
+	"ParseBool":  "strconv",
+	"FormatInt":  "strconv",
+	"FormatFloat": "strconv",
+
+	// io
+	"ReadAll": "io",
+
+	// fmt (already tracked via needsFmt, but add for completeness)
+	"Sprintf": "fmt",
+	"Fprintf": "fmt",
+	"Printf":  "fmt",
+	"Errorf":  "fmt",
+}
+
+// NewImportTracker creates a new import tracker
+func NewImportTracker() *ImportTracker {
+	return &ImportTracker{
+		needed:  make(map[string]bool),
+		aliases: stdLibFunctions,
+	}
+}
+
+// TrackFunctionCall records a function call for import tracking
+func (it *ImportTracker) TrackFunctionCall(funcName string) {
+	if pkg, exists := it.aliases[funcName]; exists {
+		it.needed[pkg] = true
+	}
+}
+
+// GetNeededImports returns a sorted list of needed package imports
+func (it *ImportTracker) GetNeededImports() []string {
+	imports := make([]string, 0, len(it.needed))
+	for pkg := range it.needed {
+		imports = append(imports, pkg)
+	}
+	sort.Strings(imports)
+	return imports
+}
 
 // Magic Comment System Documentation
 //
@@ -58,10 +125,12 @@ var (
 // ErrorPropProcessor handles the ? operator for error propagation
 // Transforms: expr? → full error handling expansion
 type ErrorPropProcessor struct {
-	tryCounter  int
-	lines       []string
-	currentFunc *funcContext
-	needsFmt    bool
+	tryCounter    int
+	lines         []string
+	currentFunc   *funcContext
+	needsFmt      bool
+	importTracker *ImportTracker
+	mappings      []Mapping // Store mappings for adjustment after import injection
 }
 
 // funcContext tracks the current function for zero value generation
@@ -84,12 +153,15 @@ func (e *ErrorPropProcessor) Name() string {
 
 // Process transforms error propagation operators
 func (e *ErrorPropProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+	// Initialize import tracker
+	e.importTracker = NewImportTracker()
+	e.mappings = []Mapping{}
+
 	// Split into lines for processing
 	e.lines = strings.Split(string(source), "\n")
 	e.needsFmt = false
 
 	var output bytes.Buffer
-	mappings := []Mapping{}
 	inputLineNum := 0
 	outputLineNum := 1 // Track current output line number (1-based)
 
@@ -111,7 +183,7 @@ func (e *ErrorPropProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 
 		// Add all mappings from this line
 		if len(newMappings) > 0 {
-			mappings = append(mappings, newMappings...)
+			e.mappings = append(e.mappings, newMappings...)
 		}
 
 		// Update output line count
@@ -125,13 +197,31 @@ func (e *ErrorPropProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 		inputLineNum++
 	}
 
-	// If we used fmt.Errorf, add import at the top
-	result := output.Bytes()
+	// Return result WITHOUT injecting imports
+	// Imports will be injected by the main Preprocessor after all transformations
+	return output.Bytes(), e.mappings, nil
+}
+
+// GetNeededImports implements the ImportProvider interface
+func (e *ErrorPropProcessor) GetNeededImports() []string {
+	imports := e.importTracker.GetNeededImports()
+
+	// Add fmt if needed for error messages
 	if e.needsFmt {
-		result = e.ensureFmtImport(result)
+		// Check if fmt is already in the list
+		hasFmt := false
+		for _, pkg := range imports {
+			if pkg == "fmt" {
+				hasFmt = true
+				break
+			}
+		}
+		if !hasFmt {
+			imports = append(imports, "fmt")
+		}
 	}
 
-	return result, mappings, nil
+	return imports
 }
 
 // processLine processes a single line
@@ -192,9 +282,18 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	varName := matches[2]  // variable name
 	exprClean := strings.TrimSpace(strings.TrimSuffix(expr, "?"))
 
+	// Track function call for import detection
+	e.trackFunctionCallInExpr(exprClean)
+
 	tmpVar := fmt.Sprintf("__tmp%d", e.tryCounter)
 	errVar := fmt.Sprintf("__err%d", e.tryCounter)
 	e.tryCounter++
+
+	// Calculate exact position of ? operator for accurate source mapping
+	qPos := strings.Index(expr, "?")
+	if qPos == -1 {
+		qPos = 0 // fallback if ? not found
+	}
 
 	// Generate the expansion
 	var buf bytes.Buffer
@@ -206,10 +305,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString(fmt.Sprintf("%s, %s := %s\n", tmpVar, errVar, exprClean))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -218,10 +317,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString("// dingo:s:1\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 1,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -230,10 +329,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString(fmt.Sprintf("if %s != nil {\n", errVar))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 2,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -244,10 +343,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString("\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 3,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -256,10 +355,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString("}\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 4,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -268,10 +367,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString("// dingo:e:1\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 5,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -280,10 +379,10 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	buf.WriteString(fmt.Sprintf("%s %s = %s", keyword, varName, tmpVar))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 6,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -295,9 +394,18 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg string, originalLine int, startOutputLine int) (string, []Mapping) {
 	exprClean := strings.TrimSpace(strings.TrimSuffix(expr, "?"))
 
+	// Track function call for import detection
+	e.trackFunctionCallInExpr(exprClean)
+
 	tmpVar := fmt.Sprintf("__tmp%d", e.tryCounter)
 	errVar := fmt.Sprintf("__err%d", e.tryCounter)
 	e.tryCounter++
+
+	// Calculate exact position of ? operator for accurate source mapping
+	qPos := strings.Index(expr, "?")
+	if qPos == -1 {
+		qPos = 0 // fallback if ? not found
+	}
 
 	// Generate the expansion
 	var buf bytes.Buffer
@@ -309,10 +417,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString(fmt.Sprintf("%s, %s := %s\n", tmpVar, errVar, exprClean))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -321,10 +429,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString("// dingo:s:1\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 1,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -333,10 +441,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString(fmt.Sprintf("if %s != nil {\n", errVar))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 2,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -347,10 +455,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString("\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 3,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -359,10 +467,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString("}\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 4,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -371,18 +479,38 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString("// dingo:e:1\n")
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 5,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
 	// Line 7: return __tmpN, nil (complete tuple for functions returning multiple values)
 	buf.WriteString(indent)
-	// Generate complete return statement with all values
+	// CRITICAL-3 LIMITATION: Multi-value return handling
+	//
+	// PROBLEM: When calling a function that returns (A, B, error), the current code generates:
+	//   __tmp, __err := funcCall()  // Only captures one value + error
+	//   return __tmp, nil           // Missing the second value
+	//
+	// CORRECT CODE should be:
+	//   __tmp1, __tmp2, __err := funcCall()
+	//   return __tmp1, __tmp2, nil
+	//
+	// LIMITATION: At the preprocessor level (text-based), we don't have type information
+	// to determine function signatures. Proper fix requires:
+	// 1. AST-level type checking (go/types package)
+	// 2. Parsing function signatures to count return values
+	// 3. Generating correct number of tmp variables
+	//
+	// CURRENT BEHAVIOR: Assumes single value + error returns
+	// WORKAROUND: Users must use multi-value returns in assignment context, not return context
+	//
+	// TODO (Phase 3): Move error propagation to AST transformer with type info
 	var returnVals []string
 	returnVals = append(returnVals, tmpVar)
+
 	// Add nil for error position (last return value)
 	if e.currentFunc != nil && len(e.currentFunc.returnTypes) > 1 {
 		returnVals = append(returnVals, "nil")
@@ -390,10 +518,10 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	buf.WriteString(fmt.Sprintf("return %s", strings.Join(returnVals, ", ")))
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
-		OriginalColumn:  1,
+		OriginalColumn:  qPos + 1, // 1-based column position of ?
 		GeneratedLine:   startOutputLine + 6,
 		GeneratedColumn: 1,
-		Length:          len(matches[0]),
+		Length:          1, // length of ? operator
 		Name:            "error_prop",
 	})
 
@@ -642,51 +770,27 @@ func (e *ErrorPropProcessor) isTernaryLine(line string) bool {
 	return false
 }
 
-// ensureFmtImport adds fmt import if not present using go/ast parsing
-func (e *ErrorPropProcessor) ensureFmtImport(source []byte) []byte {
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "", source, parser.ParseComments)
-	if err != nil {
-		// Fallback to simple insertion if parse fails
-		return e.insertFmtImportSimple(source)
+// trackFunctionCallInExpr extracts function name from expression and tracks it
+// Handles patterns like: FuncName(args), pkg.FuncName(args), obj.Method(args)
+func (e *ErrorPropProcessor) trackFunctionCallInExpr(expr string) {
+	// Simple extraction: find identifier before '('
+	parenIdx := strings.Index(expr, "(")
+	if parenIdx == -1 {
+		return
 	}
 
-	// Check if fmt is already imported
-	for _, imp := range file.Imports {
-		if imp.Path.Value == `"fmt"` {
-			return source
+	// Get the part before '('
+	beforeParen := strings.TrimSpace(expr[:parenIdx])
+
+	// Split by '.' to handle qualified names (pkg.Func or obj.Method)
+	parts := strings.Split(beforeParen, ".")
+
+	// Track the last part (the actual function/method name)
+	if len(parts) > 0 {
+		funcName := strings.TrimSpace(parts[len(parts)-1])
+		if funcName != "" && e.importTracker != nil {
+			e.importTracker.TrackFunctionCall(funcName)
 		}
 	}
-
-	// Add fmt import using astutil
-	astutil.AddImport(fset, file, "fmt")
-
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, fset, file); err != nil {
-		return e.insertFmtImportSimple(source)
-	}
-
-	return buf.Bytes()
 }
 
-// insertFmtImportSimple is a fallback for when AST parsing fails
-func (e *ErrorPropProcessor) insertFmtImportSimple(source []byte) []byte {
-	sourceStr := string(source)
-	lines := strings.Split(sourceStr, "\n")
-	var result strings.Builder
-
-	for i, line := range lines {
-		result.WriteString(line)
-		result.WriteString("\n")
-
-		if strings.HasPrefix(strings.TrimSpace(line), "package ") {
-			if i+1 < len(lines) && strings.Contains(lines[i+1], "import") {
-				continue
-			} else {
-				result.WriteString("\nimport \"fmt\"\n")
-			}
-		}
-	}
-
-	return []byte(result.String())
-}
