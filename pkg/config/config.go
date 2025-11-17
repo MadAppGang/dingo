@@ -98,6 +98,16 @@ type FeatureConfig struct {
 	// - "standard": Follow C/TypeScript precedence rules
 	// - "explicit": Require parentheses for ambiguous mixing
 	OperatorPrecedence string `toml:"operator_precedence"`
+
+	// AutoWrapGoErrors controls automatic wrapping of Go (T, error) functions in Result<T, E>
+	// When true: Functions returning (T, error) are automatically wrapped in Result<T, E>
+	// When false: Manual wrapping required using Ok()/Err() constructors
+	AutoWrapGoErrors bool `toml:"auto_wrap_go_errors"`
+
+	// AutoWrapGoNils controls automatic wrapping of nullable Go types in Option<T>
+	// When true: Nullable types (*T, interface{}, etc) are automatically wrapped in Option<T>
+	// When false: Manual wrapping required using Some()/None constructors
+	AutoWrapGoNils bool `toml:"auto_wrap_go_nils"`
 }
 
 // SourceMapConfig controls source map generation
@@ -130,6 +140,8 @@ func DefaultConfig() *Config {
 			SafeNavigationUnwrap:   "smart",          // Default to smart unwrapping
 			NullCoalescingPointers: true,             // Default to supporting Go pointers
 			OperatorPrecedence:     "standard",       // Default to standard precedence
+			AutoWrapGoErrors:       true,             // Default to auto-wrapping (user chose configurable)
+			AutoWrapGoNils:         false,            // Default to manual wrapping for nil (less invasive)
 		},
 		SourceMap: SourceMapConfig{
 			Enabled: true,

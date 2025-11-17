@@ -29,11 +29,31 @@ type Import struct {
 	Path string `parser:"'import' @String"`
 }
 
-// Declaration can be a function, variable, or enum declaration
+// Declaration can be a function, variable, enum, or type declaration
 type Declaration struct {
-	Func *Function `parser:"@@"`
-	Var  *Variable `parser:"| @@"`
-	Enum *Enum     `parser:"| @@"`
+	Func     *Function     `parser:"  @@"`
+	Var      *Variable     `parser:"| @@"`
+	Enum     *Enum         `parser:"| @@"`
+	TypeDecl *TypeDecl     `parser:"| @@"`
+}
+
+// TypeDecl represents a type declaration
+type TypeDecl struct {
+	Name       string      `parser:"'type' @Ident"`
+	Struct     *StructType `parser:"( @@"`         // Struct definition
+	Type       *Type       `parser:"  | @@ )"`     // Or regular type
+}
+
+// StructType represents a struct type definition
+type StructType struct {
+	Struct bool          `parser:"@'struct'"`
+	Fields []*StructField `parser:"'{' ( @@ )* '}'"`
+}
+
+// StructField represents a field in a struct
+type StructField struct {
+	Name string `parser:"@Ident"`
+	Type *Type  `parser:"@@"`
 }
 
 // Function represents a function declaration
@@ -49,8 +69,8 @@ type Function struct {
 type Variable struct {
 	Mutable bool        `parser:"( @'var' | 'let' )"`
 	Name    string      `parser:"@Ident"`
-	Type    *Type       `parser:"( ':' @@ )?"`
-	Value   *Expression `parser:"'=' @@"`
+	Type    *Type       `parser:"( ':'? @@ )?"`  // Type can be with or without colon
+	Value   *Expression `parser:"( '=' @@ )?"`   // Value is optional for var declarations
 }
 
 // Parameter represents a function parameter
@@ -61,10 +81,38 @@ type Parameter struct {
 
 // Type represents a type expression
 type Type struct {
-	Pointer    bool          `parser:"@'*'?"`          // Prefix pointer: *int
-	Array      bool          `parser:"@'['? ']'?"`     // Prefix array: []byte
-	Name       string        `parser:"@Ident"`         // Type name
-	TypeParams []*Type       `parser:"( '<' @@ ( ',' @@ )* '>' )?"`  // Generic type parameters
+	MapType    *MapType      `parser:"  @@"`           // Map type
+	PointerType *PointerType `parser:"| @@"`           // Pointer type
+	ArrayType  *ArrayType    `parser:"| @@"`           // Array/Slice type
+	NamedType  *NamedType    `parser:"| @@"`           // Named type (must be last)
+}
+
+// MapType represents map[K]V
+type MapType struct {
+	Map   bool  `parser:"@'map'"`
+	Key   *Type `parser:"'[' @@"`
+	Value *Type `parser:"']' @@"`
+}
+
+// PointerType represents *T
+type PointerType struct {
+	Star bool  `parser:"@'*'"`
+	Type *Type `parser:"@@"`
+}
+
+// ArrayType represents []T or [N]T
+type ArrayType struct {
+	Open  bool   `parser:"@'['"`
+	Size  *int64 `parser:"@Int?"`
+	Close bool   `parser:"@']'"`
+	Elem  *Type  `parser:"@@"`
+}
+
+// NamedType represents a named type with optional generic parameters or empty interface
+type NamedType struct {
+	Name          string  `parser:"@Ident"`
+	TypeParams    []*Type `parser:"( '<' @@ ( ',' @@ )* '>' )?"`
+	EmptyInterface bool   `parser:"@( '{' '}' )?"`  // Support interface{} syntax
 }
 
 // Enum represents an enum declaration (sum type)
@@ -143,36 +191,64 @@ type ComparisonExpression struct {
 	Right *AddExpression `parser:"  @@ )?"`
 }
 
-// AddExpression handles + and -
+// AddExpression handles + and - (left-associative, allows chaining)
 type AddExpression struct {
 	Left  *MultiplyExpression `parser:"@@"`
-	Op    string              `parser:"( @( '+' | '-' )"`
-	Right *MultiplyExpression `parser:"  @@ )?"`
+	Rest  []*AddOp            `parser:"@@*"`
 }
 
-// MultiplyExpression handles *, /, and %
+type AddOp struct {
+	Op    string              `parser:"@( '+' | '-' )"`
+	Right *MultiplyExpression `parser:"@@"`
+}
+
+// MultiplyExpression handles *, /, and % (left-associative, allows chaining)
 type MultiplyExpression struct {
 	Left  *UnaryExpression `parser:"@@"`
-	Op    string           `parser:"( @( '*' | '/' | '%' )"`
-	Right *UnaryExpression `parser:"  @@ )?"`
+	Rest  []*MultiplyOp    `parser:"@@*"`
 }
 
-// UnaryExpression handles !, -, etc.
+type MultiplyOp struct {
+	Op    string           `parser:"@( '*' | '/' | '%' )"`
+	Right *UnaryExpression `parser:"@@"`
+}
+
+// UnaryExpression handles !, -, &, *, etc.
 type UnaryExpression struct {
-	Op      string              `parser:"( @( '!' | '-' )"`
+	Op      string              `parser:"( @( '!' | '-' | '&' | '*' )"`
 	Postfix *PostfixExpression  `parser:"  @@ ) | @@"`
 }
 
 // PrimaryExpression is the base expression
 type PrimaryExpression struct {
-	Match   *Match             `parser:"  @@"`        // Match expression
-	Lambda  *LambdaExpression  `parser:"| @@"`        // Lambda expression
-	Call    *CallExpression    `parser:"| @@"`        // Try call first (has lookahead)
-	Number  *int64             `parser:"| @Int"`
-	String  *string            `parser:"| @String"`
-	Bool    *bool              `parser:"| ( @'true' | 'false' )"`
-	Subexpr *Expression        `parser:"| '(' @@ ')'"`
-	Ident   *string            `parser:"| @Ident"`     // Ident last (most general)
+	Match       *Match             `parser:"  @@"`        // Match expression
+	Lambda      *LambdaExpression  `parser:"| @@"`        // Lambda expression
+	Composite   *CompositeLit      `parser:"| @@"`        // Composite literal (e.g., &User{...}, []int{...})
+	TypeCast    *TypeCast          `parser:"| @@"`        // Type cast (e.g., string(data))
+	Call        *CallExpression    `parser:"| @@"`        // Try call (has lookahead)
+	Number      *int64             `parser:"| @Int"`
+	String      *string            `parser:"| @String"`
+	Bool        *bool              `parser:"| ( @'true' | 'false' )"`
+	Subexpr     *Expression        `parser:"| '(' @@ ')'"`
+	Ident       *string            `parser:"| @Ident"`     // Ident last (most general)
+}
+
+// CompositeLit represents composite literals like User{...} or []int{1,2,3}
+type CompositeLit struct {
+	Type     *Type                `parser:"@@"`
+	Elements []*CompositeLitElem  `parser:"'{' ( @@ ( ',' @@ )* ','? )? '}'"`
+}
+
+// CompositeLitElem represents an element in a composite literal
+type CompositeLitElem struct {
+	Key   *string     `parser:"( @Ident ':'"`  // Optional key for struct literals
+	Value *Expression `parser:"  @@ ) | @@"`   // Value (required)
+}
+
+// TypeCast represents a type conversion like string(data)
+type TypeCast struct {
+	Type *Type       `parser:"@@"`
+	Arg  *Expression `parser:"'(' @@ ')'"`
 }
 
 // LambdaExpression represents a lambda function
@@ -278,7 +354,7 @@ func newParticipleParser(mode Mode) Parser {
 	dingoLexer := lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Whitespace", Pattern: `[ \t\r\n]+`},
 		{Name: "Comment", Pattern: `//[^\n]*`},
-		{Name: "String", Pattern: `"[^"]*"`},
+		{Name: "String", Pattern: `"(?:[^"\\]|\\.)*"`}, // Support escape sequences like \", \\, \n, etc.
 		{Name: "Int", Pattern: `\d+`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
 		// Multi-character operators (must come before single-char Punct)
@@ -387,17 +463,29 @@ func (p *participleParser) convertToGoAST(dingoFile *DingoFile, file *token.File
 		} else if decl.Var != nil {
 			goFile.Decls = append(goFile.Decls, p.convertVariable(decl.Var, file))
 		} else if decl.Enum != nil {
-			// Enum declarations are Dingo-specific - store as placeholder
+			// CRITICAL FIX #4: Enum declarations are Dingo-specific - store as placeholder
+			// Generate a valid placeholder type to prevent go/types crashes
 			enumDecl := p.convertEnum(decl.Enum, file)
-			// Create a dummy GenDecl as placeholder with empty Specs slice
-			// (go/types crashes if Specs is nil/missing)
+
+			// Create a placeholder type declaration with a comment marker
+			// This will be replaced by the sum_types plugin with the actual tagged union
 			placeholder := &ast.GenDecl{
-				Tok:   token.TYPE,
-				Specs: []ast.Spec{}, // CRITICAL: Must have empty slice, not nil!
+				Tok: token.TYPE,
+				Specs: []ast.Spec{
+					&ast.TypeSpec{
+						Name: &ast.Ident{Name: enumDecl.Name.Name + "__PLACEHOLDER"},
+						Type: &ast.StructType{
+							Fields: &ast.FieldList{List: []*ast.Field{}},
+						},
+					},
+				},
 			}
 			goFile.Decls = append(goFile.Decls, placeholder)
 			// Register the enum as a Dingo node
 			result.AddDingoNode(placeholder, enumDecl)
+		} else if decl.TypeDecl != nil {
+			// Regular type declarations convert directly to Go GenDecl
+			goFile.Decls = append(goFile.Decls, p.convertTypeDecl(decl.TypeDecl, file))
 		}
 	}
 
@@ -457,6 +545,37 @@ func (p *participleParser) convertVariable(v *Variable, file *token.File) ast.De
 	}
 }
 
+func (p *participleParser) convertTypeDecl(td *TypeDecl, file *token.File) ast.Decl {
+	var typeExpr ast.Expr
+
+	if td.Struct != nil {
+		// Convert struct type
+		fields := make([]*ast.Field, 0, len(td.Struct.Fields))
+		for _, f := range td.Struct.Fields {
+			fields = append(fields, &ast.Field{
+				Names: []*ast.Ident{{Name: f.Name}},
+				Type:  p.convertType(f.Type, file),
+			})
+		}
+		typeExpr = &ast.StructType{
+			Fields: &ast.FieldList{List: fields},
+		}
+	} else {
+		// Convert regular type
+		typeExpr = p.convertType(td.Type, file)
+	}
+
+	return &ast.GenDecl{
+		Tok: token.TYPE,
+		Specs: []ast.Spec{
+			&ast.TypeSpec{
+				Name: &ast.Ident{Name: td.Name},
+				Type: typeExpr,
+			},
+		},
+	}
+}
+
 func (p *participleParser) convertBlock(block *Block, file *token.File) *ast.BlockStmt {
 	stmts := make([]ast.Stmt, 0, len(block.Stmts))
 
@@ -489,17 +608,70 @@ func (p *participleParser) convertVarStmt(v *Variable, file *token.File) *ast.De
 }
 
 func (p *participleParser) convertType(t *Type, file *token.File) ast.Expr {
-	baseType := ast.Expr(&ast.Ident{Name: t.Name})
-
-	if t.Pointer {
-		baseType = &ast.StarExpr{X: baseType}
+	if t.MapType != nil {
+		return &ast.MapType{
+			Key:   p.convertType(t.MapType.Key, file),
+			Value: p.convertType(t.MapType.Value, file),
+		}
 	}
 
-	if t.Array {
-		baseType = &ast.ArrayType{Elt: baseType}
+	if t.PointerType != nil {
+		return &ast.StarExpr{
+			X: p.convertType(t.PointerType.Type, file),
+		}
 	}
 
-	return baseType
+	if t.ArrayType != nil {
+		var lenExpr ast.Expr
+		if t.ArrayType.Size != nil {
+			lenExpr = &ast.BasicLit{
+				Kind:  token.INT,
+				Value: fmt.Sprintf("%d", *t.ArrayType.Size),
+			}
+		}
+		return &ast.ArrayType{
+			Len: lenExpr,
+			Elt: p.convertType(t.ArrayType.Elem, file),
+		}
+	}
+
+	if t.NamedType != nil {
+		// Handle generic type parameters (e.g., Result<T, E>)
+		if len(t.NamedType.TypeParams) > 0 {
+			// Construct composite name like Result_T_E
+			typeName := t.NamedType.Name
+			for _, param := range t.NamedType.TypeParams {
+				typeName += "_" + p.typeToString(param)
+			}
+			return &ast.Ident{Name: typeName}
+		}
+		return &ast.Ident{Name: t.NamedType.Name}
+	}
+
+	// Fallback (should not reach here)
+	return &ast.Ident{Name: "unknown"}
+}
+
+// Helper to convert a Type to a string representation for naming
+func (p *participleParser) typeToString(t *Type) string {
+	if t.MapType != nil {
+		return fmt.Sprintf("map_%s_%s",
+			p.typeToString(t.MapType.Key),
+			p.typeToString(t.MapType.Value))
+	}
+	if t.PointerType != nil {
+		return "ptr_" + p.typeToString(t.PointerType.Type)
+	}
+	if t.ArrayType != nil {
+		if t.ArrayType.Size != nil {
+			return fmt.Sprintf("array%d_%s", *t.ArrayType.Size, p.typeToString(t.ArrayType.Elem))
+		}
+		return "slice_" + p.typeToString(t.ArrayType.Elem)
+	}
+	if t.NamedType != nil {
+		return t.NamedType.Name
+	}
+	return "unknown"
 }
 
 func (p *participleParser) convertExpression(expr *Expression, file *token.File) ast.Expr {
@@ -575,31 +747,33 @@ func (p *participleParser) convertComparison(comp *ComparisonExpression, file *t
 }
 
 func (p *participleParser) convertAdd(add *AddExpression, file *token.File) ast.Expr {
-	left := p.convertMultiply(add.Left, file)
+	result := p.convertMultiply(add.Left, file)
 
-	if add.Op != "" {
-		return &ast.BinaryExpr{
-			X:  left,
-			Op: stringToToken(add.Op),
-			Y:  p.convertMultiply(add.Right, file),
+	// Handle chained additions/subtractions (left-associative)
+	for _, op := range add.Rest {
+		result = &ast.BinaryExpr{
+			X:  result,
+			Op: stringToToken(op.Op),
+			Y:  p.convertMultiply(op.Right, file),
 		}
 	}
 
-	return left
+	return result
 }
 
 func (p *participleParser) convertMultiply(mul *MultiplyExpression, file *token.File) ast.Expr {
-	left := p.convertUnary(mul.Left, file)
+	result := p.convertUnary(mul.Left, file)
 
-	if mul.Op != "" {
-		return &ast.BinaryExpr{
-			X:  left,
-			Op: stringToToken(mul.Op),
-			Y:  p.convertUnary(mul.Right, file),
+	// Handle chained multiplications/divisions/modulos (left-associative)
+	for _, op := range mul.Rest {
+		result = &ast.BinaryExpr{
+			X:  result,
+			Op: stringToToken(op.Op),
+			Y:  p.convertUnary(op.Right, file),
 		}
 	}
 
-	return left
+	return result
 }
 
 func (p *participleParser) convertUnary(unary *UnaryExpression, file *token.File) ast.Expr {
@@ -721,6 +895,35 @@ func (p *participleParser) convertPrimary(primary *PrimaryExpression, file *toke
 
 	if primary.Lambda != nil {
 		return p.convertLambda(primary.Lambda, file)
+	}
+
+	if primary.Composite != nil {
+		// Convert composite literal
+		elements := make([]ast.Expr, 0, len(primary.Composite.Elements))
+		for _, elem := range primary.Composite.Elements {
+			if elem.Key != nil {
+				// Key-value element (struct literal)
+				elements = append(elements, &ast.KeyValueExpr{
+					Key:   &ast.Ident{Name: *elem.Key},
+					Value: p.convertExpression(elem.Value, file),
+				})
+			} else {
+				// Value-only element (array/slice literal)
+				elements = append(elements, p.convertExpression(elem.Value, file))
+			}
+		}
+		return &ast.CompositeLit{
+			Type: p.convertType(primary.Composite.Type, file),
+			Elts: elements,
+		}
+	}
+
+	if primary.TypeCast != nil {
+		// Convert type cast (type conversion in Go)
+		return &ast.CallExpr{
+			Fun:  p.convertType(primary.TypeCast.Type, file),
+			Args: []ast.Expr{p.convertExpression(primary.TypeCast.Arg, file)},
+		}
 	}
 
 	if primary.Call != nil {

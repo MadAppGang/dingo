@@ -4,12 +4,14 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"go/ast"
 	"go/format"
 	"go/printer"
 	"go/token"
 
 	dingoast "github.com/MadAppGang/dingo/pkg/ast"
 	"github.com/MadAppGang/dingo/pkg/plugin"
+	"github.com/MadAppGang/dingo/pkg/plugin/builtin"
 )
 
 // Generator generates Go source code from a Dingo AST
@@ -50,6 +52,15 @@ func NewWithPlugins(fset *token.FileSet, registry *plugin.Registry, logger plugi
 	if err != nil {
 		return nil, fmt.Errorf("failed to create plugin pipeline: %w", err)
 	}
+
+	// Inject type inference factory to avoid circular dependency
+	pipeline.SetTypeInferenceFactory(func(fsetInterface interface{}, file *ast.File, loggerInterface plugin.Logger) (interface{}, error) {
+		fset, ok := fsetInterface.(*token.FileSet)
+		if !ok {
+			return nil, fmt.Errorf("invalid FileSet type")
+		}
+		return builtin.NewTypeInferenceService(fset, file, loggerInterface)
+	})
 
 	return &Generator{
 		fset:     fset,

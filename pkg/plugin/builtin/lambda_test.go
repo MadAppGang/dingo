@@ -3,6 +3,7 @@ package builtin
 import (
 	"go/ast"
 	"go/token"
+	"strings"
 	"testing"
 
 	dingoast "github.com/MadAppGang/dingo/pkg/ast"
@@ -366,7 +367,7 @@ func TestLambdaInvalidSyntaxMode(t *testing.T) {
 	}
 
 	expectedMsg := "invalid lambda_syntax mode"
-	if !contains(err.Error(), expectedMsg) {
+	if !strings.Contains(err.Error(), expectedMsg) {
 		t.Errorf("Expected error message to contain %q, got %q", expectedMsg, err.Error())
 	}
 }
@@ -402,3 +403,4 @@ func TestLambdaNilConfig(t *testing.T) {
 		t.Fatalf("Expected *ast.FuncLit, got %T", result)
 	}
 }
+

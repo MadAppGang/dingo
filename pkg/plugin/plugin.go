@@ -34,13 +34,14 @@ type Plugin interface {
 
 // Context provides plugins with necessary information
 type Context struct {
-	FileSet     *token.FileSet // Source file information
-	TypeInfo    *types.Info    // Type information (when available)
-	Config      *Config        // Plugin configuration
-	Registry    *Registry      // Access to other plugins
-	Logger      Logger         // Logging interface
-	CurrentFile ast.Node       // Current file being transformed (can be *dingoast.File)
-	DingoConfig interface{}    // Full Dingo configuration (*config.Config), stored as interface{} to avoid circular import
+	FileSet       *token.FileSet // Source file information
+	TypeInfo      *types.Info    // Type information (when available)
+	Config        *Config        // Plugin configuration
+	Registry      *Registry      // Access to other plugins
+	Logger        Logger         // Logging interface
+	CurrentFile   ast.Node       // Current file being transformed (can be *dingoast.File)
+	DingoConfig   interface{}    // Full Dingo configuration (*config.Config), stored as interface{} to avoid circular import
+	TypeInference interface{}    // Shared type inference service (TypeInferenceService), stored as interface{} to avoid circular import
 }
 
 // GetDingoConfig safely extracts the Dingo configuration from the context.

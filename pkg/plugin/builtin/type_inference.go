@@ -7,18 +7,59 @@ import (
 	"go/importer"
 	"go/token"
 	"go/types"
+	"reflect"
+	"strings"
 )
 
-// TypeInference provides comprehensive type resolution using go/types
-type TypeInference struct {
+// TypeInferenceService provides centralized type information for all plugins
+type TypeInferenceService struct {
 	fset   *token.FileSet
+	logger interface{} // plugin.Logger interface stored to avoid circular import
+
+	// Type checker state
 	info   *types.Info
 	pkg    *types.Package
 	config *types.Config
+
+	// Performance cache
+	typeCache    map[ast.Expr]types.Type
+	cacheEnabled bool
+
+	// Synthetic type registry (for Result, Option, etc)
+	syntheticTypes map[string]*SyntheticTypeInfo
+
+	// CRITICAL FIX #5: Error collection instead of silent swallowing
+	errors []error
+
+	// Statistics (for performance monitoring)
+	typeChecks int
+	cacheHits  int
 }
+
+// SyntheticTypeInfo stores information about generated types
+type SyntheticTypeInfo struct {
+	TypeName   string        // e.g., "Result_int_error"
+	Underlying *types.Named  // Type information
+	GenDecl    *ast.GenDecl  // Generated AST declaration
+}
+
+// TypeInferenceStats contains performance statistics
+type TypeInferenceStats struct {
+	TypeChecks int
+	CacheHits  int
+	CacheSize  int
+}
+
+// TypeInference is a legacy alias for backward compatibility
+type TypeInference = TypeInferenceService
 
 // NewTypeInference creates a new type inference engine for a file
 func NewTypeInference(fset *token.FileSet, file *ast.File) (*TypeInference, error) {
+	return NewTypeInferenceService(fset, file, nil)
+}
+
+// NewTypeInferenceService creates a new type inference service for a file
+func NewTypeInferenceService(fset *token.FileSet, file *ast.File, logger interface{}) (*TypeInferenceService, error) {
 	// Initialize type information maps
 	info := &types.Info{
 		Types:      make(map[ast.Expr]types.TypeAndValue),
@@ -29,12 +70,36 @@ func NewTypeInference(fset *token.FileSet, file *ast.File) (*TypeInference, erro
 		Scopes:     make(map[ast.Node]*types.Scope),
 	}
 
-	// Configure type checker
+	service := &TypeInferenceService{
+		fset:           fset,
+		logger:         logger,
+		typeCache:      make(map[ast.Expr]types.Type),
+		cacheEnabled:   true,
+		syntheticTypes: make(map[string]*SyntheticTypeInfo),
+		errors:         make([]error, 0),
+		typeChecks:     0,
+		cacheHits:      0,
+	}
+
+	// CRITICAL FIX #5: Configure type checker with error collection, not silent swallowing
 	config := &types.Config{
 		Importer: importer.Default(),
 		Error: func(err error) {
-			// Collect errors but don't fail - we can still infer some types
-			// In production, we might log these errors
+			// Collect errors for later inspection
+			service.errors = append(service.errors, err)
+
+			// Log errors at Warn level if logger available
+			if logger != nil {
+				// Use reflection to call Warn method to avoid import cycle
+				if loggerVal := reflect.ValueOf(logger); loggerVal.IsValid() {
+					if warnMethod := loggerVal.MethodByName("Warn"); warnMethod.IsValid() {
+						warnMethod.Call([]reflect.Value{
+							reflect.ValueOf("Type checking error: %v"),
+							reflect.ValueOf(err),
+						})
+					}
+				}
+			}
 		},
 	}
 
@@ -48,18 +113,51 @@ func NewTypeInference(fset *token.FileSet, file *ast.File) (*TypeInference, erro
 	pkg, err := config.Check(packageName, fset, []*ast.File{file}, info)
 	if err != nil {
 		// Continue even with type errors - partial type information is better than none
+		// Errors are already collected via config.Error callback
 	}
 
-	return &TypeInference{
-		fset:   fset,
-		info:   info,
-		pkg:    pkg,
-		config: config,
-	}, nil
+	service.info = info
+	service.pkg = pkg
+	service.config = config
+
+	return service, nil
+}
+
+// Refresh refreshes type information after AST modifications
+func (ti *TypeInferenceService) Refresh(file *ast.File) error {
+	// CRITICAL FIX #5: Clear ALL cached data, including errors
+	ti.typeCache = make(map[ast.Expr]types.Type)
+	ti.errors = make([]error, 0)
+
+	// Re-run type checking
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Implicits:  make(map[ast.Node]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Scopes:     make(map[ast.Node]*types.Scope),
+	}
+
+	packageName := "main"
+	if file.Name != nil {
+		packageName = file.Name.Name
+	}
+
+	pkg, err := ti.config.Check(packageName, ti.fset, []*ast.File{file}, info)
+	if err != nil {
+		// Continue even with type errors
+	}
+
+	ti.info = info
+	ti.pkg = pkg
+
+	return nil
 }
 
 // Close releases memory used by type inference maps
-func (ti *TypeInference) Close() {
+func (ti *TypeInferenceService) Close() error {
+	// CRITICAL FIX #5: Clear all fields including errors
 	if ti.info != nil {
 		ti.info.Types = nil
 		ti.info.Defs = nil
@@ -67,7 +165,14 @@ func (ti *TypeInference) Close() {
 		ti.info.Implicits = nil
 		ti.info.Selections = nil
 		ti.info.Scopes = nil
+		ti.info = nil
 	}
+	ti.typeCache = nil
+	ti.syntheticTypes = nil
+	ti.errors = nil
+	ti.pkg = nil
+	ti.config = nil
+	return nil
 }
 
 // InferFunctionReturnType determines the return type of a function
@@ -257,4 +362,209 @@ func (ti *TypeInference) chanDirToAST(dir types.ChanDir) ast.ChanDir {
 	default:
 		return ast.SEND | ast.RECV
 	}
+}
+
+// InferType determines the type of an expression with caching
+func (ti *TypeInferenceService) InferType(expr ast.Expr) (types.Type, error) {
+	// Check cache first
+	if ti.cacheEnabled {
+		if cached, ok := ti.typeCache[expr]; ok {
+			ti.cacheHits++
+			return cached, nil
+		}
+	}
+
+	ti.typeChecks++
+
+	// Use existing InferExpressionType logic
+	typ := ti.info.TypeOf(expr)
+	if typ == nil {
+		return nil, fmt.Errorf("could not determine expression type")
+	}
+
+	// Cache the result
+	if ti.cacheEnabled {
+		ti.typeCache[expr] = typ
+	}
+
+	return typ, nil
+}
+
+// IsResultType detects Result<T, E> types and extracts T and E
+func (ti *TypeInferenceService) IsResultType(typ types.Type) (T, E types.Type, ok bool) {
+	// Check if type is a named type matching Result_* pattern
+	named, isNamed := typ.(*types.Named)
+	if !isNamed {
+		return nil, nil, false
+	}
+
+	name := named.Obj().Name()
+
+	// Check for Result_T_E naming pattern
+	if !strings.HasPrefix(name, "Result_") {
+		return nil, nil, false
+	}
+
+	// Check if it's in synthetic type registry (more reliable than name parsing)
+	if info, found := ti.GetSyntheticType(name); found {
+		// Extract T and E from underlying struct
+		// Result<T, E> has fields: tag ResultTag, ok_0 T, err_0 E
+		structType, ok := info.Underlying.Underlying().(*types.Struct)
+		if !ok {
+			return nil, nil, false
+		}
+
+		if structType.NumFields() != 3 {
+			return nil, nil, false
+		}
+
+		// Fields: tag (0), ok_0 (1), err_0 (2)
+		T = structType.Field(1).Type()
+		E = structType.Field(2).Type()
+		return T, E, true
+	}
+
+	// Fallback: Not in registry, cannot reliably determine T and E
+	return nil, nil, false
+}
+
+// IsOptionType detects Option<T> types and extracts T
+func (ti *TypeInferenceService) IsOptionType(typ types.Type) (T types.Type, ok bool) {
+	named, isNamed := typ.(*types.Named)
+	if !isNamed {
+		return nil, false
+	}
+
+	name := named.Obj().Name()
+	if !strings.HasPrefix(name, "Option_") {
+		return nil, false
+	}
+
+	// Check synthetic registry
+	if info, found := ti.GetSyntheticType(name); found {
+		// Option<T> has fields: tag OptionTag, some_0 T
+		structType, ok := info.Underlying.Underlying().(*types.Struct)
+		if !ok {
+			return nil, false
+		}
+
+		if structType.NumFields() != 2 {
+			return nil, false
+		}
+
+		T = structType.Field(1).Type()
+		return T, true
+	}
+
+	return nil, false
+}
+
+// IsPointerType checks if a type is a pointer
+func (ti *TypeInferenceService) IsPointerType(typ types.Type) bool {
+	_, ok := typ.(*types.Pointer)
+	return ok
+}
+
+// IsErrorType checks if a type is or implements the error interface
+func (ti *TypeInferenceService) IsErrorType(typ types.Type) bool {
+	// Check if type is built-in error interface
+	if typ.String() == "error" {
+		return true
+	}
+
+	// Check if implements error interface
+	iface, ok := typ.Underlying().(*types.Interface)
+	if !ok {
+		return false
+	}
+
+	// error interface has one method: Error() string
+	if iface.NumMethods() == 1 {
+		method := iface.Method(0)
+		if method.Name() == "Error" {
+			sig, ok := method.Type().(*types.Signature)
+			if ok && sig.Params().Len() == 0 && sig.Results().Len() == 1 {
+				return sig.Results().At(0).Type().String() == "string"
+			}
+		}
+	}
+
+	return false
+}
+
+// IsGoErrorTuple detects Go functions returning (T, error)
+func (ti *TypeInferenceService) IsGoErrorTuple(sig *types.Signature) (valueType types.Type, ok bool) {
+	results := sig.Results()
+	if results.Len() != 2 {
+		return nil, false
+	}
+
+	// Second return must be error type
+	secondType := results.At(1).Type()
+	if !ti.IsErrorType(secondType) {
+		return nil, false
+	}
+
+	// First return is the value type
+	return results.At(0).Type(), true
+}
+
+// ShouldWrapAsResult determines if a call expression should be auto-wrapped
+func (ti *TypeInferenceService) ShouldWrapAsResult(callExpr *ast.CallExpr) bool {
+	// Get function type
+	funcType, err := ti.InferType(callExpr.Fun)
+	if err != nil {
+		return false
+	}
+
+	sig, ok := funcType.(*types.Signature)
+	if !ok {
+		return false
+	}
+
+	_, isErrorTuple := ti.IsGoErrorTuple(sig)
+	return isErrorTuple
+}
+
+// RegisterSyntheticType registers a generated type (Result, Option, etc)
+func (ti *TypeInferenceService) RegisterSyntheticType(name string, info *SyntheticTypeInfo) {
+	ti.syntheticTypes[name] = info
+}
+
+// GetSyntheticType retrieves information about a synthetic type
+func (ti *TypeInferenceService) GetSyntheticType(name string) (*SyntheticTypeInfo, bool) {
+	info, ok := ti.syntheticTypes[name]
+	return info, ok
+}
+
+// IsSyntheticType checks if a type name is a registered synthetic type
+func (ti *TypeInferenceService) IsSyntheticType(name string) bool {
+	_, ok := ti.syntheticTypes[name]
+	return ok
+}
+
+// Stats returns performance statistics
+func (ti *TypeInferenceService) Stats() TypeInferenceStats {
+	return TypeInferenceStats{
+		TypeChecks: ti.typeChecks,
+		CacheHits:  ti.cacheHits,
+		CacheSize:  len(ti.typeCache),
+	}
+}
+
+// CRITICAL FIX #5: Add error inspection methods
+
+// HasErrors returns true if any type checking errors were collected
+func (ti *TypeInferenceService) HasErrors() bool {
+	return len(ti.errors) > 0
+}
+
+// GetErrors returns all collected type checking errors
+func (ti *TypeInferenceService) GetErrors() []error {
+	return ti.errors
+}
+
+// ClearErrors clears collected errors
+func (ti *TypeInferenceService) ClearErrors() {
+	ti.errors = make([]error, 0)
 }
