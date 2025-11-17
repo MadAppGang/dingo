@@ -77,7 +77,7 @@ export function CodeComparison({ before, after, language }: CodeComparisonProps)
               height={48}
             />
           </div>
-          <h3 className="text-lg font-semibold text-gray-800">Goal</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Go</h3>
         </div>
         <CodeBlock code={after} language={language} />
       </div>
