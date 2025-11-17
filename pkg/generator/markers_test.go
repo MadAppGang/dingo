@@ -53,11 +53,11 @@ func process() error {
 
 func process() error {
 	x, __err0 := fetchUser()
-	// DINGO:GENERATED:START error_propagation
+	// dingo:s:1
 	if __err0 != nil {
 		return __err0
 	}
-	// DINGO:GENERATED:END
+	// dingo:e:1
 	return nil
 }
 `,
@@ -83,17 +83,17 @@ func process() error {
 
 func process() error {
 	x, __err0 := fetchUser()
-	// DINGO:GENERATED:START error_propagation
+	// dingo:s:1
 	if __err0 != nil {
 		return __err0
 	}
-	// DINGO:GENERATED:END
+	// dingo:e:1
 	y, __err1 := fetchPost()
-	// DINGO:GENERATED:START error_propagation
+	// dingo:s:1
 	if __err1 != nil {
 		return __err1
 	}
-	// DINGO:GENERATED:END
+	// dingo:e:1
 	return nil
 }
 `,
