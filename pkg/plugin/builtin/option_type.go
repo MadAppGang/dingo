@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"go/types"
-	"strings"
 
 	dingoast "github.com/MadAppGang/dingo/pkg/ast"
 	"github.com/MadAppGang/dingo/pkg/plugin"
@@ -140,10 +138,10 @@ func (p *OptionTypePlugin) transformSomeLiteral(callExpr *ast.CallExpr, ctx *plu
 
 	// Infer T from the argument
 	var valueTypeName string
-	if ctx.TypeInference != nil {
-		if service, ok := ctx.TypeInference.(*TypeInferenceService); ok {
+	if typeInf, ok := ctx.GetTypeInference(); ok {
+		if service, ok := typeInf.(*TypeInferenceService); ok {
 			if typ, err := service.InferType(valueExpr); err == nil && typ != nil {
-				valueTypeName = p.typeToString(typ)
+				valueTypeName = typeToString(typ)
 			}
 		}
 	}
@@ -154,7 +152,7 @@ func (p *OptionTypePlugin) transformSomeLiteral(callExpr *ast.CallExpr, ctx *plu
 	}
 
 	// Generate Option_T type name (sanitized for Go identifiers)
-	optionTypeName := fmt.Sprintf("Option_%s", p.sanitizeTypeName(valueTypeName))
+	optionTypeName := fmt.Sprintf("Option_%s", sanitizeTypeName(valueTypeName))
 
 	// Ensure Option type declaration is emitted
 	p.emitOptionDeclaration(optionTypeName, valueTypeName)
@@ -181,59 +179,6 @@ func (p *OptionTypePlugin) transformNoneLiteral(ident *ast.Ident, ctx *plugin.Co
 	// TODO: Implement type context inference
 	// For now, None requires explicit type annotation or will be handled by the sum_types plugin
 	return nil
-}
-
-// typeToString converts a types.Type to a string representation for naming
-func (p *OptionTypePlugin) typeToString(typ types.Type) string {
-	if typ == nil {
-		return "unknown"
-	}
-
-	// Handle basic types
-	switch t := typ.(type) {
-	case *types.Basic:
-		return t.Name()
-	case *types.Named:
-		obj := t.Obj()
-		if obj != nil {
-			return obj.Name()
-		}
-	case *types.Pointer:
-		elem := p.typeToString(t.Elem())
-		return "ptr_" + elem
-	case *types.Slice:
-		elem := p.typeToString(t.Elem())
-		return "slice_" + elem
-	case *types.Array:
-		elem := p.typeToString(t.Elem())
-		return fmt.Sprintf("array_%s", elem)
-	case *types.Map:
-		key := p.typeToString(t.Key())
-		val := p.typeToString(t.Elem())
-		return fmt.Sprintf("map_%s_%s", key, val)
-	}
-
-	// Fallback to String() method
-	str := typ.String()
-	// Remove package paths for cleaner names
-	if idx := strings.LastIndex(str, "."); idx >= 0 {
-		str = str[idx+1:]
-	}
-	return str
-}
-
-// sanitizeTypeName ensures type names are valid Go identifiers
-func (p *OptionTypePlugin) sanitizeTypeName(name string) string {
-	// Replace invalid characters with underscores
-	name = strings.ReplaceAll(name, ".", "_")
-	name = strings.ReplaceAll(name, "[", "_")
-	name = strings.ReplaceAll(name, "]", "_")
-	name = strings.ReplaceAll(name, "*", "ptr_")
-	name = strings.ReplaceAll(name, " ", "_")
-	name = strings.ReplaceAll(name, "(", "_")
-	name = strings.ReplaceAll(name, ")", "_")
-	name = strings.ReplaceAll(name, ",", "_")
-	return name
 }
 
 // inferTypeFromExpr tries to infer type from the expression structure
@@ -570,6 +515,23 @@ func (p *OptionTypePlugin) emitOptionDeclaration(optionTypeName, valueTypeName s
 		Specs: []ast.Spec{structTypeSpec},
 	}
 	p.generatedDecls = append(p.generatedDecls, structDecl)
+
+	// CRITICAL FIX #4: Register synthetic type with TypeInferenceService
+	// This allows IsOptionType() and other plugins to recognize this generated type
+	if p.currentContext != nil {
+		if typeInf, ok := p.currentContext.GetTypeInference(); ok {
+			if service, ok := typeInf.(*TypeInferenceService); ok {
+				// Create a named type for registration
+				// Note: We create a minimal type stub here; full type info will be available
+				// after the next type check pass
+				service.RegisterSyntheticType(optionTypeName, &SyntheticTypeInfo{
+					TypeName:   optionTypeName,
+					Underlying: nil, // Will be populated by type checker on next pass
+					GenDecl:    structDecl,
+				})
+			}
+		}
+	}
 
 	if p.currentContext != nil && p.currentContext.Logger != nil {
 		p.currentContext.Logger.Debug("Generated Option type: %s", optionTypeName)

@@ -168,10 +168,9 @@ func TestOptionTypePlugin_TypeNameSanitization(t *testing.T) {
 		},
 	}
 
-	p := NewOptionTypePlugin()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sanitized := p.sanitizeTypeName(tt.typeName)
+			sanitized := sanitizeTypeName(tt.typeName)
 			assert.Equal(t, tt.expected, sanitized)
 		})
 	}
@@ -308,13 +307,10 @@ func TestOptionTypePlugin_NilChecks(t *testing.T) {
 
 // TestOptionTypePlugin_TypeToString tests type to string conversion
 func TestOptionTypePlugin_TypeToString(t *testing.T) {
-	p := NewOptionTypePlugin()
-
 	t.Run("nil type", func(t *testing.T) {
-		result := p.typeToString(nil)
+		result := typeToString(nil)
 		assert.Equal(t, "unknown", result)
 	})
 
-	// Additional type conversion tests would require setting up types.Type instances
-	// which is complex - defer to integration tests
+	// Additional type conversion tests are in type_utils_test.go
 }

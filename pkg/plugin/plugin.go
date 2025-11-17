@@ -51,6 +51,23 @@ func (c *Context) GetDingoConfig() interface{} {
 	return c.DingoConfig
 }
 
+// GetTypeInference safely extracts the TypeInferenceService from the context.
+// Returns (service, true) if available, (nil, false) otherwise.
+// This helper eliminates brittle type assertions across all plugins.
+//
+// Example usage:
+//
+//	if service, ok := ctx.GetTypeInference(); ok {
+//	    typ, err := service.InferType(expr)
+//	    // ...
+//	}
+func (c *Context) GetTypeInference() (interface{}, bool) {
+	if c.TypeInference == nil {
+		return nil, false
+	}
+	return c.TypeInference, true
+}
+
 // Config holds configuration for all plugins
 type Config struct {
 	EnabledPlugins        []string           // List of enabled plugin names

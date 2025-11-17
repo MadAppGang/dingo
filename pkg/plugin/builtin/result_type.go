@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"go/types"
-	"strings"
 
 	dingoast "github.com/MadAppGang/dingo/pkg/ast"
 	"github.com/MadAppGang/dingo/pkg/plugin"
@@ -143,10 +141,10 @@ func (p *ResultTypePlugin) transformOkLiteral(callExpr *ast.CallExpr, ctx *plugi
 
 	// Infer T from the argument
 	var valueTypeName string
-	if ctx.TypeInference != nil {
-		if service, ok := ctx.TypeInference.(*TypeInferenceService); ok {
+	if typeInf, ok := ctx.GetTypeInference(); ok {
+		if service, ok := typeInf.(*TypeInferenceService); ok {
 			if typ, err := service.InferType(valueExpr); err == nil && typ != nil {
-				valueTypeName = p.typeToString(typ)
+				valueTypeName = typeToString(typ)
 			}
 		}
 	}
@@ -160,7 +158,7 @@ func (p *ResultTypePlugin) transformOkLiteral(callExpr *ast.CallExpr, ctx *plugi
 	errorTypeName := "error"
 
 	// Generate Result_T_E type name (sanitized for Go identifiers)
-	resultTypeName := fmt.Sprintf("Result_%s_%s", p.sanitizeTypeName(valueTypeName), p.sanitizeTypeName(errorTypeName))
+	resultTypeName := fmt.Sprintf("Result_%s_%s", sanitizeTypeName(valueTypeName), sanitizeTypeName(errorTypeName))
 
 	// Ensure Result type declaration is emitted
 	p.emitResultDeclaration(resultTypeName, valueTypeName, errorTypeName)
@@ -205,10 +203,10 @@ func (p *ResultTypePlugin) transformErrLiteral(callExpr *ast.CallExpr, ctx *plug
 
 	// Infer E from the argument
 	var errorTypeName string
-	if ctx.TypeInference != nil {
-		if service, ok := ctx.TypeInference.(*TypeInferenceService); ok {
+	if typeInf, ok := ctx.GetTypeInference(); ok {
+		if service, ok := typeInf.(*TypeInferenceService); ok {
 			if typ, err := service.InferType(errorExpr); err == nil && typ != nil {
-				errorTypeName = p.typeToString(typ)
+				errorTypeName = typeToString(typ)
 			}
 		}
 	}
@@ -233,7 +231,7 @@ func (p *ResultTypePlugin) transformErrLiteral(callExpr *ast.CallExpr, ctx *plug
 	}
 
 	// Generate Result_T_E type name
-	resultTypeName := fmt.Sprintf("Result_%s_%s", p.sanitizeTypeName(valueTypeName), p.sanitizeTypeName(errorTypeName))
+	resultTypeName := fmt.Sprintf("Result_%s_%s", sanitizeTypeName(valueTypeName), sanitizeTypeName(errorTypeName))
 
 	// Ensure Result type declaration is emitted (even with error placeholder)
 	p.emitResultDeclaration(resultTypeName, valueTypeName, errorTypeName)
@@ -252,59 +250,6 @@ func (p *ResultTypePlugin) transformErrLiteral(callExpr *ast.CallExpr, ctx *plug
 			},
 		},
 	}
-}
-
-// typeToString converts a types.Type to a string representation for naming
-func (p *ResultTypePlugin) typeToString(typ types.Type) string {
-	if typ == nil {
-		return "unknown"
-	}
-
-	// Handle basic types
-	switch t := typ.(type) {
-	case *types.Basic:
-		return t.Name()
-	case *types.Named:
-		obj := t.Obj()
-		if obj != nil {
-			return obj.Name()
-		}
-	case *types.Pointer:
-		elem := p.typeToString(t.Elem())
-		return "ptr_" + elem
-	case *types.Slice:
-		elem := p.typeToString(t.Elem())
-		return "slice_" + elem
-	case *types.Array:
-		elem := p.typeToString(t.Elem())
-		return fmt.Sprintf("array_%s", elem)
-	case *types.Map:
-		key := p.typeToString(t.Key())
-		val := p.typeToString(t.Elem())
-		return fmt.Sprintf("map_%s_%s", key, val)
-	}
-
-	// Fallback to String() method
-	str := typ.String()
-	// Remove package paths for cleaner names
-	if idx := strings.LastIndex(str, "."); idx >= 0 {
-		str = str[idx+1:]
-	}
-	return str
-}
-
-// sanitizeTypeName ensures type names are valid Go identifiers
-func (p *ResultTypePlugin) sanitizeTypeName(name string) string {
-	// Replace invalid characters with underscores
-	name = strings.ReplaceAll(name, ".", "_")
-	name = strings.ReplaceAll(name, "[", "_")
-	name = strings.ReplaceAll(name, "]", "_")
-	name = strings.ReplaceAll(name, "*", "ptr_")
-	name = strings.ReplaceAll(name, " ", "_")
-	name = strings.ReplaceAll(name, "(", "_")
-	name = strings.ReplaceAll(name, ")", "_")
-	name = strings.ReplaceAll(name, ",", "_")
-	return name
 }
 
 // inferTypeFromExpr tries to infer type from the expression structure
@@ -654,6 +599,23 @@ func (p *ResultTypePlugin) emitResultDeclaration(resultTypeName, valueTypeName, 
 		Specs: []ast.Spec{structTypeSpec},
 	}
 	p.generatedDecls = append(p.generatedDecls, structDecl)
+
+	// CRITICAL FIX #4: Register synthetic type with TypeInferenceService
+	// This allows IsResultType() and other plugins to recognize this generated type
+	if p.currentContext != nil {
+		if typeInf, ok := p.currentContext.GetTypeInference(); ok {
+			if service, ok := typeInf.(*TypeInferenceService); ok {
+				// Create a named type for registration
+				// Note: We create a minimal type stub here; full type info will be available
+				// after the next type check pass
+				service.RegisterSyntheticType(resultTypeName, &SyntheticTypeInfo{
+					TypeName:   resultTypeName,
+					Underlying: nil, // Will be populated by type checker on next pass
+					GenDecl:    structDecl,
+				})
+			}
+		}
+	}
 
 	if p.currentContext != nil && p.currentContext.Logger != nil {
 		p.currentContext.Logger.Debug("Generated Result type: %s", resultTypeName)
