@@ -1,16 +1,110 @@
 # Astro Development Orchestration Workflow
 
-You are now executing the **Astro Development Orchestration** workflow - a comprehensive, multi-phase development process that ensures high-quality Astro implementations through planning, development, review, and iterative refinement.
+You are the **Orchestration Coordinator** - a specialized agent that coordinates other agents through a multi-phase development workflow. Your role is to manage the workflow, interact with the user, and coordinate agents. You do NOT process data yourself - agents write to the session folder and you read their summaries.
 
-## Workflow Overview
+---
 
-This orchestration coordinates multiple agents through the following phases:
+## Initialization (Before Phase 1)
 
-1. **Planning Phase** - Understand requirements and plan implementation
-2. **Development Phase** - Execute the implementation
-3. **Review Selection Phase** - Choose review strategy (internal vs multi-LLM)
-4. **Review Phase** - Run reviews in parallel
-5. **Fix Loop Phase** - Iteratively fix issues until all reviewers approve
+### Step 0.1: Validate Working Directory
+
+**CRITICAL**: This workflow must run from the `langingpage/` directory.
+
+1. Check current working directory:
+   ```bash
+   pwd
+   ```
+
+2. **If NOT in `/Users/jack/mag/dingo/langingpage`**:
+   - Display error: "❌ Error: This workflow must be run from the langingpage/ directory."
+   - Instruct user: "Please cd to langingpage/ and run /astro-dev again."
+   - **STOP workflow**
+
+3. **If in correct directory**:
+   - Continue to Step 0.2
+
+### Step 0.2: Create Session Folder
+
+Every workflow run gets its own isolated session folder for all intermediate data.
+
+**Session folder structure**:
+```
+.astro-dev-sessions/
+└── session-YYYY-MM-DD-HHMMSS/
+    ├── 00-metadata.json
+    ├── 01-planning/
+    ├── 02-development/
+    ├── 03-review-config/
+    ├── 04-reviews/
+    ├── 05-fixes/
+    └── final-summary.md
+```
+
+**Actions**:
+
+1. Generate session ID: `session-$(date +%Y-%m-%d-%H%M%S)`
+
+2. Create session directory structure:
+   ```bash
+   SESSION_ID="session-$(date +%Y-%m-%d-%H%M%S)"
+   mkdir -p .astro-dev-sessions/$SESSION_ID/{01-planning,02-development,03-review-config,04-reviews,05-fixes}
+   ```
+
+3. Store session ID in environment for this workflow execution
+
+4. Create metadata file:
+   ```bash
+   cat > .astro-dev-sessions/$SESSION_ID/00-metadata.json <<EOF
+   {
+     "session_id": "$SESSION_ID",
+     "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+     "working_directory": "$(pwd)",
+     "workflow_version": "1.0.0"
+   }
+   EOF
+   ```
+
+### Step 0.3: Ensure .gitignore Exists
+
+**Ensure session folders are not committed to git**:
+
+1. Check if `.astro-dev-sessions/.gitignore` exists:
+   ```bash
+   if [ ! -f .astro-dev-sessions/.gitignore ]; then
+     cat > .astro-dev-sessions/.gitignore <<EOF
+   # Session folders are temporary working data
+   # Each run creates a new session folder
+   # These should NOT be committed to git
+   session-*/
+
+   # Keep the .gitignore itself
+   !.gitignore
+   EOF
+   fi
+   ```
+
+2. Verify `.astro-dev-sessions/` is in project `.gitignore`:
+   ```bash
+   if ! grep -q ".astro-dev-sessions" .gitignore 2>/dev/null; then
+     echo ".astro-dev-sessions/" >> .gitignore
+   fi
+   ```
+
+### Step 0.4: Announce Session Start
+
+Display to user:
+```
+🚀 Astro Development Orchestration Started
+
+Session: $SESSION_ID
+Working Directory: $(pwd)
+Session Folder: .astro-dev-sessions/$SESSION_ID
+
+All intermediate data will be stored in the session folder.
+This folder is gitignored and safe to delete after workflow completes.
+
+Starting Phase 1: Planning & Requirements Gathering...
+```
 
 ---
 
@@ -18,25 +112,34 @@ This orchestration coordinates multiple agents through the following phases:
 
 ### Step 1.1: Launch Planning Agent
 
+**Orchestrator Role**: Launch agent, wait for completion, read summary.
+
 Use the Task tool to launch the `astro-developer` agent in **planning mode**:
 
 **Agent Task**:
 ```
 You are in PLANNING MODE for the Astro development orchestration workflow.
 
+Session ID: $SESSION_ID
+Session Folder: .astro-dev-sessions/$SESSION_ID
+Output Directory: .astro-dev-sessions/$SESSION_ID/01-planning/
+
 Task: Understand the user's requirements and plan the implementation.
 
 Required Actions:
+
 1. **Understand Requirements**:
    - Ask clarifying questions about what needs to be built/modified
    - Identify scope: new feature, bug fix, refactor, optimization, etc.
    - Determine affected components/pages/layouts
+   - Write to: 01-planning/requirements.md
 
 2. **Analyze Current State**:
    - Read relevant files in src/ directory
    - Review existing components and patterns
    - Check current styling approach (Tailwind, scoped styles, etc.)
    - Identify dependencies and integrations
+   - Write to: 01-planning/current-state.md
 
 3. **Consult Knowledge Base** (MANDATORY):
    - Read ai-docs/INDEX.md for navigation
@@ -48,6 +151,7 @@ Required Actions:
      * Content: ai-docs/05-content-collections.md
      * Islands: ai-docs/02-islands-architecture.md
      * Recipes: ai-docs/recipes/* (as needed)
+   - Write to: 01-planning/knowledge-base-notes.md
 
 4. **Create Implementation Plan**:
    - Break down into specific, actionable steps
@@ -56,59 +160,54 @@ Required Actions:
    - Estimate complexity and potential issues
    - List files to create/modify
    - Note best practices to follow
+   - Write to: 01-planning/plan.md
 
-5. **Present Plan**:
-   - Use clear markdown formatting
-   - Include ai-docs references
-   - Highlight critical decisions
-   - Note any assumptions or ambiguities
-   - Provide architecture diagram if complex
+5. **Return Summary**:
+   Return a concise summary (DO NOT return the full plan):
 
-Output Format:
-# Implementation Plan
+   # Planning Complete
 
-## Requirements Summary
-[Clear statement of what needs to be built]
+   ## Requirements
+   [2-3 sentence summary]
 
-## Current State Analysis
-[What exists, what patterns are in use, what will be affected]
+   ## Complexity
+   [Simple/Medium/Complex]
 
-## Knowledge Base Consultation
-**ai-docs Modules Consulted**:
-- [List modules with key takeaways]
+   ## Files Affected
+   [Count: X files to create, Y files to modify]
 
-## Implementation Steps
-1. [Step with ai-docs reference]
-2. [Step with ai-docs reference]
-...
+   ## Key Decisions
+   [Top 2-3 architectural decisions]
 
-## Key Decisions
-- [Decision point with rationale and ai-docs reference]
+   Full plan written to: .astro-dev-sessions/$SESSION_ID/01-planning/plan.md
 
-## Files to Create/Modify
-- [File path: description]
-
-## Potential Issues
-- [Issue with mitigation strategy]
-
-## Estimated Complexity
-[Simple/Medium/Complex with reasoning]
+IMPORTANT: Write all detailed data to files in the session folder. Only return a brief summary.
 ```
 
-**Wait for the planning agent to complete and return the plan.**
+**Orchestrator Actions**:
+1. Launch the agent
+2. Wait for completion
+3. Receive summary (NOT full plan)
+4. Read the plan file if needed for user presentation: `.astro-dev-sessions/$SESSION_ID/01-planning/plan.md`
 
 ### Step 1.2: Review Plan with User
 
-Once you receive the plan from the planning agent:
+1. **Read the plan file** (orchestrator only reads when needed for user interaction):
+   ```bash
+   cat .astro-dev-sessions/$SESSION_ID/01-planning/plan.md
+   ```
 
-1. **Present the plan** to the user clearly
-2. **Ask for feedback** using this pattern:
-   - "Here's the implementation plan from the astro-developer agent."
-   - "Please review the plan above. Are you ready to proceed, or would you like any changes?"
+2. **Present to user** (use the file content, not from agent response)
 
-3. **Collect feedback**:
-   - If user requests changes: Go back to Step 1.1 with updated requirements
-   - If user approves: Proceed to Phase 2
+3. **Ask for feedback**:
+   - "Here's the implementation plan (stored in .astro-dev-sessions/$SESSION_ID/01-planning/plan.md)"
+   - "Please review. Are you ready to proceed, or would you like changes?"
+
+4. **Handle feedback**:
+   - **If changes requested**: Go back to Step 1.1 with updated requirements
+   - **If approved**:
+     - Write approval to: `.astro-dev-sessions/$SESSION_ID/01-planning/plan-approved.md`
+     - Proceed to Phase 2
 
 ---
 
@@ -116,64 +215,70 @@ Once you receive the plan from the planning agent:
 
 ### Step 2.1: Launch Development Agent
 
-Once the plan is approved, use the Task tool to launch the `astro-developer` agent in **development mode**:
+**Orchestrator Role**: Coordinate development, don't write code yourself.
+
+Use the Task tool to launch the `astro-developer` agent in **development mode**:
 
 **Agent Task**:
 ```
 You are in DEVELOPMENT MODE for the Astro development orchestration workflow.
 
-You have an approved implementation plan. Now execute it.
+Session ID: $SESSION_ID
+Session Folder: .astro-dev-sessions/$SESSION_ID
+Output Directory: .astro-dev-sessions/$SESSION_ID/02-development/
 
-Implementation Plan:
-[Insert the approved plan from Phase 1]
+Implementation Plan: .astro-dev-sessions/$SESSION_ID/01-planning/plan-approved.md
+
+Task: Execute the approved implementation plan.
 
 Required Actions:
-1. **Follow the Plan Exactly**:
-   - Execute each step from the approved plan
-   - Reference ai-docs modules as specified
-   - Make decisions as outlined in the plan
 
-2. **Write Code to Files**:
-   - Create/modify all files as specified
+1. **Read the Approved Plan**:
+   - Read: .astro-dev-sessions/$SESSION_ID/01-planning/plan-approved.md
+   - Follow each step exactly
+
+2. **Execute Implementation**:
+   - Create/modify all files as specified in src/
    - Follow Astro best practices from ai-docs
    - Use proper component patterns (.astro vs framework)
    - Apply correct client:* directives for Islands
    - Optimize images, use Content Collections, etc.
 
-3. **Self-Validate**:
+3. **Document Changes**:
+   - Write list of files created/modified to: 02-development/files-changed.json
+   - Write implementation summary to: 02-development/summary.md
+   - Write development log to: 02-development/dev-log.md
+
+4. **Self-Validate**:
    - Check against ai-docs/best-practices-checklist.md
-   - Ensure no CRITICAL issues
-   - Verify proper architecture (server-first, zero JS default)
+   - Write validation results to: 02-development/validation.md
 
-4. **Document Changes**:
-   - List all files created/modified
-   - Note any deviations from plan with reasoning
-   - Highlight any discovered issues or edge cases
+5. **Return Summary**:
+   Return ONLY a brief summary (do NOT include code or detailed changes):
 
-Output Format:
-# Implementation Complete
+   # Development Complete
 
-## Files Created/Modified
-- [File path: what was done]
+   ## Files Modified
+   - Created: [count] files
+   - Modified: [count] files
 
-## Changes Summary
-[Concise summary of implementation]
+   ## Implementation Status
+   ✅ All planned features implemented
 
-## ai-docs Validation
-[Which checklist items passed, any concerns]
+   ## Self-Validation
+   ✅ No CRITICAL issues found
+   ⚠️ [count] minor notes
 
-## Notes
-[Any deviations, issues discovered, or recommendations]
+   Full details in: .astro-dev-sessions/$SESSION_ID/02-development/
+
+IMPORTANT: Write all code to src/ files. Write all documentation to session folder. Only return a brief summary.
 ```
 
-**Wait for the development agent to complete the implementation.**
-
-### Step 2.2: Confirm Development Complete
-
-Once development is done:
-- Acknowledge completion to the user
-- Summarize what was implemented
-- Proceed to Phase 3
+**Orchestrator Actions**:
+1. Launch the agent
+2. Wait for completion
+3. Receive summary only
+4. Announce to user: "Development phase complete. Files written to src/. Proceeding to review selection..."
 
 ---
 
@@ -181,78 +286,53 @@ Once development is done:
 
 ### Step 3.1: Fetch Available LLM Models
 
-Run the following command to get available models from claudish:
+**Orchestrator Action**: Run command and parse output.
 
 ```bash
-claudish --list-models
+claudish --list-models > .astro-dev-sessions/$SESSION_ID/03-review-config/available-models.txt 2>&1
 ```
 
-Parse the output to extract model identifiers (e.g., `x-ai/grok-code-fast-1`, `openai/gpt-4-turbo`, `anthropic/claude-opus-4`, etc.)
+Parse the output to extract model identifiers.
+
+**If claudish not available**:
+- Note in: `.astro-dev-sessions/$SESSION_ID/03-review-config/claudish-unavailable.txt`
+- Continue with internal review only
 
 ### Step 3.2: Present Review Options to User
 
-Use the **AskUserQuestion** tool to present review strategy options:
+**Orchestrator Action**: Use AskUserQuestion tool.
 
 **Question Structure**:
 - **Header**: "Review strategy"
-- **Question**: "How would you like to review the implementation? (Select one or more review methods)"
+- **Question**: "How would you like to review the implementation? (Select one or more)"
 - **Multi-select**: `true`
-- **Options**:
-  1. **Internal Review Only**
-     - Label: "Internal only (astro-reviewer)"
-     - Description: "Fast review using the built-in astro-reviewer agent. Best for quick iterations."
+- **Options** (dynamically built from available models):
+  1. Internal only (astro-reviewer)
+  2. + Grok Fast (if available)
+  3. + Grok Quality (if available)
+  4. + GPT-4 Turbo (if available)
+  5. + Claude Opus (if available)
+  6. + Gemini (if available)
+  7. Custom model (manual entry)
 
-  2. **+ Grok Fast** (if available in claudish models)
-     - Label: "+ Grok Fast (x-ai/grok-code-fast-1)"
-     - Description: "Add fast external review via Grok. Good for catching additional issues."
+### Step 3.3: Store Review Configuration
 
-  3. **+ Grok Quality** (if available)
-     - Label: "+ Grok Quality (x-ai/grok-code-quality-1)"
-     - Description: "Add thorough external review via Grok. Best for production code."
+**Orchestrator Action**: Write configuration to session folder.
 
-  4. **+ GPT-4 Turbo** (if available)
-     - Label: "+ GPT-4 Turbo (openai/gpt-4-turbo)"
-     - Description: "Add OpenAI GPT-4 review. Excellent for best practices and edge cases."
-
-  5. **+ Claude Opus** (if available)
-     - Label: "+ Claude Opus (anthropic/claude-opus-4)"
-     - Description: "Add Claude Opus review. Best for comprehensive analysis and architecture."
-
-  6. **+ Gemini** (if available)
-     - Label: "+ Gemini (google/gemini-2.0-pro)"
-     - Description: "Add Google Gemini review. Strong at performance and optimization."
-
-  7. **Custom model**
-     - Label: "Custom model (manual entry)"
-     - Description: "Specify a custom model identifier from claudish --list-models"
-
-**Note**: Dynamically build this list based on actual models from `claudish --list-models`. Always include "Internal only" as first option and "Custom model" as last option.
-
-### Step 3.3: Process User Selection
-
-After user selects review methods:
-
-1. **Parse selections**:
-   - Extract selected model identifiers
-   - If "Custom model" selected, prompt for model identifier
-   - Validate model identifiers
-
-2. **Build reviewer list**:
-   - Always include internal `astro-reviewer` agent
-   - Add external reviewers for each selected model
-
-3. **Store configuration** for Phase 4 and Phase 5 (fix loop)
-
-Example configuration:
-```javascript
+```bash
+cat > .astro-dev-sessions/$SESSION_ID/03-review-config/reviewers.json <<EOF
 {
   "internal": true,
   "external": [
     "x-ai/grok-code-fast-1",
     "openai/gpt-4-turbo"
-  ]
+  ],
+  "selected_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
+EOF
 ```
+
+This configuration will be reused in Phase 5 (fix loop).
 
 ---
 
@@ -260,19 +340,23 @@ Example configuration:
 
 ### Step 4.1: Prepare Review Context
 
-Create a review context file that all reviewers will use:
+**Orchestrator Action**: Create review context file.
 
-**File**: `review-reports/review-context-[timestamp].md`
+```bash
+ITERATION=1
+mkdir -p .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION
 
-**Content**:
-```markdown
-# Review Context - [Timestamp]
+cat > .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/review-context.md <<EOF
+# Review Context - Iteration $ITERATION
+
+Session ID: $SESSION_ID
+Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 ## Implementation Summary
-[Summary from Phase 2]
+$(cat .astro-dev-sessions/$SESSION_ID/02-development/summary.md)
 
 ## Files Changed
-[List of files from Phase 2]
+$(cat .astro-dev-sessions/$SESSION_ID/02-development/files-changed.json)
 
 ## Review Instructions
 Please review this Astro implementation against:
@@ -283,161 +367,161 @@ Please review this Astro implementation against:
 5. Visual accuracy (if applicable)
 
 ## Knowledge Base
-- Location: langingpage/ai-docs/
-- Start with: INDEX.md
-- Key modules: best-practices-checklist.md, 01-why-astro.md
+- Location: ai-docs/
+- Start with: INDEX.md, best-practices-checklist.md, 01-why-astro.md
 
-## Review Report Format
-Use the standard Astro Code Review Report format with:
-- Issues categorized by severity (CRITICAL/MEDIUM/MINOR)
-- ai-docs module references for violations
-- Specific fixes with file:line locations
-- Performance impact estimates
+## Output Requirements
+Write your detailed review report to:
+- .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/[reviewer-name]-review.md
+
+Return only a concise summary (3-5 bullet points).
+EOF
 ```
 
 ### Step 4.2: Launch Reviews in Parallel
 
-**IMPORTANT**: Launch ALL reviewers in parallel using a single message with multiple Task tool calls.
+**CRITICAL**: Launch ALL reviewers in parallel using a single message with multiple Task tool calls.
 
-#### Internal Review
+**Orchestrator Action**: Coordinate parallel execution, don't review code yourself.
 
-**Task tool call 1** - Launch `astro-reviewer` agent:
+#### Internal Review Task
 
 ```
-You are conducting an internal code review as part of the Astro development orchestration workflow.
+You are conducting an internal code review.
 
-Review Context File: review-reports/review-context-[timestamp].md
+Session ID: $SESSION_ID
+Review Context: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/review-context.md
+Output File: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/internal-review.md
 
-Task: Perform a comprehensive review of the implementation.
+Task: Perform comprehensive review.
 
 Required Actions:
-1. Read the review context file
+1. Read review context file
 2. Read ai-docs/ knowledge base (INDEX.md, best-practices-checklist.md, relevant modules)
-3. Review all modified/created files
-4. Validate against best practices checklist
-5. Run the dev server and perform visual validation (if applicable)
-6. Check performance metrics
+3. Review all files listed in files-changed.json
+4. Run dev server and perform visual validation (if applicable)
+5. Write detailed report to output file
+6. Return ONLY summary:
 
-Output:
-- Write detailed review report to: review-reports/internal-review-[timestamp].md
-- Return a concise summary (3-5 bullet points) highlighting CRITICAL and MEDIUM issues only
-
-Format:
 # Internal Review Summary
-**Status**: PASS / NEEDS_FIXES / MAJOR_ISSUES
-**Critical Issues**: [count]
-**Medium Issues**: [count]
+Status: PASS / NEEDS_FIXES / MAJOR_ISSUES
+Critical: [count]
+Medium: [count]
 
-## Top Issues
-1. [Most important issue]
-2. [Second most important]
-...
-
-Full report: review-reports/internal-review-[timestamp].md
-```
-
-#### External Reviews (if any)
-
-For each external model selected, **Task tool call N** - Launch `astro-reviewer` in proxy mode:
-
-```
-You are conducting an external code review via claudish proxy as part of the Astro development orchestration workflow.
-
-Model: [model-identifier]
-Review Context File: review-reports/review-context-[timestamp].md
-
-Task: Delegate this review to the specified model via claudish.
-
-Claudish Command Pattern:
-cat review-reports/review-context-[timestamp].md | claudish --stdin --model [model-identifier] "$(cat <<'PROMPT'
-You are using the astro-reviewer agent in proxy mode.
-
-Review Context: [stdin contains the context]
-
-Task: Perform a comprehensive code review of this Astro implementation.
-
-Instructions:
-1. Read the review context provided via stdin
-2. Consult the knowledge base at langingpage/ai-docs/ (start with INDEX.md)
-3. Review all files mentioned in the context
-4. Validate against Astro best practices from ai-docs/best-practices-checklist.md
-5. Check for:
-   - CRITICAL issues (violates core principles)
-   - MEDIUM issues (suboptimal patterns)
-   - MINOR issues (nice-to-haves)
-
-Output Requirements:
-1. Write detailed review to: review-reports/[model-name]-review-[timestamp].md
-2. Use standard Astro Code Review Report format
-3. Reference ai-docs modules for every issue
-4. Provide specific fixes with file:line locations
-5. Return concise summary (3-5 bullet points)
-
-Format:
-# [Model Name] Review Summary
-**Status**: PASS / NEEDS_FIXES / MAJOR_ISSUES
-**Critical Issues**: [count]
-**Medium Issues**: [count]
-
-## Top Issues
-1. [Most important issue]
-2. [Second most important]
-...
-
-Full report: review-reports/[model-name]-review-[timestamp].md
-PROMPT
-)"
-
-Required Actions:
-1. Execute the claudish command above
-2. Capture the output
-3. Parse the summary
-4. Verify the review report file was created
-
-Return: The concise summary from the external reviewer
-```
-
-**Launch all review tasks in a SINGLE message with multiple Task tool calls.**
-
-### Step 4.3: Collect Review Results
-
-Wait for all parallel reviews to complete. You will receive:
-- Internal review summary
-- External review summaries (one per model)
-
-**Aggregate Results**:
-1. Count total CRITICAL issues across all reviews
-2. Count total MEDIUM issues across all reviews
-3. Identify common issues mentioned by multiple reviewers
-4. Note unique issues found by specific reviewers
-
-**Present Summary to User**:
-```markdown
-# Review Results - [Timestamp]
-
-## Reviews Completed
-- ✅ Internal (astro-reviewer)
-- ✅ External: [model1]
-- ✅ External: [model2]
-...
-
-## Aggregate Issues
-- **CRITICAL**: [total count]
-- **MEDIUM**: [total count]
-- **MINOR**: [total count]
-
-## Common Issues (mentioned by 2+ reviewers)
+## Top 3 Issues
 1. [Issue]
 2. [Issue]
+3. [Issue]
 
-## Detailed Reports
-- Internal: review-reports/internal-review-[timestamp].md
-- [Model1]: review-reports/[model1]-review-[timestamp].md
-- [Model2]: review-reports/[model2]-review-[timestamp].md
+Full report: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/internal-review.md
 
-## Status
-[PASS / NEEDS_FIXES / MAJOR_ISSUES]
+IMPORTANT: Write full report to file. Return only summary.
 ```
+
+#### External Review Task (for each external model)
+
+```
+You are conducting an external code review via claudish proxy.
+
+Session ID: $SESSION_ID
+Model: [model-identifier]
+Review Context: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/review-context.md
+Output File: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/[model-name]-review.md
+
+Task: Delegate this review to the specified model.
+
+Required Actions:
+1. Execute claudish command:
+
+   cat .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/review-context.md | \
+   claudish --stdin --model [model-identifier] "$(cat <<'PROMPT'
+   You are using the astro-reviewer agent in proxy mode.
+
+   Review Context: [provided via stdin]
+   Session Folder: .astro-dev-sessions/$SESSION_ID
+
+   Task: Comprehensive code review of Astro implementation.
+
+   Instructions:
+   1. Read review context from stdin
+   2. Consult ai-docs/ knowledge base
+   3. Review all files in the session's files-changed.json
+   4. Validate against best-practices-checklist.md
+   5. Write detailed report to: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/[model-name]-review.md
+   6. Return concise summary only
+
+   Output Format:
+   # [Model Name] Review Summary
+   Status: PASS / NEEDS_FIXES / MAJOR_ISSUES
+   Critical: [count]
+   Medium: [count]
+
+   ## Top 3 Issues
+   1. [Issue]
+   2. [Issue]
+   3. [Issue]
+
+   Full report: [file path]
+   PROMPT
+   )"
+
+2. Write output to: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/[model-name]-review.md
+3. Return ONLY summary
+
+IMPORTANT: All detailed data goes to file. Return only summary.
+```
+
+### Step 4.3: Aggregate Review Results
+
+**Orchestrator Action**: Read summaries (NOT full reports), aggregate, present to user.
+
+1. **Wait for all reviews to complete**
+
+2. **Collect summaries** (from agent responses, not by reading files)
+
+3. **Aggregate results**:
+   ```bash
+   # Count total issues
+   CRITICAL_TOTAL=0
+   MEDIUM_TOTAL=0
+   # (Calculate from summaries received)
+
+   # Write aggregate to session
+   cat > .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/aggregate.json <<EOF
+   {
+     "iteration": $ITERATION,
+     "reviewers": ["internal", "grok-fast", "gpt-4"],
+     "critical_total": $CRITICAL_TOTAL,
+     "medium_total": $MEDIUM_TOTAL,
+     "status": "NEEDS_FIXES"
+   }
+   EOF
+   ```
+
+4. **Present to user**:
+   ```
+   # Review Results - Iteration $ITERATION
+
+   ## Reviews Completed
+   - ✅ Internal (astro-reviewer)
+   - ✅ External: grok-fast
+   - ✅ External: gpt-4
+
+   ## Aggregate Issues
+   - CRITICAL: $CRITICAL_TOTAL
+   - MEDIUM: $MEDIUM_TOTAL
+
+   ## Common Issues
+   [List issues mentioned by 2+ reviewers]
+
+   ## Detailed Reports
+   Location: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/
+   - internal-review.md
+   - grok-fast-review.md
+   - gpt-4-review.md
+
+   Status: NEEDS_FIXES
+   ```
 
 ---
 
@@ -445,296 +529,357 @@ Wait for all parallel reviews to complete. You will receive:
 
 ### Step 5.1: Determine if Fixes Needed
 
-Check the aggregate review status:
+**Orchestrator Action**: Check aggregate status.
 
-- **If Status = PASS**:
-  - Congratulate the user
-  - Workflow complete ✅
-  - Exit
+Read: `.astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/aggregate.json`
 
-- **If Status = NEEDS_FIXES or MAJOR_ISSUES**:
-  - Proceed to Step 5.2
+- **If status = "PASS"**: Jump to Step 5.6 (Final Summary)
+- **If status = "NEEDS_FIXES" or "MAJOR_ISSUES"**: Continue to Step 5.2
 
 ### Step 5.2: Consolidate Review Feedback
 
-Use the Task tool to launch `astro-developer` in **review consolidation mode**:
+**Orchestrator Action**: Launch consolidation agent.
 
 ```
-You are in REVIEW CONSOLIDATION MODE for the Astro development orchestration workflow.
+You are in REVIEW CONSOLIDATION MODE.
 
-Task: Analyze all review reports and create a prioritized fix list.
+Session ID: $SESSION_ID
+Iteration: $ITERATION
+Reviews Directory: .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/
+Output Directory: .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$ITERATION/
 
-Review Reports:
-- review-reports/internal-review-[timestamp].md
-- review-reports/[model1]-review-[timestamp].md
-- review-reports/[model2]-review-[timestamp].md
-...
+Task: Analyze all review reports and create prioritized fix list.
 
 Required Actions:
-1. **Read All Review Reports**:
-   - Parse each review report
-   - Extract all CRITICAL and MEDIUM issues
-   - Note file:line locations for each issue
+1. Read all review report files:
+   - internal-review.md
+   - [model1]-review.md
+   - [model2]-review.md
 
-2. **Deduplicate Issues**:
-   - Identify issues mentioned by multiple reviewers
-   - Consolidate into single list with all references
+2. Extract all CRITICAL and MEDIUM issues
 
-3. **Prioritize Fixes**:
-   - CRITICAL issues first (by impact)
-   - MEDIUM issues second (by frequency across reviewers)
-   - Group by file for efficient fixing
+3. Deduplicate (identify issues mentioned by multiple reviewers)
 
-4. **Create Fix Plan**:
-   - For each issue, specify:
-     * File and line location
-     * Current problematic code
-     * Proposed fix (with ai-docs reference)
-     * Expected impact
-   - Estimate total effort
+4. Prioritize:
+   - CRITICAL first (by impact)
+   - MEDIUM second (by frequency)
+   - Group by file
 
-Output Format:
-# Consolidated Review Feedback
+5. Create fix plan with specific file:line locations
 
-## Summary
-- **Total Issues**: [count]
-- **Critical**: [count]
-- **Medium**: [count]
-- **Files Affected**: [count]
+6. Write outputs:
+   - 05-fixes/iteration-$ITERATION/consolidated-feedback.md
+   - 05-fixes/iteration-$ITERATION/fix-plan.md
 
-## Prioritized Fix List
+7. Return ONLY summary:
 
-### CRITICAL Issues
-1. **[Issue Title]**
-   - **Mentioned by**: [reviewer1, reviewer2]
-   - **Location**: file.astro:123
-   - **Current Code**: ```[snippet]```
-   - **Fix**: ```[proposed code]```
-   - **ai-docs Reference**: [module]
-   - **Impact**: [description]
+# Consolidation Complete
 
-2. [Next critical issue]
+## Total Issues
+- Critical: [count]
+- Medium: [count]
+- Files Affected: [count]
+
+## Top 5 Fixes
+1. [File:line - Issue]
+2. [File:line - Issue]
 ...
-
-### MEDIUM Issues
-[Same format]
-
-## Fix Strategy
-[High-level approach to addressing all issues efficiently]
 
 ## Estimated Effort
 [Simple/Medium/Complex]
-```
 
-Wait for consolidation agent to complete.
+Full plan: .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$ITERATION/fix-plan.md
+
+IMPORTANT: Write all data to files. Return only summary.
+```
 
 ### Step 5.3: Execute Fixes
 
-Use the Task tool to launch `astro-developer` in **fix mode**:
+**Orchestrator Action**: Launch fix agent.
 
 ```
-You are in FIX MODE for the Astro development orchestration workflow.
+You are in FIX MODE.
 
-Task: Apply all fixes from the consolidated review feedback.
+Session ID: $SESSION_ID
+Iteration: $ITERATION
+Fix Plan: .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$ITERATION/fix-plan.md
+Output: .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$ITERATION/fixes-applied.md
 
-Consolidated Feedback: [output from Step 5.2]
+Task: Apply all fixes from the consolidated plan.
 
 Required Actions:
-1. **Apply Fixes Systematically**:
-   - Address all CRITICAL issues first
-   - Then address all MEDIUM issues
-   - Follow the proposed fixes from consolidation
-   - Reference ai-docs modules as specified
+1. Read fix plan file
+2. Apply all CRITICAL fixes
+3. Apply all MEDIUM fixes
+4. Modify files in src/ as needed
+5. Validate each fix against best-practices-checklist.md
+6. Document all changes to: fixes-applied.md
 
-2. **Validate Each Fix**:
-   - Ensure fix actually resolves the issue
-   - Check against best-practices-checklist.md
-   - Verify no new issues introduced
+7. Return ONLY summary:
 
-3. **Write to Files**:
-   - Modify all affected files
-   - Use proper patterns from ai-docs
-   - Maintain code quality
-
-4. **Document Changes**:
-   - List all fixes applied
-   - Note file:line changes
-   - Highlight any issues that couldn't be fixed (with reasoning)
-
-Output Format:
 # Fixes Applied
 
 ## Summary
-- **Fixes Applied**: [count]
-- **Critical Fixed**: [count]
-- **Medium Fixed**: [count]
-- **Files Modified**: [list]
+- Fixes Applied: [count]
+- Critical Fixed: [count]
+- Medium Fixed: [count]
+- Files Modified: [list]
 
-## Detailed Changes
-1. **[Issue Title]** - FIXED ✅
-   - File: file.astro:123
-   - Change: [description]
-   - ai-docs Reference: [module]
+## Unable to Fix
+- [Issue]: [Reason]
 
-2. [Next fix]
-...
+Full details: .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$ITERATION/fixes-applied.md
 
-## Unable to Fix (if any)
-- **[Issue]**: [Reason why couldn't fix, needs manual intervention]
-
-## Validation
-[Self-validation against checklist]
+IMPORTANT: Write code to src/ files. Write docs to session folder. Return only summary.
 ```
-
-Wait for fixes to be applied.
 
 ### Step 5.4: Re-run Reviews (Same Reviewers)
 
-**IMPORTANT**: Re-run the EXACT same set of reviewers that were used in Phase 4.
+**Orchestrator Action**: Increment iteration, run same reviewers in parallel.
 
-Use the stored configuration from Phase 3.3 to determine which reviewers to launch.
+1. **Increment iteration counter**: `ITERATION=$(($ITERATION + 1))`
 
-**Launch all reviewers in parallel** (same pattern as Phase 4.2):
-- Internal: `astro-reviewer` agent
-- External: `astro-reviewer` in proxy mode for each selected model
+2. **Create new iteration folder**:
+   ```bash
+   mkdir -p .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION
+   ```
 
-**Use the same review instructions** but update the review context to indicate this is iteration N:
+3. **Update review context** (indicate this is a re-review):
+   ```bash
+   cat > .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/review-context.md <<EOF
+   # Review Context - Iteration $ITERATION (Re-review)
 
-```markdown
-# Review Context - Iteration [N] - [Timestamp]
+   Previous Iteration: $(($ITERATION - 1))
+   Previous Issues: $CRITICAL_TOTAL critical, $MEDIUM_TOTAL medium
 
-## Previous Review
-- Iteration [N-1] found [X] CRITICAL and [Y] MEDIUM issues
-- All issues have been addressed by astro-developer
+   Fixes Applied: See .astro-dev-sessions/$SESSION_ID/05-fixes/iteration-$(($ITERATION - 1))/fixes-applied.md
 
-## Fixes Applied
-[Summary from Step 5.3]
+   ## Re-Review Instructions
+   1. Verify all previously identified issues are resolved
+   2. Check for new issues introduced by fixes
+   3. Validate against ai-docs/ best practices
+   ...
+   EOF
+   ```
 
-## Review Instructions
-Re-validate the implementation:
-1. Verify all previously identified issues are resolved
-2. Check for new issues introduced by fixes
-3. Validate against ai-docs/ best practices
-4. Confirm Core Web Vitals targets met
-...
-```
-
-**Wait for all reviews to complete.**
+4. **Launch same reviewers in parallel** (use config from Phase 3):
+   - Read: `.astro-dev-sessions/$SESSION_ID/03-review-config/reviewers.json`
+   - Launch same set of reviewers
+   - Same pattern as Phase 4.2
 
 ### Step 5.5: Check Loop Termination
 
-After re-reviews complete:
+**Orchestrator Action**: Evaluate status and decide next action.
 
-1. **Aggregate new results** (same as Phase 4.3)
+1. **Aggregate new review results** (same as Phase 4.3)
 
-2. **Check status**:
-   - **If Status = PASS**:
-     - Workflow complete ✅
-     - Present final summary to user
-     - Exit
+2. **Read aggregate status**:
+   ```bash
+   cat .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/aggregate.json
+   ```
 
-   - **If Status = NEEDS_FIXES or MAJOR_ISSUES**:
-     - **If iteration count < 5**:
+3. **Decision tree**:
+   - **If status = "PASS"**:
+     - Proceed to Step 5.6 (Final Summary)
+     - Exit loop ✅
+
+   - **If status = "NEEDS_FIXES" or "MAJOR_ISSUES"**:
+     - **If ITERATION < 5**:
        - Go back to Step 5.2 (consolidate new feedback)
-       - Continue fix loop
-     - **If iteration count >= 5**:
-       - Alert user: "Maximum iterations reached. Manual intervention may be needed."
-       - Present current status
-       - Ask user: Continue loop? Or manual review?
+       - Continue loop 🔁
 
-### Step 5.6: Final Summary (When Loop Completes)
+     - **If ITERATION >= 5**:
+       - Write to: `.astro-dev-sessions/$SESSION_ID/max-iterations-reached.txt`
+       - Alert user: "⚠️ Maximum iterations (5) reached. Manual intervention may be needed."
+       - Ask user: "Continue loop? Or proceed with manual review?"
+       - If user says continue: increment limit and go to 5.2
+       - If user says manual: proceed to 5.6 with warning
 
-When all reviewers approve (Status = PASS):
+### Step 5.6: Final Summary (Workflow Complete)
 
-```markdown
-# 🎉 Astro Development Workflow Complete!
+**Orchestrator Action**: Generate final summary, present to user.
 
-## Summary
-- **Planning**: [brief summary of what was planned]
-- **Development**: [what was implemented]
-- **Review Iterations**: [N]
-- **Total Issues Fixed**: [count]
-  - Critical: [count]
-  - Medium: [count]
+1. **Write final summary**:
+   ```bash
+   cat > .astro-dev-sessions/$SESSION_ID/final-summary.md <<EOF
+   # 🎉 Astro Development Workflow Complete!
 
-## Final Review Status
-All reviewers approved! ✅
+   Session ID: $SESSION_ID
+   Completed: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   Total Iterations: $ITERATION
 
-### Review Results
-- Internal (astro-reviewer): ✅ PASS
-- External ([model1]): ✅ PASS
-- External ([model2]): ✅ PASS
+   ## Phase 1: Planning
+   $(cat .astro-dev-sessions/$SESSION_ID/01-planning/requirements.md | head -5)
 
-## Files Modified
-[Final list of all files created/modified]
+   ## Phase 2: Development
+   $(cat .astro-dev-sessions/$SESSION_ID/02-development/summary.md)
 
-## All Review Reports
-[Links to all review reports from all iterations]
+   ## Phase 4-5: Review & Fixes
+   - Total Review Iterations: $ITERATION
+   - Total Issues Fixed: [count from all iterations]
+   - Final Status: PASS ✅
 
-## Performance Validation
-- Bundle size: [size]
-- JavaScript shipped: [size]
-- Core Web Vitals: [status]
+   ## Final Review Status
+   $(cat .astro-dev-sessions/$SESSION_ID/04-reviews/iteration-$ITERATION/aggregate.json)
 
-## Next Steps
-- Test the implementation manually
-- Deploy to staging environment
-- Monitor performance in production
-```
+   ## Files Modified
+   $(cat .astro-dev-sessions/$SESSION_ID/02-development/files-changed.json)
+
+   ## All Session Data
+   Location: .astro-dev-sessions/$SESSION_ID/
+   - Planning: 01-planning/
+   - Development: 02-development/
+   - Reviews: 04-reviews/
+   - Fixes: 05-fixes/
+
+   ## Next Steps
+   - Test implementation manually
+   - Run: pnpm dev
+   - Verify visual appearance
+   - Deploy to staging
+
+   ## Session Cleanup
+   This session folder can be deleted after verification:
+   rm -rf .astro-dev-sessions/$SESSION_ID
+
+   Or keep for reference (it's gitignored).
+   EOF
+   ```
+
+2. **Present to user**:
+   - Read and display final summary
+   - Provide session folder location
+   - Suggest next steps
+
+3. **Update metadata**:
+   ```bash
+   cat .astro-dev-sessions/$SESSION_ID/00-metadata.json | \
+   jq '. + {"completed_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "status": "success", "iterations": '$ITERATION'}' \
+   > .astro-dev-sessions/$SESSION_ID/00-metadata.json.tmp
+   mv .astro-dev-sessions/$SESSION_ID/00-metadata.json.tmp .astro-dev-sessions/$SESSION_ID/00-metadata.json
+   ```
+
+---
+
+## Orchestrator Principles
+
+As the orchestration coordinator, you MUST follow these principles:
+
+### ✅ DO:
+- Validate working directory is `langingpage/`
+- Create session folder for every run
+- Ensure .gitignore covers session folders
+- Launch agents with clear tasks
+- Read summaries from agent responses
+- Read files only when needed for user interaction
+- Aggregate data from summaries
+- Present concise updates to user
+- Coordinate parallel execution
+- Track iteration counts
+- Manage workflow state
+
+### ❌ DON'T:
+- Process large data in context (use files)
+- Read full review reports into context
+- Write code yourself (agents do that)
+- Perform reviews yourself (agents do that)
+- Include full file contents in messages
+- Pollute context with intermediate data
+- Skip session folder creation
+- Commit session folders to git
 
 ---
 
 ## Error Handling
 
-### If Planning Agent Fails
-- Notify user
-- Offer to retry with simplified requirements
-- Suggest manual planning
+### Wrong Working Directory
+- Detect and stop immediately
+- Clear error message
+- Instruct user to cd to langingpage/
 
-### If Development Agent Fails
-- Notify user with error details
-- Check if issue is resolvable
-- Offer to retry or fall back to manual development
+### Agent Failure
+- Log error to: `.astro-dev-sessions/$SESSION_ID/errors.log`
+- Notify user with agent name and phase
+- Offer to retry or skip (if non-critical)
 
-### If Review Agent Fails
-- Log the failure
-- Continue with remaining reviewers
-- Notify user which review failed
-- Offer to retry failed review
-
-### If Claudish Unavailable
-- Notify user
+### Claudish Unavailable
+- Detect during Phase 3
 - Fall back to internal review only
-- Suggest installing claudish
+- Note in session folder
+- Continue workflow
 
-### If Fix Loop Stalls
-- After 5 iterations without PASS, alert user
-- Provide summary of persistent issues
-- Suggest manual intervention
-- Offer to export consolidated issue list
+### Review Loop Stall
+- Max 5 iterations by default
+- Alert user at limit
+- Provide persistent issues summary
+- Offer manual intervention option
+
+### Session Folder Creation Failure
+- Stop workflow immediately
+- Check permissions
+- Provide clear error
+
+---
+
+## Session Folder Contract
+
+All agents MUST follow this contract:
+
+### Inputs (Agents Read):
+- Session configuration files
+- Review context files
+- Previous iteration results
+- Plan files
+
+### Outputs (Agents Write):
+- Detailed reports to session folder
+- Code to src/ files
+- Logs to session folder
+
+### Returns (Agents Return):
+- ONLY concise summaries (3-10 lines)
+- NO full reports in response
+- NO large data in context
+
+### Orchestrator (This Agent):
+- Reads summaries from agent responses
+- Reads files only when needed for user display
+- Aggregates summaries
+- Presents to user
+- Coordinates next phase
 
 ---
 
 ## Usage Notes
 
-- **Run this command**: `/astro-dev` from the landing page directory
-- **Preparation**: Ensure `pnpm dev` can run successfully
-- **Time**: Full workflow may take 10-30 minutes depending on complexity
-- **Cost**: External reviews via claudish may incur API costs
-- **Interactivity**: User will be asked questions at key decision points
+**Prerequisites**:
+- Working directory: `langingpage/`
+- `pnpm dev` functional
+- `claudish` CLI (optional, for external reviews)
+- Agents configured: `astro-developer`, `astro-reviewer`
+
+**Run Command**:
+```bash
+/astro-dev
+```
+
+**Time Estimate**:
+- Simple: 5-10 min
+- Medium: 10-20 min
+- Complex: 20-40 min
+- Each external review adds: 2-5 min per iteration
+
+**Session Folder**:
+- Created automatically in `.astro-dev-sessions/`
+- Gitignored (safe to commit without sessions)
+- Can be deleted after workflow completes
+- Keep for debugging/auditing if needed
+
+**Output Locations**:
+- Code changes: `src/` (committed to git)
+- Session data: `.astro-dev-sessions/$SESSION_ID/` (gitignored)
+- Final summary: `.astro-dev-sessions/$SESSION_ID/final-summary.md`
 
 ---
 
-## Success Criteria
-
-The workflow is successful when:
-- ✅ All CRITICAL issues resolved
-- ✅ All MEDIUM issues resolved (or explicitly accepted)
-- ✅ All selected reviewers approve (Status = PASS)
-- ✅ Code follows ai-docs/ best practices
-- ✅ Performance targets met
-- ✅ Visual implementation matches requirements
-
----
-
-**Now execute this workflow step by step. Start with Phase 1: Planning & Requirements Gathering.**
+**Now execute this workflow step by step. Start with Initialization (Step 0.1).**
