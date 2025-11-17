@@ -35,6 +35,8 @@ A meta-language for Go (like TypeScript for JavaScript) that:
 - Maintains 100% Go ecosystem compatibility
 - Offers full IDE support via gopls-wrapping language server
 
+**Official Website**: https://dingolang.com (landing page domain)
+
 ### Architecture (Two Components)
 
 1. **Transpiler** (`dingo build`)
@@ -165,9 +167,29 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 
 ---
 
-**Last Updated**: 2025-11-16
-**Current Phase**: 0 → 1 Transition
-**Next Milestone**: Working minimal transpiler
-- all proposals are locate din @features/ folder. All the feature descriptions we want to implement in this new language are going to be split there per file. For example, Lambda are going to be like features/lambdamd.
-- we don't need backward compatibility as therer were no release, we should keep eerytihg simple and clean, dorp outdated implementaiton
-- do not write progerss files, if you need update progress - use changelog file
+**Last Updated**: 2025-11-17
+**Current Phase**: Phase 2.7 Complete (Functional Utilities)
+**Next Milestone**: Phase 3 - Result/Option Integration
+
+### Additional Project Information
+
+- All feature proposals are located in `features/` folder (split per file, e.g., `features/lambdas.md`)
+- No backward compatibility needed (pre-release), keep everything simple and clean
+- Do not write progress files - update `CHANGELOG.md` instead
+- Official domain: **dingolang.com** (landing page)
+
+### Golden Test Guidelines
+
+**IMPORTANT**: When writing or modifying golden tests in `tests/golden/`, you MUST follow the comprehensive guidelines in:
+
+📖 **`tests/golden/GOLDEN_TEST_GUIDELINES.md`**
+
+**Quick Rules:**
+- **Naming:** `{feature}_{NN}_{description}.dingo` (e.g., `error_prop_01_simple.dingo`)
+- **Feature prefixes:** `error_prop_`, `result_`, `option_`, `sum_types_`, `lambda_`, `ternary_`, `null_coalesce_`, `safe_nav_`, `pattern_match_`, `tuples_`, `func_util_`, `immutable_`
+- **Files required:** Both `.dingo` and `.go.golden` for each test
+- **Content:** Realistic examples, 10-50 lines, one feature per test
+- **Quality:** Idiomatic Go output, compilable, no external deps
+- **Progression:** 01=basic, 02-03=intermediate, 04+=advanced
+
+See the full guidelines document for detailed rules, examples, and best practices.
