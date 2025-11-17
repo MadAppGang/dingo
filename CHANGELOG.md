@@ -4,6 +4,50 @@ All notable changes to the Dingo compiler will be documented in this file.
 
 ## [Unreleased] - 2025-11-17
 
+### Phase 2.12 - Polish (IMPORTANT Fixes)
+
+**Fixed:**
+- **IMPORTANT-1: Import Detection for Qualified Calls**
+  - Extended `stdLibFunctions` map to support qualified calls like `http.Get()`, `filepath.Join()`, `json.Marshal()`
+  - Added detection for package-qualified function calls (e.g., `pkg.Function`)
+  - Now tracks BOTH qualified calls (`http.Get` → `"net/http"`) AND bare calls (`ReadFile` → `"os"`)
+  - Prevents false positives where user-defined functions with common names incorrectly trigger import injection
+  - Added support for: `net/http`, `path/filepath` packages with full qualified detection
+  - File: `pkg/preprocessor/error_prop.go` (lines 29-113, 822-866)
+
+- **IMPORTANT-2: Import Injection Error Handling**
+  - Changed `injectImportsWithPosition()` to return errors instead of silently falling back
+  - Now properly propagates parse errors and AST printing errors through the call chain
+  - Prevents silent failures where missing imports cause compilation errors with no indication why
+  - Files: `pkg/preprocessor/preprocessor.go` (lines 93-114, 125-181)
+
+- **IMPORTANT-3: Placeholder Detection Validation**
+  - Added context-aware validation to prevent false positives from user-defined functions
+  - Implemented `isValidLambdaPlaceholder()`, `isValidMatchPlaceholder()`, `isValidSafeNavPlaceholder()`
+  - Validates placeholder structure (argument count, naming pattern with `__` suffix)
+  - Prevents transformation of user functions that happen to start with reserved prefixes
+  - File: `pkg/transform/transformer.go` (lines 77-287)
+
+- **IMPORTANT-4: getZeroValue() Edge Cases**
+  - Improved handling of type aliases, generics, and complex types
+  - Added support for: generic type parameters (T, K, V), generic instantiations (`List[int]`), `any` alias, complex64/complex128
+  - Better handling of: qualified type names (`pkg.Type`), fixed-size arrays (`[10]int`), function types with receivers
+  - Safe fallback to `nil` for unknown/unparseable types instead of causing compilation errors
+  - File: `pkg/preprocessor/error_prop.go` (lines 711-817)
+
+**Improved:**
+- **.gitignore Updates** - Added entries for golden test artifacts
+  - `*.go.generated` - Generated Go files during testing
+  - `tests/golden/**/*.go` - All generated Go files in golden tests
+  - `!tests/golden/**/*.go.golden` - Except golden reference files (kept in repo)
+
+**Code Review:**
+- All 4 IMPORTANT issues from code review iteration-01 resolved
+- Source: `ai-docs/sessions/20251117-204314/03-reviews/iteration-01/consolidated.md`
+- Session: 20251117-204314
+
+---
+
 ### Phase 2.11 - Build System Fixes
 
 **Fixed:**

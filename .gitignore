@@ -44,5 +44,8 @@ editors/vscode/.vscode-test/
 
 # Golden test artifacts
 *.actual
+*.go.generated
+tests/golden/**/*.go
+!tests/golden/**/*.go.golden
 langingpage/.adev
 langingpage/debug-reports

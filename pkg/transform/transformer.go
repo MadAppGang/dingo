@@ -75,6 +75,7 @@ func (t *Transformer) visit(cursor *astutil.Cursor) bool {
 }
 
 // handlePlaceholderCall processes calls to Dingo placeholder functions
+// IMPORTANT-4 FIX: Added validation to prevent false positives
 func (t *Transformer) handlePlaceholderCall(cursor *astutil.Cursor, ident *ast.Ident, call *ast.CallExpr) bool {
 	name := ident.Name
 
@@ -83,14 +84,26 @@ func (t *Transformer) handlePlaceholderCall(cursor *astutil.Cursor, ident *ast.I
 
 	case len(name) >= 15 && name[:15] == "__dingo_lambda_":
 		// Lambda: __dingo_lambda_N__(...)
+		// IMPORTANT-4 FIX: Validate that this is actually a lambda placeholder
+		if !isValidLambdaPlaceholder(call) {
+			return true // Not a valid placeholder, skip transformation
+		}
 		return t.transformLambda(cursor, call)
 
 	case len(name) >= 14 && name[:14] == "__dingo_match_":
 		// Pattern match: __dingo_match_N__(...)
+		// IMPORTANT-4 FIX: Validate that this is actually a match placeholder
+		if !isValidMatchPlaceholder(call) {
+			return true // Not a valid placeholder, skip transformation
+		}
 		return t.transformMatch(cursor, call)
 
 	case len(name) >= 17 && name[:17] == "__dingo_safe_nav_":
 		// Safe navigation: __dingo_safe_nav_N__(...)
+		// IMPORTANT-4 FIX: Validate that this is actually a safe nav placeholder
+		if !isValidSafeNavPlaceholder(call) {
+			return true // Not a valid placeholder, skip transformation
+		}
 		return t.transformSafeNav(cursor, call)
 	}
 
@@ -191,4 +204,84 @@ func (e *TransformError) Error() string {
 
 func (e *TransformError) Unwrap() error {
 	return e.Err
+}
+
+// IMPORTANT-4 FIX: Placeholder validation functions
+// These functions validate placeholder structure to prevent false positives
+// from user-defined functions that happen to start with reserved prefixes
+
+// isValidLambdaPlaceholder validates that a call expression is actually a lambda placeholder
+// Expected structure: __dingo_lambda_N__(closure_params...)
+func isValidLambdaPlaceholder(call *ast.CallExpr) bool {
+	// Lambda placeholders must have at least one argument (the lambda body or closure)
+	// When we implement lambdas, we'll have specific argument patterns
+	// For now, just verify it has the function call structure
+	if call.Fun == nil {
+		return false
+	}
+
+	// Check that the function identifier matches the pattern __dingo_lambda_<number>__
+	if ident, ok := call.Fun.(*ast.Ident); ok {
+		name := ident.Name
+		if len(name) < 17 { // "__dingo_lambda_" + at least 1 digit + "__"
+			return false
+		}
+		// Verify it ends with "__"
+		if len(name) >= 2 && name[len(name)-2:] != "__" {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
+// isValidMatchPlaceholder validates that a call expression is actually a match placeholder
+// Expected structure: __dingo_match_N__(discriminant, pattern_handlers...)
+func isValidMatchPlaceholder(call *ast.CallExpr) bool {
+	// Match placeholders must have at least 2 arguments:
+	// 1. The discriminant (value to match)
+	// 2. At least one pattern handler
+	if len(call.Args) < 2 {
+		return false
+	}
+
+	// Check function identifier pattern
+	if ident, ok := call.Fun.(*ast.Ident); ok {
+		name := ident.Name
+		if len(name) < 16 { // "__dingo_match_" + at least 1 digit + "__"
+			return false
+		}
+		// Verify it ends with "__"
+		if len(name) >= 2 && name[len(name)-2:] != "__" {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
+// isValidSafeNavPlaceholder validates that a call expression is actually a safe nav placeholder
+// Expected structure: __dingo_safe_nav_N__(receiver, method_chain...)
+func isValidSafeNavPlaceholder(call *ast.CallExpr) bool {
+	// Safe nav placeholders must have at least 1 argument (the receiver)
+	if len(call.Args) < 1 {
+		return false
+	}
+
+	// Check function identifier pattern
+	if ident, ok := call.Fun.(*ast.Ident); ok {
+		name := ident.Name
+		if len(name) < 19 { // "__dingo_safe_nav_" + at least 1 digit + "__"
+			return false
+		}
+		// Verify it ends with "__"
+		if len(name) >= 2 && name[len(name)-2:] != "__" {
+			return false
+		}
+		return true
+	}
+
+	return false
 }

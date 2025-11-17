@@ -94,7 +94,12 @@ func (p *Preprocessor) Process() (string, *SourceMap, error) {
 	if len(neededImports) > 0 {
 		originalLineCount := strings.Count(string(result), "\n") + 1
 		var importInsertLine int
-		result, importInsertLine = injectImportsWithPosition(result, neededImports)
+		var err error
+		// IMPORTANT-2 FIX: injectImportsWithPosition now returns errors instead of silent fallback
+		result, importInsertLine, err = injectImportsWithPosition(result, neededImports)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to inject imports: %w", err)
+		}
 		newLineCount := strings.Count(string(result), "\n") + 1
 		importLinesAdded := newLineCount - originalLineCount
 
@@ -118,14 +123,15 @@ func (p *Preprocessor) ProcessBytes() ([]byte, *SourceMap, error) {
 }
 
 // injectImportsWithPosition adds needed imports to the source code and returns the insertion line
-// Returns: modified source and the line number where imports were inserted (1-based)
-func injectImportsWithPosition(source []byte, needed []string) ([]byte, int) {
+// IMPORTANT-2 FIX: Now returns errors instead of silently falling back to original source
+// Returns: modified source, insertion line (1-based), and error
+func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, error) {
 	// Parse the source
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
-		// If parse fails, return original (should not happen after all transformations)
-		return source, 1
+		// IMPORTANT-2 FIX: Return error instead of silently falling back
+		return nil, 0, fmt.Errorf("failed to parse source for import injection: %w", err)
 	}
 
 	// Deduplicate and sort needed imports
@@ -142,7 +148,7 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int) {
 
 	// If no new imports needed, return original
 	if len(importMap) == 0 {
-		return source, 1
+		return source, 1, nil
 	}
 
 	// Determine import insertion line (after package declaration, before first decl)
@@ -167,10 +173,11 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int) {
 	// Generate output with imports
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, fset, node); err != nil {
-		return source, importInsertLine
+		// IMPORTANT-2 FIX: Return error instead of silently falling back
+		return nil, 0, fmt.Errorf("failed to print AST with imports: %w", err)
 	}
 
-	return buf.Bytes(), importInsertLine
+	return buf.Bytes(), importInsertLine, nil
 }
 
 // adjustMappingsForImports shifts mapping line numbers to account for added imports

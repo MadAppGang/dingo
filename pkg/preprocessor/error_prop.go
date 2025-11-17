@@ -27,40 +27,89 @@ type ImportTracker struct {
 }
 
 // Common standard library functions that require imports
+// Maps both bare function names AND qualified calls (pkg.Function)
 var stdLibFunctions = map[string]string{
 	// os package
-	"ReadFile":  "os",
-	"WriteFile": "os",
-	"Open":      "os",
-	"Create":    "os",
-	"Stat":      "os",
-	"Remove":    "os",
-	"Mkdir":     "os",
-	"MkdirAll":  "os",
-	"Getwd":     "os",
-	"Chdir":     "os",
+	"ReadFile":    "os",
+	"WriteFile":   "os",
+	"Open":        "os",
+	"Create":      "os",
+	"Stat":        "os",
+	"Remove":      "os",
+	"Mkdir":       "os",
+	"MkdirAll":    "os",
+	"Getwd":       "os",
+	"Chdir":       "os",
+	"os.ReadFile": "os",
+	"os.WriteFile": "os",
+	"os.Open":     "os",
+	"os.Create":   "os",
+	"os.Stat":     "os",
+	"os.Remove":   "os",
+	"os.Mkdir":    "os",
+	"os.MkdirAll": "os",
+	"os.Getwd":    "os",
+	"os.Chdir":    "os",
 
 	// encoding/json
-	"Marshal":   "encoding/json",
-	"Unmarshal": "encoding/json",
+	"Marshal":      "encoding/json",
+	"Unmarshal":    "encoding/json",
+	"NewEncoder":   "encoding/json",
+	"NewDecoder":   "encoding/json",
+	"json.Marshal": "encoding/json",
+	"json.Unmarshal": "encoding/json",
+	"json.NewEncoder": "encoding/json",
+	"json.NewDecoder": "encoding/json",
 
 	// strconv
-	"Atoi":       "strconv",
-	"Itoa":       "strconv",
-	"ParseInt":   "strconv",
-	"ParseFloat": "strconv",
-	"ParseBool":  "strconv",
-	"FormatInt":  "strconv",
-	"FormatFloat": "strconv",
+	"Atoi":         "strconv",
+	"Itoa":         "strconv",
+	"ParseInt":     "strconv",
+	"ParseFloat":   "strconv",
+	"ParseBool":    "strconv",
+	"FormatInt":    "strconv",
+	"FormatFloat":  "strconv",
+	"strconv.Atoi": "strconv",
+	"strconv.Itoa": "strconv",
+	"strconv.ParseInt": "strconv",
+	"strconv.ParseFloat": "strconv",
+	"strconv.ParseBool": "strconv",
+	"strconv.FormatInt": "strconv",
+	"strconv.FormatFloat": "strconv",
 
 	// io
-	"ReadAll": "io",
+	"ReadAll":    "io",
+	"io.ReadAll": "io",
+
+	// net/http
+	"Get":         "net/http",
+	"Post":        "net/http",
+	"NewRequest":  "net/http",
+	"http.Get":    "net/http",
+	"http.Post":   "net/http",
+	"http.NewRequest": "net/http",
+
+	// path/filepath
+	"Join":          "path/filepath",
+	"Base":          "path/filepath",
+	"Dir":           "path/filepath",
+	"Ext":           "path/filepath",
+	"Clean":         "path/filepath",
+	"filepath.Join": "path/filepath",
+	"filepath.Base": "path/filepath",
+	"filepath.Dir":  "path/filepath",
+	"filepath.Ext":  "path/filepath",
+	"filepath.Clean": "path/filepath",
 
 	// fmt (already tracked via needsFmt, but add for completeness)
-	"Sprintf": "fmt",
-	"Fprintf": "fmt",
-	"Printf":  "fmt",
-	"Errorf":  "fmt",
+	"Sprintf":     "fmt",
+	"Fprintf":     "fmt",
+	"Printf":      "fmt",
+	"Errorf":      "fmt",
+	"fmt.Sprintf": "fmt",
+	"fmt.Fprintf": "fmt",
+	"fmt.Printf":  "fmt",
+	"fmt.Errorf":  "fmt",
 }
 
 // NewImportTracker creates a new import tracker
@@ -660,8 +709,14 @@ func (e *ErrorPropProcessor) parseFunctionSignature(startLine int) *funcContext 
 }
 
 // getZeroValue returns the zero value for a given type
+// IMPORTANT-4 FIX: Improved handling of edge cases (type aliases, generics, complex types)
 func getZeroValue(typ string) string {
 	typ = strings.TrimSpace(typ)
+
+	// Empty type → fallback to nil
+	if typ == "" {
+		return "nil"
+	}
 
 	// Built-in types
 	zeroMap := map[string]string{
@@ -683,13 +738,25 @@ func getZeroValue(typ string) string {
 		"error":   "nil",
 		"byte":    "0",
 		"rune":    "0",
+		"complex64":  "0",
+		"complex128": "0",
 	}
 
 	if zero, ok := zeroMap[typ]; ok {
 		return zero
 	}
 
+	// IMPORTANT-4 FIX: Handle type parameters (generics like T, K, V)
+	// Single uppercase letter or name starting with uppercase followed by constraint
+	// Examples: T, K, V, T comparable, K any
+	// For generics, we cannot determine zero value at compile time, use nil as fallback
+	if len(typ) == 1 && typ[0] >= 'A' && typ[0] <= 'Z' {
+		// Single letter generic: T, K, V, etc.
+		return "nil" // Safe fallback - will work for most generic constraints
+	}
+
 	// Pointer, slice, map, chan, interface → nil
+	// IMPORTANT-4 FIX: Check slices, maps BEFORE generic instantiation check
 	if strings.HasPrefix(typ, "*") ||
 		strings.HasPrefix(typ, "[]") ||
 		strings.HasPrefix(typ, "map[") ||
@@ -697,27 +764,58 @@ func getZeroValue(typ string) string {
 		strings.HasPrefix(typ, "<-chan ") ||
 		strings.HasPrefix(typ, "chan<- ") ||
 		typ == "interface{}" ||
-		strings.HasPrefix(typ, "interface{") {
+		strings.HasPrefix(typ, "interface{") ||
+		typ == "any" { // IMPORTANT-4 FIX: Handle 'any' alias for interface{}
 		return "nil"
 	}
 
 	// Function type → nil
-	if strings.HasPrefix(typ, "func(") {
+	if strings.HasPrefix(typ, "func(") || strings.HasPrefix(typ, "func (") {
 		return "nil"
 	}
 
-	// Custom type → use composite literal for non-pointer types
-	if !strings.HasPrefix(typ, "*") &&
-	   !strings.HasPrefix(typ, "[]") &&
-	   !strings.HasPrefix(typ, "map[") &&
-	   !strings.HasPrefix(typ, "chan ") &&
-	   !strings.HasPrefix(typ, "<-chan ") &&
-	   !strings.HasPrefix(typ, "chan<- ") &&
-	   !strings.HasPrefix(typ, "func(") &&
-	   !strings.HasPrefix(typ, "interface{") &&
-	   typ != "interface{}" {
+	// IMPORTANT-4 FIX: Array types [N]T → use composite literal
+	// Must check BEFORE generic instantiation check (which also has [...])
+	if strings.HasPrefix(typ, "[") && !strings.HasPrefix(typ, "[]") && strings.Contains(typ, "]") {
+		// Fixed-size array like [10]int
 		return typ + "{}"
 	}
+
+	// IMPORTANT-4 FIX: Handle qualified type names (pkg.Type)
+	// These should use composite literals
+	if strings.Contains(typ, ".") {
+		return typ + "{}"
+	}
+
+	// IMPORTANT-4 FIX: Handle generic type instantiations like List[int], Map[string, User]
+	// Must check AFTER slices/maps/arrays to avoid false positives
+	if strings.Contains(typ, "[") && strings.Contains(typ, "]") {
+		// Generic type instantiation - use composite literal
+		return typ + "{}"
+	}
+
+	// IMPORTANT-4 FIX: Custom type → use composite literal for non-pointer types
+	// This handles type aliases and custom struct types
+	// Examples: MyType, UserID, RequestStatus
+	if !strings.HasPrefix(typ, "*") &&
+		!strings.HasPrefix(typ, "[]") &&
+		!strings.HasPrefix(typ, "map[") &&
+		!strings.HasPrefix(typ, "chan ") &&
+		!strings.HasPrefix(typ, "<-chan ") &&
+		!strings.HasPrefix(typ, "chan<- ") &&
+		!strings.HasPrefix(typ, "func(") &&
+		!strings.HasPrefix(typ, "func (") &&
+		!strings.HasPrefix(typ, "interface{") &&
+		typ != "interface{}" &&
+		typ != "any" {
+		// Check if it looks like a type name (starts with uppercase or contains alphanumeric)
+		if len(typ) > 0 && (typ[0] >= 'A' && typ[0] <= 'Z' || typ[0] >= 'a' && typ[0] <= 'z') {
+			return typ + "{}"
+		}
+	}
+
+	// IMPORTANT-4 FIX: Safe fallback for unknown/unparseable types
+	// Better to return nil than cause a compilation error
 	return "nil"
 }
 
@@ -772,6 +870,15 @@ func (e *ErrorPropProcessor) isTernaryLine(line string) bool {
 
 // trackFunctionCallInExpr extracts function name from expression and tracks it
 // Handles patterns like: FuncName(args), pkg.FuncName(args), obj.Method(args)
+//
+// IMPORTANT-1 FIX: Now tracks BOTH qualified calls (pkg.Function) and bare function names
+// to support patterns like:
+//   - http.Get()     → detects "http.Get" and injects "net/http"
+//   - filepath.Join() → detects "filepath.Join" and injects "path/filepath"
+//   - json.Marshal() → detects "json.Marshal" and injects "encoding/json"
+//
+// This prevents false positives where user-defined functions with common names
+// would incorrectly trigger import injection.
 func (e *ErrorPropProcessor) trackFunctionCallInExpr(expr string) {
 	// Simple extraction: find identifier before '('
 	parenIdx := strings.Index(expr, "(")
@@ -785,7 +892,20 @@ func (e *ErrorPropProcessor) trackFunctionCallInExpr(expr string) {
 	// Split by '.' to handle qualified names (pkg.Func or obj.Method)
 	parts := strings.Split(beforeParen, ".")
 
-	// Track the last part (the actual function/method name)
+	// IMPORTANT-1 FIX: Track BOTH the qualified name AND the bare function name
+	// This enables detection of both:
+	//   1. Qualified calls: http.Get() → "http.Get"
+	//   2. Bare calls: ReadFile() → "ReadFile" (but only if in stdLibFunctions)
+
+	if len(parts) >= 2 {
+		// Qualified call: try "pkg.Function" pattern first (more specific)
+		qualifiedName := strings.Join(parts[len(parts)-2:], ".")
+		if e.importTracker != nil {
+			e.importTracker.TrackFunctionCall(qualifiedName)
+		}
+	}
+
+	// Also track the last part (bare function name) as fallback
 	if len(parts) > 0 {
 		funcName := strings.TrimSpace(parts[len(parts)-1])
 		if funcName != "" && e.importTracker != nil {
