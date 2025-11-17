@@ -1,0 +1,63 @@
+package main
+
+type ValueTag uint8
+
+const (
+	ValueTag_Int ValueTag = iota
+	ValueTag_String
+)
+
+type Value struct {
+	tag      ValueTag
+	int_0    *int
+	string_0 *string
+}
+
+func Value_Int(arg0 int) Value {
+	return Value{tag: ValueTag_Int, int_0: &arg0}
+}
+func Value_String(arg0 string) Value {
+	return Value{tag: ValueTag_String, string_0: &arg0}
+}
+func (e Value) IsInt() bool {
+	return e.tag == ValueTag_Int
+}
+func (e Value) IsString() bool {
+	return e.tag == ValueTag_String
+}
+func describe(v Value) string {
+	// match with guards transpiles to if-else with conditions
+	if v.IsInt() {
+		n := *v.int_0
+		if n > 0 {
+			return "Positive number"
+		}
+	}
+	if v.IsInt() {
+		n := *v.int_0
+		if n < 0 {
+			return "Negative number"
+		}
+	}
+	if v.IsInt() {
+		_ = *v.int_0
+		return "Zero"
+	}
+	if v.IsString() {
+		s := *v.string_0
+		if len(s) > 5 {
+			return "Long string"
+		}
+	}
+	if v.IsString() {
+		_ = *v.string_0
+		return "Short string"
+	}
+	panic("non-exhaustive match")
+}
+func main() {
+	val1 := Value_Int(42)
+	val2 := Value_String("hello world")
+	println(describe(val1))
+	println(describe(val2))
+}

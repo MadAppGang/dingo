@@ -1,0 +1,52 @@
+package main
+
+import "errors"
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *float64
+	err_0 *error
+}
+
+func Result_Ok(arg0 float64) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+func divide(a float64, b float64) Result {
+	if b == 0.0 {
+		return Result_Err(errors.New("division by zero"))
+	}
+	return Result_Ok(a / b)
+}
+func handleResult(r Result) string {
+	// match r { ... } transpiles to if-else chain
+	if r.IsOk() {
+		val := *r.ok_0
+		return "Success: " + string(int(val))
+	}
+	if r.IsErr() {
+		e := *r.err_0
+		return "Error: " + e.Error()
+	}
+	panic("non-exhaustive match")
+}
+func main() {
+	result := divide(10.0, 2.0)
+	msg := handleResult(result)
+	println(msg)
+}

@@ -1,0 +1,15 @@
+package main
+
+func divMod(a int, b int) (int, int) {
+	return a / b, a % b
+}
+func getCoordinates() (int, int, int) {
+	return 10, 20, 30
+}
+func main() {
+	// Tuple destructuring
+	quotient, remainder := divMod(17, 5)
+	x, y, z := getCoordinates()
+	println("Quotient:", quotient, "Remainder:", remainder)
+	println("Coords:", x, y, z)
+}

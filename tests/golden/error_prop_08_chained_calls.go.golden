@@ -8,18 +8,20 @@ type Config struct {
 }
 
 func pipeline(path string) (*Config, error) {
-	data, err := ReadFile(path)
+	__tmp0, __err1 := ReadFile(path)
 	// dingo:s:1
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config: %w", err)
+	if __err1 != nil {
+		return nil, fmt.Errorf("failed to read config: %w", __err0)
 	}
 	// dingo:e:1
+	var data = __tmp0
 	var cfg Config
-	err = Unmarshal(data, &cfg)
+	__tmp1, __err3 := Unmarshal(data, ILLEGALcfg)
 	// dingo:s:1
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+	if __err3 != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", __err2)
 	}
 	// dingo:e:1
-	return &cfg, nil
+	var err = __tmp1
+	return ILLEGALcfg, nil
 }

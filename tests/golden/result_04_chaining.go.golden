@@ -1,0 +1,71 @@
+package main
+
+import "errors"
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *int
+	err_0 *error
+}
+
+func Result_Ok(arg0 int) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+
+// Map method for Result chaining
+func (r Result) Map(f func(int) int) Result {
+	if r.IsOk() {
+		return Result_Ok(f(*r.ok_0))
+	}
+	return r
+}
+
+// AndThen method for Result chaining
+func (r Result) AndThen(f func(int) Result) Result {
+	if r.IsOk() {
+		return f(*r.ok_0)
+	}
+	return r
+}
+
+func parse(s string) Result {
+	if s == "" {
+		return Result_Err(errors.New("empty string"))
+	}
+	return Result_Ok(len(s))
+}
+func validate(n int) Result {
+	if n < 5 {
+		return Result_Err(errors.New("too short"))
+	}
+	return Result_Ok(n)
+}
+func processInput(input string) Result {
+	return parse(input).AndThen(func(x int) Result {
+		return validate(x)
+	}).Map(func(x int) int {
+		return x * 2
+	})
+}
+func main() {
+	result := processInput("hello world")
+	if result.IsOk() {
+		println("Result:", *result.ok_0)
+	}
+}

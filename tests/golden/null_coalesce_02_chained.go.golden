@@ -1,0 +1,61 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_Some OptionTag = iota
+	OptionTag_None
+)
+
+type Option struct {
+	tag    OptionTag
+	some_0 *string
+}
+
+func Option_Some(arg0 string) Option {
+	return Option{tag: OptionTag_Some, some_0: &arg0}
+}
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTag_Some
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+func main() {
+	var firstName Option = Option_None()
+	var middleName Option = Option_None()
+	var lastName Option = Option_Some("Smith")
+	// Chained null coalescing - try each in order
+	var name string
+	if firstName.IsSome() {
+		name = *firstName.some_0
+	} else if middleName.IsSome() {
+		name = *middleName.some_0
+	} else if lastName.IsSome() {
+		name = *lastName.some_0
+	} else {
+		name = "Unknown"
+	}
+	// With function calls
+	primary := getConfig("primary")
+	fallback := getConfig("fallback")
+	var config string
+	if primary.IsSome() {
+		config = *primary.some_0
+	} else if fallback.IsSome() {
+		config = *fallback.some_0
+	} else {
+		config = "default"
+	}
+	println("Name:", name)
+	println("Config:", config)
+}
+func getConfig(key string) Option {
+	if key == "fallback" {
+		return Option_Some("backup-value")
+	}
+	return Option_None()
+}

@@ -1,0 +1,31 @@
+package main
+
+func main() {
+	var age = 25
+	var hasLicense = true
+	// Nested ternary
+	var canDrive string
+	if age >= 18 {
+		if hasLicense {
+			canDrive = "yes"
+		} else {
+			canDrive = "no license"
+		}
+	} else {
+		canDrive = "too young"
+	}
+	// Ternary in assignment
+	var score = 85
+	var grade string
+	if score >= 90 {
+		grade = "A"
+	} else if score >= 80 {
+		grade = "B"
+	} else if score >= 70 {
+		grade = "C"
+	} else {
+		grade = "F"
+	}
+	println("Can drive:", canDrive)
+	println("Grade:", grade)
+}

@@ -1,0 +1,67 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_Some OptionTag = iota
+	OptionTag_None
+)
+
+type Option struct {
+	tag    OptionTag
+	some_0 *int
+}
+
+func Option_Some(arg0 int) Option {
+	return Option{tag: OptionTag_Some, some_0: &arg0}
+}
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTag_Some
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+func find(arr []int, target int) Option {
+	for i, val := range arr {
+		if val == target {
+			return Option_Some(i)
+		}
+	}
+	return Option_None()
+}
+func main() {
+	var numbers = []int{10, 20, 30, 40}
+	// Null coalescing with Option
+	var index int
+	__opt0 := find(numbers, 25)
+	if __opt0.IsSome() {
+		index = *__opt0.some_0
+	} else {
+		index = -1
+	}
+	var value int
+	__opt1 := find(numbers, 30)
+	if __opt1.IsSome() {
+		value = *__opt1.some_0
+	} else {
+		value = 0
+	}
+	// Combined with ternary
+	var msg string
+	var __coalesce0 int
+	__opt2 := find(numbers, 20)
+	if __opt2.IsSome() {
+		__coalesce0 = *__opt2.some_0
+	} else {
+		__coalesce0 = -1
+	}
+	if __coalesce0 >= 0 {
+		msg = "found"
+	} else {
+		msg = "not found"
+	}
+	println("Index:", index, "Value:", value, "Status:", msg)
+}

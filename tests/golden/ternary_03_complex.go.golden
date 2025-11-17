@@ -1,0 +1,31 @@
+package main
+
+func getDiscount(isPremium bool, amount int) int {
+	var __ternary0 int
+	if isPremium {
+		__ternary0 = amount * 20 / 100
+	} else {
+		__ternary0 = amount * 10 / 100
+	}
+	return __ternary0
+}
+func main() {
+	var amount = 100
+	var isPremium = true
+	// Ternary with function calls
+	var discount int
+	if isPremium {
+		discount = getDiscount(true, amount)
+	} else {
+		discount = getDiscount(false, amount)
+	}
+	// Ternary with complex expressions
+	var price int
+	if isPremium {
+		price = amount - amount/5
+	} else {
+		price = amount - amount/10
+	}
+	// Ternary in function argument
+	println("Discount:", discount, "Price:", price)
+}

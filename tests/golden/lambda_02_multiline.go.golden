@@ -1,0 +1,20 @@
+package main
+
+func main() {
+	// Multiline lambda with block
+	var process = func(x, y int) int {
+		var sum = x + y
+		var doubled = sum * 2
+		return doubled
+	}
+	// Lambda with conditional
+	var max = func(a, b int) int {
+		if a > b {
+			return a
+		}
+		return b
+	}
+	result := process(5, 3)
+	maxVal := max(10, 20)
+	println("Result:", result, "Max:", maxVal)
+}

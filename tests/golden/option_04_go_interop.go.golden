@@ -1,0 +1,46 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_Some OptionTag = iota
+	OptionTag_None
+)
+
+type Option struct {
+	tag    OptionTag
+	some_0 *string
+}
+
+func Option_Some(arg0 string) Option {
+	return Option{tag: OptionTag_Some, some_0: &arg0}
+}
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTag_Some
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+func findInMap(m map[string]string, key string) Option {
+	val, exists := m[key]
+	if exists {
+		return Option_Some(val)
+	}
+	return Option_None()
+}
+func getOrDefault(opt Option, defaultVal string) string {
+	if opt.IsSome() {
+		return *opt.some_0
+	}
+	return defaultVal
+}
+func main() {
+	data := map[string]string{"name": "Alice"}
+	name := findInMap(data, "name")
+	age := findInMap(data, "age")
+	println("Name:", getOrDefault(name, "Unknown"))
+	println("Age:", getOrDefault(age, "N/A"))
+}

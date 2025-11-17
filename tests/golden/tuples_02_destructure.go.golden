@@ -1,0 +1,21 @@
+package main
+
+func getUserInfo() (string, int, bool) {
+	return "Alice", 30, true
+}
+func swap(a int, b int) (int, int) {
+	return b, a
+}
+func main() {
+	// Basic destructuring
+	name, age, active := getUserInfo()
+	// Ignore some values with _
+	username, _, _ := getUserInfo()
+	// Swap using tuples
+	x := 10
+	y := 20
+	x, y = swap(x, y)
+	println("User:", name, age, active)
+	println("Username:", username)
+	println("Swapped:", x, y)
+}

@@ -1,0 +1,52 @@
+package main
+
+import (
+	"errors"
+	"strconv"
+)
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *int
+	err_0 *error
+}
+
+func Result_Ok(arg0 int) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+func convertToInt(s string) Result {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return Result_Err(err)
+	}
+	return Result_Ok(val)
+}
+func doubleIfValid(s string) (int, error) {
+	result := convertToInt(s)
+	if result.IsErr() {
+		return 0, *result.err_0
+	}
+	return *result.ok_0 * 2, nil
+}
+func main() {
+	val, err := doubleIfValid("42")
+	if err == nil {
+		println("Doubled:", val)
+	}
+}

@@ -1,0 +1,50 @@
+package main
+
+type StatusTag uint8
+
+const (
+	StatusTag_Pending StatusTag = iota
+	StatusTag_Active
+	StatusTag_Complete
+)
+
+type Status struct {
+	tag StatusTag
+}
+
+func Status_Pending() Status {
+	return Status{tag: StatusTag_Pending}
+}
+func Status_Active() Status {
+	return Status{tag: StatusTag_Active}
+}
+func Status_Complete() Status {
+	return Status{tag: StatusTag_Complete}
+}
+func (e Status) IsPending() bool {
+	return e.tag == StatusTag_Pending
+}
+func (e Status) IsActive() bool {
+	return e.tag == StatusTag_Active
+}
+func (e Status) IsComplete() bool {
+	return e.tag == StatusTag_Complete
+}
+func getStatusMessage(s Status) string {
+	// match s { ... } transpiles to if-else chain
+	if s.IsPending() {
+		return "Waiting to start"
+	}
+	if s.IsActive() {
+		return "Currently running"
+	}
+	if s.IsComplete() {
+		return "Finished"
+	}
+	panic("non-exhaustive match")
+}
+func main() {
+	status := Status_Active()
+	msg := getStatusMessage(status)
+	println(msg)
+}

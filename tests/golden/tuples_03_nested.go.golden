@@ -1,0 +1,29 @@
+package main
+
+// Helper struct for nested tuples (when needed)
+type __Tuple2_int_int struct {
+	_0 int
+	_1 int
+}
+
+func getRange() (__Tuple2_int_int, __Tuple2_int_int) {
+	return __Tuple2_int_int{0, 10}, __Tuple2_int_int{100, 200}
+}
+func parseCoordinate(s string) (bool, __Tuple2_int_int) {
+	if s == "" {
+		return false, __Tuple2_int_int{0, 0}
+	}
+	return true, __Tuple2_int_int{10, 20}
+}
+func main() {
+	// Nested tuple destructuring
+	rangeX, rangeY := getRange()
+	minX, maxX := rangeX._0, rangeX._1
+	minY, maxY := rangeY._0, rangeY._1
+	// Tuple with mixed types
+	success, coords := parseCoordinate("10,20")
+	x, y := coords._0, coords._1
+	println("Range X:", minX, "-", maxX)
+	println("Range Y:", minY, "-", maxY)
+	println("Parsed:", success, x, y)
+}

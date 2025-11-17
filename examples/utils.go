@@ -1,8 +1,0 @@
-package utils
-
-func max(a int, b int) int {
-	return a
-}
-func min(a int, b int) int {
-	return b
-}

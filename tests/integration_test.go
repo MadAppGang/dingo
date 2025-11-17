@@ -85,6 +85,12 @@ func load() (map[string]interface{}, error) {
 
 			// Transform
 			registry := plugin.NewRegistry()
+
+			// Register sum_types first (dependency of error_propagation)
+			sumTypesPlugin := builtin.NewSumTypesPlugin()
+			err = registry.Register(sumTypesPlugin)
+			require.NoError(t, err)
+
 			errPropPlugin := builtin.NewErrorPropagationPlugin()
 			err = registry.Register(errPropPlugin)
 			require.NoError(t, err)
@@ -148,6 +154,12 @@ func main() {
 			require.NoError(t, err)
 
 			registry := plugin.NewRegistry()
+
+			// Register sum_types first (dependency of error_propagation)
+			sumTypesPlugin := builtin.NewSumTypesPlugin()
+			err = registry.Register(sumTypesPlugin)
+			require.NoError(t, err)
+
 			errPropPlugin := builtin.NewErrorPropagationPlugin()
 			err = registry.Register(errPropPlugin)
 			require.NoError(t, err)
@@ -240,6 +252,12 @@ func read() ([]byte, error) {
 			require.NoError(t, err)
 
 			registry := plugin.NewRegistry()
+
+			// Register sum_types first (dependency of error_propagation)
+			sumTypesPlugin := builtin.NewSumTypesPlugin()
+			err = registry.Register(sumTypesPlugin)
+			require.NoError(t, err)
+
 			errPropPlugin := builtin.NewErrorPropagationPlugin()
 			err = registry.Register(errPropPlugin)
 			require.NoError(t, err)
@@ -331,6 +349,12 @@ func get() ([]byte, error) {
 			require.NoError(t, err)
 
 			registry := plugin.NewRegistry()
+
+			// Register sum_types first (dependency of error_propagation)
+			sumTypesPlugin := builtin.NewSumTypesPlugin()
+			err = registry.Register(sumTypesPlugin)
+			require.NoError(t, err)
+
 			errPropPlugin := builtin.NewErrorPropagationPlugin()
 			err = registry.Register(errPropPlugin)
 			require.NoError(t, err)
@@ -397,6 +421,12 @@ func test() int {
 			require.NoError(t, err)
 
 			registry := plugin.NewRegistry()
+
+			// Register sum_types first (dependency of error_propagation)
+			sumTypesPlugin := builtin.NewSumTypesPlugin()
+			err = registry.Register(sumTypesPlugin)
+			require.NoError(t, err)
+
 			errPropPlugin := builtin.NewErrorPropagationPlugin()
 			err = registry.Register(errPropPlugin)
 			require.NoError(t, err)
@@ -435,6 +465,12 @@ func multi() ([]byte, error) {
 	require.NoError(t, err)
 
 	registry := plugin.NewRegistry()
+
+	// Register sum_types first (dependency of error_propagation)
+	sumTypesPlugin := builtin.NewSumTypesPlugin()
+	err = registry.Register(sumTypesPlugin)
+	require.NoError(t, err)
+
 	errPropPlugin := builtin.NewErrorPropagationPlugin()
 	err = registry.Register(errPropPlugin)
 	require.NoError(t, err)

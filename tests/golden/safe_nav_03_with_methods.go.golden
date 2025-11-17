@@ -1,0 +1,36 @@
+package main
+
+type Config struct {
+	timeout *int
+}
+
+func (c *Config) getTimeout() *int {
+	return c.timeout
+}
+func (c *Config) validate() bool {
+	return c.timeout != nil && *c.timeout > 0
+}
+func main() {
+	var config = &Config{timeout: nil}
+	// Safe navigation with method calls
+	var timeout *int
+	if config != nil {
+		timeout = config.getTimeout()
+	}
+	var isValid bool
+	if config != nil {
+		isValid = config.validate()
+	}
+	// Chained with null coalescing
+	var actualTimeout int
+	var __safenav0 *int
+	if config != nil {
+		__safenav0 = config.getTimeout()
+	}
+	if __safenav0 != nil {
+		actualTimeout = *__safenav0
+	} else {
+		actualTimeout = 30
+	}
+	println("Timeout:", timeout, "Valid:", isValid, "Actual:", actualTimeout)
+}

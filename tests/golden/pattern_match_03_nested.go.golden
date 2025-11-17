@@ -1,0 +1,85 @@
+package main
+
+import "errors"
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *Value
+	err_0 *error
+}
+
+func Result_Ok(arg0 Value) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+
+type ValueTag uint8
+
+const (
+	ValueTag_Int ValueTag = iota
+	ValueTag_String
+)
+
+type Value struct {
+	tag      ValueTag
+	int_0    *int
+	string_0 *string
+}
+
+func Value_Int(arg0 int) Value {
+	return Value{tag: ValueTag_Int, int_0: &arg0}
+}
+func Value_String(arg0 string) Value {
+	return Value{tag: ValueTag_String, string_0: &arg0}
+}
+func (e Value) IsInt() bool {
+	return e.tag == ValueTag_Int
+}
+func (e Value) IsString() bool {
+	return e.tag == ValueTag_String
+}
+func processResult(r Result) string {
+	// Nested match transpiles to nested if-else
+	if r.IsOk() {
+		val := *r.ok_0
+		if val.IsInt() {
+			n := *val.int_0
+			return "Got integer: " + string(n)
+		}
+	}
+	if r.IsOk() {
+		val := *r.ok_0
+		if val.IsString() {
+			s := *val.string_0
+			return "Got string: " + s
+		}
+	}
+	if r.IsErr() {
+		e := *r.err_0
+		return "Error: " + e.Error()
+	}
+	panic("non-exhaustive match")
+}
+func main() {
+	result1 := Result_Ok(Value_Int(42))
+	result2 := Result_Ok(Value_String("hello"))
+	result3 := Result_Err(errors.New("failed"))
+	println(processResult(result1))
+	println(processResult(result2))
+	println(processResult(result3))
+}

@@ -1,0 +1,28 @@
+package main
+
+func reduce(arr []int, initial int, f func(int, int) int) int {
+	result := initial
+	for _, v := range arr {
+		result = f(result, v)
+	}
+	return result
+}
+func main() {
+	numbers := []int{1, 2, 3, 4, 5}
+	// Sum using reduce
+	sum := reduce(numbers, 0, func(acc int, x int) int {
+		return acc + x
+	})
+	// Product using reduce
+	product := reduce(numbers, 1, func(acc int, x int) int {
+		return acc * x
+	})
+	// Max using reduce
+	max := reduce(numbers, numbers[0], func(acc int, x int) int {
+		if x > acc {
+			return x
+		}
+		return acc
+	})
+	println("Sum:", sum, "Product:", product, "Max:", max)
+}

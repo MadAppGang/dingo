@@ -1,0 +1,23 @@
+package main
+
+func filter(arr []int, predicate func(int) bool) []int {
+	result := []int{}
+	for _, v := range arr {
+		if predicate(v) {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+func main() {
+	numbers := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	// Filter with lambda
+	evens := filter(numbers, func(x int) bool {
+		return x%2 == 0
+	})
+	greaterThanFive := filter(numbers, func(x int) bool {
+		return x > 5
+	})
+	println("Evens:", evens)
+	println("Greater than 5:", greaterThanFive)
+}

@@ -1,0 +1,67 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_Some OptionTag = iota
+	OptionTag_None
+)
+
+type Option struct {
+	tag    OptionTag
+	some_0 *int
+}
+
+func Option_Some(arg0 int) Option {
+	return Option{tag: OptionTag_Some, some_0: &arg0}
+}
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTag_Some
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+
+// Map method for Option chaining
+func (o Option) Map(f func(int) int) Option {
+	if o.IsSome() {
+		return Option_Some(f(*o.some_0))
+	}
+	return o
+}
+
+// AndThen method for Option chaining
+func (o Option) AndThen(f func(int) Option) Option {
+	if o.IsSome() {
+		return f(*o.some_0)
+	}
+	return o
+}
+
+func getValue(id int) Option {
+	if id > 0 {
+		return Option_Some(id)
+	}
+	return Option_None()
+}
+func processValue(opt Option) Option {
+	return opt.Map(func(x int) int {
+		return x * 2
+	}).AndThen(func(x int) Option {
+		if x > 10 {
+			return Option_Some(x)
+		}
+		return Option_None()
+	})
+}
+func main() {
+	result := processValue(getValue(10))
+	if result.IsSome() {
+		println("Result:", *result.some_0)
+	} else {
+		println("None")
+	}
+}

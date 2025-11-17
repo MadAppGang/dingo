@@ -1,0 +1,32 @@
+package main
+
+type Address struct {
+	city   *string
+	street *string
+}
+type User struct {
+	name    string
+	address *Address
+}
+
+func main() {
+	var user = &User{name: "Alice", address: nil}
+	// Chained safe navigation
+	var city *string
+	if user != nil && user.address != nil {
+		city = user.address.city
+	}
+	var street *string
+	if user != nil && user.address != nil {
+		street = user.address.street
+	}
+	// Safe navigation with method calls
+	var upperCity *string
+	if user != nil && user.address != nil && user.address.city != nil {
+		// upperCity = user.address.city.toUpper()
+		// Note: toUpper() method not available in this example
+		upperCity = user.address.city
+	}
+	println("City:", city)
+	println("Street:", street)
+}

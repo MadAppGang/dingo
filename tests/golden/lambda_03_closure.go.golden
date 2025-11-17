@@ -1,0 +1,23 @@
+package main
+
+func makeAdder(x int) func(int) int {
+	// Lambda captures x from outer scope
+	return func(y int) int {
+		return x + y
+	}
+}
+func makeCounter() func() int {
+	var count = 0
+	// Lambda captures and modifies count
+	return func() int {
+		count = count + 1
+		return count
+	}
+}
+func main() {
+	add5 := makeAdder(5)
+	println("5 + 3 =", add5(3))
+	counter := makeCounter()
+	println("Count:", counter())
+	println("Count:", counter())
+}

@@ -1,0 +1,21 @@
+package main
+
+func _map(arr []int, f func(int) int) []int {
+	result := make([]int, len(arr))
+	for i, v := range arr {
+		result[i] = f(v)
+	}
+	return result
+}
+func main() {
+	numbers := []int{1, 2, 3, 4, 5}
+	// Map with lambda
+	doubled := _map(numbers, func(x int) int {
+		return x * 2
+	})
+	squared := _map(numbers, func(x int) int {
+		return x * x
+	})
+	println("Doubled:", doubled)
+	println("Squared:", squared)
+}
