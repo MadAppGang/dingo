@@ -40,3 +40,6 @@ editors/vscode/.vscode-test/
 # Generated files
 *.gen.go
 *.pb.go
+
+# Golden test artifacts
+*.actual
