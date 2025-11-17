@@ -1,6 +1,8 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
+import tailwindcss from '@tailwindcss/vite';
+
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
@@ -9,11 +11,8 @@ export default defineConfig({
 
   markdown: {
     shikiConfig: {
-      themes: {
-        light: 'github-light',
-        dark: 'github-dark',
-      },
-      langs: ['go', 'typescript', 'javascript'],
+      theme: 'dark-plus',
+      langs: ['go', 'typescript', 'javascript', 'dingo'],
     },
   },
 
@@ -24,5 +23,7 @@ export default defineConfig({
       minify: 'esbuild',    // Fast minification
       cssMinify: true,      // Minify CSS
     },
+
+    plugins: [tailwindcss()],
   },
 });

@@ -1,93 +1,46 @@
 ---
-// Syntax-highlighted code block component
-// Reference: ai-docs/recipes/syntax-highlighting.md, ai-docs/07-astro-components.md
-
-import { Code } from 'astro:components';
+// VS Code-style code block with macOS window controls
+// Reference: reference/src/components/CodeComparison.tsx
+import { codeToHtml } from 'shiki';
 
 interface Props {
   code: string;
-  language: 'go' | 'typescript' | 'javascript';
-  title?: string;
-  label?: string;
+  language: string;
 }
 
-const { code, language, title, label } = Astro.props;
+const { code, language } = Astro.props;
 
-// Use TypeScript for Dingo code (similar syntax)
-const lang = language === 'typescript' ? 'ts' : language;
+// Generate syntax-highlighted HTML using Shiki with VS Code Dark Plus theme
+const highlightedCode = await codeToHtml(code, {
+  lang: language,
+  theme: 'dark-plus',
+});
 ---
 
-<div class="code-block">
-  {(title || label) && (
-    <div class="code-header">
-      {title && <div class="code-title">{title}</div>}
-      {label && <div class="code-label">{label}</div>}
-    </div>
-  )}
-  <div class="code-content">
-    <Code code={code} lang={lang} />
+<div class="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl">
+  <!-- macOS-style window controls -->
+  <div class="bg-[#323232] px-4 py-3 flex items-center gap-2">
+    <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+    <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+    <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+  </div>
+
+  <!-- Code content -->
+  <div class="overflow-auto">
+    <div class="code-wrapper" set:html={highlightedCode} />
   </div>
 </div>
 
 <style>
-  .code-block {
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--color-code-bg);
-  }
-
-  .code-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-code-bg);
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
-  }
-
-  .code-title {
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  .code-label {
-    color: var(--color-text);
-    opacity: 0.7;
-    font-size: 0.8125rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
-  }
-
-  .code-content {
-    overflow-x: auto;
-  }
-
-  .code-content :global(pre) {
+  .code-wrapper :global(pre) {
     margin: 0;
-    padding: 1rem;
-    background: transparent !important;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    font-family: var(--font-mono);
+    padding: 24px;
+    background: #1e1e1e;
+    font-size: 14px;
+    line-height: 1.6;
   }
 
-  .code-content :global(code) {
-    font-family: var(--font-mono);
-  }
-
-  @media (max-width: 768px) {
-    .code-content :global(pre) {
-      font-size: 0.8125rem;
-      padding: 0.75rem;
-    }
-
-    .code-header {
-      padding: 0.625rem 0.875rem;
-      font-size: 0.8125rem;
-    }
+  .code-wrapper :global(code) {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   }
 </style>

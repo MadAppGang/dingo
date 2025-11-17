@@ -25,33 +25,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # Add Node.js setup with caching
+      # Install pnpm FIRST (before Node.js setup)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      # Now setup Node.js with pnpm caching
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: './langingpage/pnpm-lock.yaml'
-
-      # Add pnpm setup
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      # Add pnpm store caching
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        working-directory: ./langingpage
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
 
       - name: Install, build, and upload
         uses: withastro/action@v5

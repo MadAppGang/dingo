@@ -1,344 +1,276 @@
 ---
-// Main examples page
-// Reference: ai-docs/05-content-collections.md, ai-docs/07-astro-components.md
-
+// Main landing page - ported from reference/src/App.tsx
+// Reference: reference/src/App.tsx - exact visual replication
 import { getCollection } from 'astro:content';
-import ExamplesLayout from '../layouts/ExamplesLayout.astro';
-import FeatureSection from '../components/FeatureSection.astro';
-import { featureOrder, featureTypes } from '../lib/featureMapping';
+import CodeComparison from '../components/CodeComparison.astro';
+import logoImage from '../assets/dingo-logo.png';
+import { Image } from 'astro:assets';
+import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 // Fetch all golden examples
 const allExamples = await getCollection('golden-examples');
 
-// Check if collection is empty
-const isEmpty = allExamples.length === 0;
+// Sort by order
+const sortedExamples = allExamples.sort((a, b) => a.data.order - b.data.order);
 
-// Group examples by feature type
-const groupedExamples: Record<string, typeof allExamples> = {};
+// Default to first example
+const selectedExample = sortedExamples[0];
 
-for (const example of allExamples) {
-  const featureType = example.data.featureType;
-  if (!groupedExamples[featureType]) {
-    groupedExamples[featureType] = [];
-  }
-  groupedExamples[featureType].push(example);
+// Fetch README from GitHub
+let readmeContent = '';
+try {
+  const response = await fetch('https://raw.githubusercontent.com/MadAppGang/dingo/refs/heads/main/README.md');
+  const markdown = await response.text();
+  // Convert markdown to HTML
+  const rawHtml = await marked(markdown);
+  readmeContent = DOMPurify.sanitize(rawHtml);
+} catch (error) {
+  console.error('Error fetching README:', error);
 }
 
-// Filter to only feature types that have examples
-const availableFeatures = featureOrder.filter((type) => groupedExamples[type]?.length > 0);
+// Process reasoning markdown for each example
+const processedExamples = await Promise.all(sortedExamples.map(async (example) => {
+  if (example.data.reasoning) {
+    const rawHtml = await marked(example.data.reasoning);
+    return {
+      ...example,
+      data: {
+        ...example.data,
+        reasoning: DOMPurify.sanitize(rawHtml)
+      }
+    };
+  }
+  return example;
+}));
 ---
 
-<ExamplesLayout
-  title="Dingo Code Examples"
-  description="Explore Dingo's powerful features through before/after code examples showing how Dingo transpiles to idiomatic Go."
->
-  {/* EMPTY STATE: Show when no examples loaded */}
-  {isEmpty && (
-    <section class="empty-state">
-      <div class="empty-state-icon" aria-hidden="true">🦤</div>
-      <h2>No Examples Available</h2>
-      <p>
-        The golden test examples directory was not found. This page displays examples from
-        the main Dingo repository's test suite.
-      </p>
-
-      <div class="empty-state-instructions">
-        <h3>To view examples:</h3>
-        <ol>
-          <li>
-            <strong>Clone the main repository:</strong>
-            <pre><code>git clone https://github.com/MadAppGang/dingo.git</code></pre>
-          </li>
-          <li>
-            <strong>Link the test directory:</strong>
-            <pre><code>ln -s ../dingo/tests ./tests</code></pre>
-          </li>
-          <li>
-            <strong>Rebuild the site:</strong>
-            <pre><code>pnpm build</code></pre>
-          </li>
-        </ol>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dingo - A Meta-Language for Go</title>
+  <meta name="description" content="Dingo is a meta-language for Go with Result types, pattern matching, and error propagation" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <div class="flex h-screen bg-white">
+    <!-- Sidebar -->
+    <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div class="px-6 pt-6 h-20 flex items-center gap-3 relative overflow-visible">
+        <Image src={logoImage} alt="Dingo Logo" class="h-24 w-24 object-contain" />
+        <h1 class="text-gray-900">Dingo</h1>
       </div>
 
-      <div class="empty-state-cta">
-        <a href="https://github.com/MadAppGang/dingo" class="btn-primary" target="_blank" rel="noopener noreferrer">
-          View on GitHub
-        </a>
-        <a href="https://github.com/MadAppGang/dingo#readme" class="btn-secondary" target="_blank" rel="noopener noreferrer">
-          Read Documentation
-        </a>
-      </div>
-    </section>
-  )}
-
-  {/* NORMAL STATE: Show examples when available */}
-  {!isEmpty && (
-    <>
-      <div class="intro">
-        <p class="intro-text">
-          Dingo is a meta-language for Go that adds powerful features like Result/Option types,
-          pattern matching, and error propagation while transpiling to clean, idiomatic Go code.
-        </p>
-        <p class="intro-text">
-          Below are real examples from the Dingo compiler test suite, showing how each feature
-          transforms from concise Dingo syntax to equivalent Go code.
-        </p>
-      </div>
-
-      <nav class="features-nav" aria-label="Jump to feature">
-        <h2 class="nav-title">Features</h2>
-        <ul class="nav-list">
-          {availableFeatures.map((featureType) => {
-            const count = groupedExamples[featureType].length;
-            return (
-              <li>
-                <a href={`#feature-${featureType}`} class="nav-link">
-                  {featureTypes[featureType]}
-                  <span class="count">({count})</span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+      <nav class="flex-1 px-6 pt-6 pb-6 space-y-2 overflow-auto">
+        {processedExamples.map((example) => (
+          <a
+            href={`#example-${example.data.id}`}
+            class="block w-full text-left px-4 py-3 rounded-lg transition-colors text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+          >
+            {example.data.title}
+          </a>
+        ))}
       </nav>
 
-      <div class="examples-container">
-        {availableFeatures.map((featureType) => {
-          const examples = groupedExamples[featureType];
-          const title = featureTypes[featureType];
-
-          return (
-            <FeatureSection
-              featureType={featureType}
-              title={title}
-              examples={examples}
-            />
-          );
-        })}
+      <!-- Description section -->
+      <div class="p-6 border-t border-gray-200 bg-gray-50">
+        <h3 class="text-gray-900 mb-2 text-sm">About This Tool</h3>
+        <p class="text-gray-600 text-xs leading-relaxed">
+          Compare code examples side by side to understand Dingo's transpilation to Go.
+          Each example shows the transformation from Dingo syntax to clean, idiomatic Go code.
+        </p>
       </div>
-    </>
-  )}
-</ExamplesLayout>
+    </div>
 
-<style>
-  .intro {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: var(--color-code-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      <div class="flex-1 overflow-auto pt-8">
+        {processedExamples.map((example) => (
+          <div id={`example-${example.data.id}`} class="mb-8">
+            <CodeComparison
+              before={example.data.dingoCode}
+              after={example.data.goCode}
+              language="go"
+            />
+
+            {example.data.reasoning && (
+              <div class="px-8 pb-8">
+                <div class="bg-white rounded-lg p-6 shadow-sm">
+                  <div class="prose prose-sm max-w-none">
+                    <div set:html={example.data.reasoning} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        <!-- README Section -->
+        <div class="p-8 bg-white">
+          <div class="max-w-4xl mx-auto markdown-content">
+            <div class="prose prose-sm max-w-none text-xs">
+              <div set:html={readmeContent} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
-  .intro-text {
-    margin-bottom: 1rem;
-    line-height: 1.7;
-    color: var(--color-text);
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  .intro-text:last-child {
-    margin-bottom: 0;
-  }
-
-  .features-nav {
-    margin-bottom: 3rem;
-    padding: 1.5rem;
-    background: var(--color-code-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-  }
-
-  .nav-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-  }
-
-  .nav-list {
-    list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.75rem;
-  }
-
-  .nav-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    color: var(--color-accent);
-    text-decoration: none;
-    border-radius: 4px;
-    transition: background 0.2s;
-    font-weight: 500;
-  }
-
-  .nav-link:hover {
-    background: var(--color-bg);
-  }
-
-  .count {
-    color: var(--color-text);
-    opacity: 0.6;
+  /* Markdown styling to match reference */
+  .markdown-content h1 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
     font-size: 0.875rem;
-  }
-
-  .examples-container {
-    margin-top: 3rem;
-  }
-
-  /* Empty state styles */
-  .empty-state {
-    max-width: 800px;
-    margin: 4rem auto;
-    padding: 3rem 2rem;
-    text-align: center;
-    background: var(--color-code-bg);
-    border: 2px dashed var(--color-border);
-    border-radius: 8px;
-  }
-
-  .empty-state-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-  }
-
-  .empty-state h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-  }
-
-  .empty-state > p {
-    font-size: 1.1rem;
-    color: var(--color-text);
-    opacity: 0.8;
-    margin-bottom: 2rem;
-    line-height: 1.6;
-  }
-
-  .empty-state-instructions {
-    text-align: left;
-    background: var(--color-bg);
-    padding: 1.5rem;
-    border-radius: 6px;
-    margin-bottom: 2rem;
-  }
-
-  .empty-state-instructions h3 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-  }
-
-  .empty-state-instructions ol {
-    margin-left: 1.5rem;
-    line-height: 1.8;
-  }
-
-  .empty-state-instructions li {
-    margin-bottom: 1rem;
-  }
-
-  .empty-state-instructions strong {
-    color: var(--color-accent);
     font-weight: 600;
   }
 
-  .empty-state-instructions pre {
-    background: var(--color-code-bg);
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-top: 0.5rem;
+  .markdown-content h2 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .markdown-content h3 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .markdown-content h4 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .markdown-content p {
+    margin-bottom: 0.5rem;
+    color: rgb(55, 65, 81);
+    line-height: 1.625;
+    font-size: 0.75rem;
+  }
+
+  .markdown-content ul {
+    margin-bottom: 0.5rem;
+    margin-left: 1rem;
+    list-style-type: disc;
+    color: rgb(55, 65, 81);
+    font-size: 0.75rem;
+  }
+
+  .markdown-content ol {
+    margin-bottom: 0.5rem;
+    margin-left: 1rem;
+    list-style-type: decimal;
+    color: rgb(55, 65, 81);
+    font-size: 0.75rem;
+  }
+
+  .markdown-content li {
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .markdown-content code {
+    background: rgb(243, 244, 246);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: rgb(31, 41, 55);
+  }
+
+  .markdown-content pre {
+    margin-bottom: 0.5rem;
+    background: rgb(243, 244, 246);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
     overflow-x: auto;
+    font-size: 0.75rem;
   }
 
-  .empty-state-instructions code {
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    color: var(--color-text);
-  }
-
-  .empty-state-cta {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
-  }
-
-  .btn-primary {
-    background: var(--color-accent);
-    color: var(--color-bg);
-  }
-
-  .btn-primary:hover {
-    background: var(--color-accent-hover);
-    transform: translateY(-2px);
-  }
-
-  .btn-secondary {
+  .markdown-content pre code {
     background: transparent;
-    border: 2px solid var(--color-accent);
-    color: var(--color-accent);
+    padding: 0;
   }
 
-  .btn-secondary:hover {
-    background: var(--color-accent);
-    color: var(--color-bg);
+  .markdown-content a {
+    color: rgb(37, 99, 235);
+    font-size: 0.75rem;
   }
 
-  @media (max-width: 768px) {
-    .intro {
-      padding: 1rem;
-    }
+  .markdown-content a:hover {
+    text-decoration: underline;
+  }
 
-    .intro-text {
-      font-size: 0.9375rem;
-    }
+  .markdown-content blockquote {
+    border-left: 4px solid rgb(209, 213, 219);
+    padding-left: 0.75rem;
+    font-style: italic;
+    color: rgb(107, 114, 128);
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+  }
 
-    .features-nav {
-      padding: 1rem;
-    }
+  .markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+    margin: 0.5rem 0;
+  }
 
-    .nav-list {
-      grid-template-columns: 1fr;
-    }
+  .markdown-content hr {
+    margin: 1rem 0;
+    border-color: rgb(229, 231, 235);
+  }
 
-    .nav-title {
-      font-size: 1.125rem;
-    }
+  .markdown-content table {
+    margin-bottom: 0.5rem;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.75rem;
+  }
 
-    .empty-state {
-      padding: 2rem 1rem;
-      margin: 2rem 1rem;
-    }
+  .markdown-content thead {
+    background: rgb(249, 250, 251);
+  }
 
-    .empty-state h2 {
-      font-size: 1.5rem;
-    }
+  .markdown-content tr {
+    border-bottom: 1px solid rgb(229, 231, 235);
+  }
 
-    .empty-state > p {
-      font-size: 1rem;
-    }
+  .markdown-content th {
+    padding: 0.5rem;
+    text-align: left;
+    font-size: 0.75rem;
+  }
 
-    .empty-state-cta {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-      width: 100%;
-    }
+  .markdown-content td {
+    padding: 0.5rem;
+    color: rgb(55, 65, 81);
+    font-size: 0.75rem;
   }
 </style>
