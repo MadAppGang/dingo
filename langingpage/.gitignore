@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# workflow session folders (temporary working data)
+.astro-dev-sessions/
+.astro-fix-sessions/
