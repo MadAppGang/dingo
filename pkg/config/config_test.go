@@ -20,6 +20,22 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.SourceMap.Format != FormatInline {
 		t.Errorf("Expected default format to be 'inline', got %q", cfg.SourceMap.Format)
 	}
+
+	// Test Result type defaults
+	if !cfg.Features.ResultType.Enabled {
+		t.Error("Expected Result type to be enabled by default")
+	}
+	if cfg.Features.ResultType.GoInterop != "opt-in" {
+		t.Errorf("Expected Result go_interop default to be 'opt-in', got %q", cfg.Features.ResultType.GoInterop)
+	}
+
+	// Test Option type defaults
+	if !cfg.Features.OptionType.Enabled {
+		t.Error("Expected Option type to be enabled by default")
+	}
+	if cfg.Features.OptionType.GoInterop != "opt-in" {
+		t.Errorf("Expected Option go_interop default to be 'opt-in', got %q", cfg.Features.OptionType.GoInterop)
+	}
 }
 
 func TestSyntaxStyleValidation(t *testing.T) {
@@ -97,6 +113,165 @@ func TestConfigValidation(t *testing.T) {
 			},
 			wantError: true,
 			errorMsg:  "invalid sourcemap format",
+		},
+		{
+			name: "valid result go_interop opt-in",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					ResultType: ResultTypeConfig{
+						Enabled:   true,
+						GoInterop: "opt-in",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid result go_interop auto",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					ResultType: ResultTypeConfig{
+						Enabled:   true,
+						GoInterop: "auto",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid result go_interop disabled",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					ResultType: ResultTypeConfig{
+						Enabled:   true,
+						GoInterop: "disabled",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "invalid result go_interop",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					ResultType: ResultTypeConfig{
+						Enabled:   true,
+						GoInterop: "invalid-mode",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: true,
+			errorMsg:  "invalid result_type.go_interop",
+		},
+		{
+			name: "valid option go_interop opt-in",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					OptionType: OptionTypeConfig{
+						Enabled:   true,
+						GoInterop: "opt-in",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid option go_interop auto",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					OptionType: OptionTypeConfig{
+						Enabled:   true,
+						GoInterop: "auto",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid option go_interop disabled",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					OptionType: OptionTypeConfig{
+						Enabled:   true,
+						GoInterop: "disabled",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "invalid option go_interop",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					OptionType: OptionTypeConfig{
+						Enabled:   true,
+						GoInterop: "wrong",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: true,
+			errorMsg:  "invalid option_type.go_interop",
+		},
+		{
+			name: "both result and option configured",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+					ResultType: ResultTypeConfig{
+						Enabled:   true,
+						GoInterop: "auto",
+					},
+					OptionType: OptionTypeConfig{
+						Enabled:   true,
+						GoInterop: "opt-in",
+					},
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
 		},
 	}
 

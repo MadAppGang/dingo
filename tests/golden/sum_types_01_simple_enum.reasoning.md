@@ -1,12 +1,12 @@
 ---
-title: "Simple enum with unit variants"
+title: "🎭 Simple enum with unit variants"
 category: "Type System"
 subcategory: "Sum Types"
 test_id: "sum_types_01_simple"
 order: 1
 
 complexity: "basic"
-feature: "sum-types"
+feature: "🎭 sum-types"
 phase: "Phase 2.5"
 status: "implemented"
 

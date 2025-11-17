@@ -1,11 +1,11 @@
 ---
-title: "Nested sum types with recursive structures"
+title: "🎭 Nested sum types with recursive structures"
 category: "Type System"
 subcategory: "Sum Types"
 test_id: "sum_types_05_nested"
 order: 5
 complexity: "advanced"
-feature: "sum-types"
+feature: "🎭 sum-types"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Demonstrates nested sum types and recursive enum definitions for tree-like data structures"

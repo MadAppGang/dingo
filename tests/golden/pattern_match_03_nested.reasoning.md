@@ -1,11 +1,11 @@
 ---
-title: "Nested pattern matching for complex structures"
+title: "🎯 Nested pattern matching for complex structures"
 category: "Control Flow"
 subcategory: "Pattern Matching"
 test_id: "pattern_match_03_nested"
 order: 3
 complexity: "advanced"
-feature: "pattern-matching"
+feature: "🎯 pattern-matching"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Validates nested pattern matching for destructuring complex nested sum types"

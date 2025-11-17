@@ -1,12 +1,12 @@
 ---
-title: "Error propagation with context wrapping using ? operator"
+title: "⚡ Error propagation with context wrapping using ? operator"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_04_wrapping"
 order: 4
 
 complexity: "intermediate"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

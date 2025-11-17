@@ -56,6 +56,32 @@ type Config struct {
 	SourceMap SourceMapConfig `toml:"sourcemaps"`
 }
 
+// ResultTypeConfig controls Result<T, E> type behavior
+type ResultTypeConfig struct {
+	// Enabled controls whether Result type is available
+	Enabled bool `toml:"enabled"`
+
+	// GoInterop controls how Go (T, error) returns are handled
+	// Valid values: "opt-in", "auto", "disabled"
+	// - "opt-in": Requires explicit Result.FromGo() wrapper (safe default)
+	// - "auto": Automatically wraps (T, error) → Result<T, E>
+	// - "disabled": No Go interop, pure Dingo types only
+	GoInterop string `toml:"go_interop"`
+}
+
+// OptionTypeConfig controls Option<T> type behavior
+type OptionTypeConfig struct {
+	// Enabled controls whether Option type is available
+	Enabled bool `toml:"enabled"`
+
+	// GoInterop controls how Go pointer types (*T) are handled
+	// Valid values: "opt-in", "auto", "disabled"
+	// - "opt-in": Requires explicit Option.FromPtr() wrapper (safe default)
+	// - "auto": Automatically wraps *T → Option<T>
+	// - "disabled": No Go interop, pure Dingo types only
+	GoInterop string `toml:"go_interop"`
+}
+
 // FeatureConfig controls which language features are enabled
 type FeatureConfig struct {
 	// ErrorPropagationSyntax selects the error propagation operator
@@ -99,9 +125,11 @@ type FeatureConfig struct {
 	// - "explicit": Require parentheses for ambiguous mixing
 	OperatorPrecedence string `toml:"operator_precedence"`
 
-	// REMOVED: AutoWrapGoErrors and AutoWrapGoNils
-	// These flags were never implemented and are misleading.
-	// Follow YAGNI principle - add when actually needed in Phase 3+
+	// ResultType controls Result<T, E> type generation and Go interop
+	ResultType ResultTypeConfig `toml:"result_type"`
+
+	// OptionType controls Option<T> type generation and Go interop
+	OptionType OptionTypeConfig `toml:"option_type"`
 }
 
 // SourceMapConfig controls source map generation
@@ -134,6 +162,14 @@ func DefaultConfig() *Config {
 			SafeNavigationUnwrap:   "smart",        // Default to smart unwrapping
 			NullCoalescingPointers: true,           // Default to supporting Go pointers
 			OperatorPrecedence:     "standard",     // Default to standard precedence
+			ResultType: ResultTypeConfig{
+				Enabled:   true,
+				GoInterop: "opt-in", // Default to safe explicit wrapping
+			},
+			OptionType: OptionTypeConfig{
+				Enabled:   true,
+				GoInterop: "opt-in", // Default to safe explicit wrapping
+			},
 		},
 		SourceMap: SourceMapConfig{
 			Enabled: true,
@@ -244,6 +280,28 @@ func (c *Config) Validate() error {
 		default:
 			return fmt.Errorf("invalid operator_precedence: %q (must be 'standard' or 'explicit')",
 				c.Features.OperatorPrecedence)
+		}
+	}
+
+	// Validate Result type go_interop mode
+	if c.Features.ResultType.GoInterop != "" {
+		switch c.Features.ResultType.GoInterop {
+		case "opt-in", "auto", "disabled":
+			// Valid
+		default:
+			return fmt.Errorf("invalid result_type.go_interop: %q (must be 'opt-in', 'auto', or 'disabled')",
+				c.Features.ResultType.GoInterop)
+		}
+	}
+
+	// Validate Option type go_interop mode
+	if c.Features.OptionType.GoInterop != "" {
+		switch c.Features.OptionType.GoInterop {
+		case "opt-in", "auto", "disabled":
+			// Valid
+		default:
+			return fmt.Errorf("invalid option_type.go_interop: %q (must be 'opt-in', 'auto', or 'disabled')",
+				c.Features.OptionType.GoInterop)
 		}
 	}
 

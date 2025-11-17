@@ -1,5 +1,5 @@
 ---
-feature: Error Propagation
+feature: "⚡ error-propagation"
 category: Multi-Value Returns
 dingo_version: "0.1.0-alpha"
 go_version: "1.23+"

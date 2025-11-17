@@ -1,11 +1,11 @@
 ---
-title: "Null coalescing operator with Option<T> types"
+title: "🛡️ Null coalescing operator with Option<T> types"
 category: "Operators"
 subcategory: "Null Coalescing"
 test_id: "null_coalesce_03_with_option"
 order: 3
 complexity: "advanced"
-feature: "null-coalesce"
+feature: "🛡️ null-coalesce"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Integrates null coalescing operator with Option<T> types for type-safe default value handling"

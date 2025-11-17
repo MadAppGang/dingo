@@ -1,11 +1,11 @@
 ---
-title: "Reduce function for aggregating collections"
+title: "🎨 Reduce function for aggregating collections"
 category: "Functional Programming"
 subcategory: "Functional Utilities"
 test_id: "func_util_03_reduce"
 order: 3
 complexity: "intermediate"
-feature: "functional-utils"
+feature: "🎨 functional-utils"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates reduce function for aggregating collection elements into a single value"

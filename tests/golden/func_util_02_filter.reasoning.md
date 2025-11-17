@@ -1,11 +1,11 @@
 ---
-title: "Filter function for selecting collection elements"
+title: "🎨 Filter function for selecting collection elements"
 category: "Functional Programming"
 subcategory: "Functional Utilities"
 test_id: "func_util_02_filter"
 order: 2
 complexity: "basic"
-feature: "functional-utils"
+feature: "🎨 functional-utils"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates filter function for selecting elements matching a predicate"

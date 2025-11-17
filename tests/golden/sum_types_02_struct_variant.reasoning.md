@@ -1,12 +1,12 @@
 ---
-title: "Enum with struct variants and associated data"
+title: "🎭 Enum with struct variants and associated data"
 category: "Type System"
 subcategory: "Sum Types"
 test_id: "sum_types_02_struct_variant"
 order: 2
 
 complexity: "intermediate"
-feature: "sum-types"
+feature: "🎭 sum-types"
 phase: "Phase 2.5"
 status: "implemented"
 

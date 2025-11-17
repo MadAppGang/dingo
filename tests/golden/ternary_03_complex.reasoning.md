@@ -1,11 +1,11 @@
 ---
-title: "Complex ternary expressions with function calls"
+title: "⚖️ Complex ternary expressions with function calls"
 category: "Control Flow"
 subcategory: "Ternary Operator"
 test_id: "ternary_03_complex"
 order: 3
 complexity: "advanced"
-feature: "ternary"
+feature: "⚖️ ternary"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Validates ternary operators with complex expressions including function calls and method invocations"

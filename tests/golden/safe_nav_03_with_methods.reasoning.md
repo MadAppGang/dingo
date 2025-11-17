@@ -1,11 +1,11 @@
 ---
-title: "Safe navigation with method calls on optional receivers"
+title: "🧭 Safe navigation with method calls on optional receivers"
 category: "Operators"
 subcategory: "Safe Navigation"
 test_id: "safe_nav_03_with_methods"
 order: 3
 complexity: "advanced"
-feature: "safe-navigation"
+feature: "🧭 safe-navigation"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Validates safe navigation operator with method invocations on potentially nil receivers"

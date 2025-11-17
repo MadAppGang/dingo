@@ -16,7 +16,7 @@ const formattedExamples = sortedExamples.map((example, index) => ({
   id: index + 1,
   title: example.data.title,
   language: 'go', // Dingo transpiles to Go
-  description: example.data.reasoning || example.data.description || `## ${example.data.category}\n\nExample showing ${example.data.title.toLowerCase()}.`,
+  description: example.data.description || `## ${example.data.category}\n\nExample showing ${example.data.title.toLowerCase()}.`,
   before: example.data.dingoCode,
   after: example.data.goCode,
   // New metadata from frontmatter
@@ -24,6 +24,7 @@ const formattedExamples = sortedExamples.map((example, index) => ({
   subcategory: example.data.subcategory,
   summary: example.data.summary,
   complexity: example.data.complexity,
+  reasoning: example.data.reasoning,
 }));
 ---
 

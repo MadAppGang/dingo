@@ -1,11 +1,11 @@
 ---
-title: "Tuple destructuring in assignments and patterns"
+title: "📦 Tuple destructuring in assignments and patterns"
 category: "Data Structures"
 subcategory: "Tuples"
 test_id: "tuples_02_destructure"
 order: 2
 complexity: "intermediate"
-feature: "tuples"
+feature: "📦 tuples"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Demonstrates tuple destructuring for extracting values into separate variables"

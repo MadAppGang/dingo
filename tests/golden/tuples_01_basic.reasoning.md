@@ -1,11 +1,11 @@
 ---
-title: "Basic tuple types and literals"
+title: "📦 Basic tuple types and literals"
 category: "Data Structures"
 subcategory: "Tuples"
 test_id: "tuples_01_basic"
 order: 1
 complexity: "basic"
-feature: "tuples"
+feature: "📦 tuples"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Demonstrates basic tuple syntax for grouping multiple values of different types"

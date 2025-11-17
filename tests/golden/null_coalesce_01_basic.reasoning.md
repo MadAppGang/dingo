@@ -1,11 +1,11 @@
 ---
-title: "Basic null coalescing operator for default values"
+title: "🛡️ Basic null coalescing operator for default values"
 category: "Operators"
 subcategory: "Null Coalescing"
 test_id: "null_coalesce_01_basic"
 order: 1
 complexity: "basic"
-feature: "null-coalesce"
+feature: "🛡️ null-coalesce"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates null coalescing operator (??) for providing default values when expressions are null/nil"

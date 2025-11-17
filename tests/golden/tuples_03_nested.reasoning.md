@@ -1,11 +1,11 @@
 ---
-title: "Nested tuples and complex destructuring"
+title: "📦 Nested tuples and complex destructuring"
 category: "Data Structures"
 subcategory: "Tuples"
 test_id: "tuples_03_nested"
 order: 3
 complexity: "advanced"
-feature: "tuples"
+feature: "📦 tuples"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Validates nested tuple structures and deep destructuring patterns"

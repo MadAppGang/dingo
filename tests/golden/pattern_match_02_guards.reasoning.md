@@ -1,11 +1,11 @@
 ---
-title: "Pattern matching with guard clauses for conditions"
+title: "🎯 Pattern matching with guard clauses for conditions"
 category: "Control Flow"
 subcategory: "Pattern Matching"
 test_id: "pattern_match_02_guards"
 order: 2
 complexity: "intermediate"
-feature: "pattern-matching"
+feature: "🎯 pattern-matching"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Demonstrates match guards (if conditions) for refining pattern matches with additional logic"

@@ -1,11 +1,11 @@
 ---
-title: "Map function for transforming collections"
+title: "🎨 Map function for transforming collections"
 category: "Functional Programming"
 subcategory: "Functional Utilities"
 test_id: "func_util_01_map"
 order: 1
 complexity: "basic"
-feature: "functional-utils"
+feature: "🎨 functional-utils"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates map function for transforming each element in a collection with a lambda"

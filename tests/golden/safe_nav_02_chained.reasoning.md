@@ -1,11 +1,11 @@
 ---
-title: "Chained safe navigation through nested structures"
+title: "🧭 Chained safe navigation through nested structures"
 category: "Operators"
 subcategory: "Safe Navigation"
 test_id: "safe_nav_02_chained"
 order: 2
 complexity: "intermediate"
-feature: "safe-navigation"
+feature: "🧭 safe-navigation"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates chained safe navigation operators for accessing deeply nested optional fields"

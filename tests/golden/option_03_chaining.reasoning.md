@@ -1,11 +1,11 @@
 ---
-title: "Option type with combinator methods for functional composition"
+title: "❓ Option type with combinator methods for functional composition"
 category: "Type System"
 subcategory: "Option Type"
 test_id: "option_03_chaining"
 order: 3
 complexity: "advanced"
-feature: "option-type"
+feature: "❓ option-type"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Demonstrates Option<T> combinator methods (map, and_then, or_else) for composing optional value transformations"

@@ -1,12 +1,12 @@
 ---
-title: "Error propagation with complex return types"
+title: "⚡ Error propagation with complex return types"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_05_complex_types"
 order: 5
 
 complexity: "intermediate"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

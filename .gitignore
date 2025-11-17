@@ -49,3 +49,4 @@ tests/golden/**/*.go
 !tests/golden/**/*.go.golden
 langingpage/.adev
 langingpage/debug-reports
+langingpage/review-reports

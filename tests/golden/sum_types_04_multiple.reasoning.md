@@ -1,11 +1,11 @@
 ---
-title: "Multiple enum definitions in single file"
+title: "🎭 Multiple enum definitions in single file"
 category: "Type System"
 subcategory: "Sum Types"
 test_id: "sum_types_04_multiple"
 order: 4
 complexity: "intermediate"
-feature: "sum-types"
+feature: "🎭 sum-types"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Validates multiple enum type definitions in the same file with proper namespace handling"

@@ -20,6 +20,36 @@ reuse_err_variable = true
 # Default: "on"
 nil_safety_checks = "on"
 
+[features.result_type]
+# Enable Result<T, E> type for error handling
+# Default: true
+enabled = true
+
+# Go interoperability mode for (T, error) returns
+# Valid values: "opt-in", "auto", "disabled"
+# - "opt-in": Requires explicit Result.FromGo() wrapper (safe, recommended)
+#   Example: let user = Result.FromGo(fetchUser(id))
+# - "auto": Automatically wraps (T, error) → Result<T, E>
+#   Example: let user = fetchUser(id)  // Auto-wrapped to Result
+# - "disabled": No Go interop, pure Dingo types only
+# Default: "opt-in"
+go_interop = "opt-in"
+
+[features.option_type]
+# Enable Option<T> type for null safety
+# Default: true
+enabled = true
+
+# Go interoperability mode for pointer types (*T)
+# Valid values: "opt-in", "auto", "disabled"
+# - "opt-in": Requires explicit Option.FromPtr() wrapper (safe, recommended)
+#   Example: let user = Option.FromPtr(findUser(id))
+# - "auto": Automatically wraps *T → Option<T>
+#   Example: let user = findUser(id)  // Auto-wrapped to Option
+# - "disabled": No Go interop, pure Dingo types only
+# Default: "opt-in"
+go_interop = "opt-in"
+
 [sourcemaps]
 # Enable source map generation for better debugging and IDE support
 enabled = true

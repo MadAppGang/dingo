@@ -1,12 +1,12 @@
 ---
-title: "Error propagation test suite with ? operator"
+title: "⚡ Error propagation test suite with ? operator"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_suite"
 order: 0
 
 complexity: "basic"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

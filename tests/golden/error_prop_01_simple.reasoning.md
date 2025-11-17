@@ -1,12 +1,12 @@
 ---
-title: "Simple error propagation with ? operator in statement"
+title: "⚡ Simple error propagation with ? operator in statement"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_01_simple"
 order: 1
 
 complexity: "basic"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

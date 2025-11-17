@@ -1,11 +1,11 @@
 ---
-title: "Lambda closures capturing variables from outer scope"
+title: "🪄 Lambda closures capturing variables from outer scope"
 category: "Functional Programming"
 subcategory: "Lambda Functions"
 test_id: "lambda_03_closure"
 order: 3
 complexity: "intermediate"
-feature: "lambdas"
+feature: "🪄 lambdas"
 phase: "Phase 2.6"
 status: "implemented"
 description: "Validates lambda closures that capture and reference variables from enclosing scope"

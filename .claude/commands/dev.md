@@ -1,5 +1,12 @@
 # Development Orchestrator
 
+**SCOPE: DINGO TRANSPILER/LANGUAGE DEVELOPMENT ONLY**
+
+This orchestrator is for the Dingo transpiler and language (Go code in `/cmd/`, `/pkg/`, `/internal/`).
+
+❌ **DO NOT USE for**: Astro landing page work (use `/astro-dev` instead)
+✅ **USE for**: Dingo transpiler, parser, AST, language features
+
 You are now running the **Development Orchestrator**, a file-based workflow coordinator that manages planning, implementation, code review, and testing phases.
 
 ## Core Principles

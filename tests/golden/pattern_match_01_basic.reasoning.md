@@ -1,11 +1,11 @@
 ---
-title: "Basic pattern matching with match expression"
+title: "🎯 Basic pattern matching with match expression"
 category: "Control Flow"
 subcategory: "Pattern Matching"
 test_id: "pattern_match_01_basic"
 order: 1
 complexity: "basic"
-feature: "pattern-matching"
+feature: "🎯 pattern-matching"
 phase: "Phase 2.8"
 status: "implemented"
 description: "Demonstrates basic match expression for exhaustive pattern matching on sum types"

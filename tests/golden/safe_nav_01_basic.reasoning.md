@@ -1,11 +1,11 @@
 ---
-title: "Basic safe navigation operator for nil checking"
+title: "🧭 Basic safe navigation operator for nil checking"
 category: "Operators"
 subcategory: "Safe Navigation"
 test_id: "safe_nav_01_basic"
 order: 1
 complexity: "basic"
-feature: "safe-navigation"
+feature: "🧭 safe-navigation"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates safe navigation operator (?.) for accessing fields/methods on potentially nil pointers"

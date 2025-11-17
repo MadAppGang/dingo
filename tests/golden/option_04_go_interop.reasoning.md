@@ -1,11 +1,11 @@
 ---
-title: "Option type interoperability with Go nil pointers"
+title: "❓ Option type interoperability with Go nil pointers"
 category: "Type System"
 subcategory: "Option Type"
 test_id: "option_04_go_interop"
 order: 4
 complexity: "advanced"
-feature: "option-type"
+feature: "❓ option-type"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Validates seamless conversion between Option<T> and Go's nullable pointers (*T), enabling gradual null-safety adoption"

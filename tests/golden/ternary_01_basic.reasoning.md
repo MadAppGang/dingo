@@ -1,11 +1,11 @@
 ---
-title: "Basic ternary conditional operator"
+title: "⚖️ Basic ternary conditional operator"
 category: "Control Flow"
 subcategory: "Ternary Operator"
 test_id: "ternary_01_basic"
 order: 1
 complexity: "basic"
-feature: "ternary"
+feature: "⚖️ ternary"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates basic ternary operator (condition ? true_expr : false_expr) for inline conditional expressions"

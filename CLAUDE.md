@@ -119,6 +119,59 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 - Prioritize end-to-end functionality over completeness
 - Generate idiomatic, readable Go code
 
+### Agent Usage Guidelines
+
+**CRITICAL**: This project has TWO separate development areas with different agents:
+
+#### 1. **Dingo Transpiler/Language** (This Directory)
+**Working Directory**: `/Users/jack/mag/dingo/` (root)
+**Code**: `cmd/`, `pkg/`, `internal/`, `tests/golden/`
+**Language**: Go
+
+**Use these agents**:
+- ✅ `golang-developer` - Implementation (transpiler, parser, AST, language features)
+- ✅ `golang-architect` - Architecture and design
+- ✅ `golang-tester` - Testing and golden tests
+- ✅ `code-reviewer` - Code review
+
+**Slash commands**:
+- ✅ `/dev` - Development orchestrator for Dingo language
+
+#### 2. **Landing Page** (Separate Directory)
+**Working Directory**: `/Users/jack/mag/dingo/langingpage/`
+**Code**: `src/`, Astro components, React components
+**Language**: TypeScript, Astro, React
+
+**Use these agents**:
+- ✅ `astro-developer` - Implementation (landing page, components, styling)
+- ✅ `astro-reviewer` - Code review and visual validation
+- ⚠️ `code-reviewer` - Can review, but astro-reviewer preferred
+
+**Slash commands**:
+- ✅ `/astro-dev` - Development orchestrator for landing page
+- ✅ `/astro-fix` - Visual fix orchestrator for landing page
+
+#### ❌ **NEVER Mix Agents**
+
+**WRONG Examples** (DO NOT DO THIS):
+- ❌ Using `golang-developer` for Astro/landing page work
+- ❌ Using `astro-developer` for transpiler/Go work
+- ❌ Using `/dev` in `langingpage/` directory
+- ❌ Using `/astro-dev` in root directory
+
+**Correct Examples**:
+- ✅ Root directory → Go work → `golang-developer`, `golang-architect`, `golang-tester`, `/dev`
+- ✅ `langingpage/` directory → Astro work → `astro-developer`, `astro-reviewer`, `/astro-dev`, `/astro-fix`
+
+#### Quick Decision Guide
+
+**If working on**:
+- Parser, AST, transpiler, language features → Use golang-* agents
+- Landing page, components, styling, UI → Use astro-* agents
+- In doubt? Check your working directory:
+  - Root (`/Users/jack/mag/dingo/`) → golang-* agents
+  - Langingpage (`/Users/jack/mag/dingo/langingpage/`) → astro-* agents
+
 ### Phase 1 Implementation Checklist
 
 ```

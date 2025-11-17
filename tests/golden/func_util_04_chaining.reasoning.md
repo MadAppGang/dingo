@@ -1,11 +1,11 @@
 ---
-title: "Chained functional utilities for data pipelines"
+title: "🎨 Chained functional utilities for data pipelines"
 category: "Functional Programming"
 subcategory: "Functional Utilities"
 test_id: "func_util_04_chaining"
 order: 4
 complexity: "advanced"
-feature: "functional-utils"
+feature: "🎨 functional-utils"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates chaining map/filter/reduce for elegant data processing pipelines"

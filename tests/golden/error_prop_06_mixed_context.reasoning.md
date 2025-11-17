@@ -1,12 +1,12 @@
 ---
-title: "Error propagation in mixed statement and expression contexts"
+title: "⚡ Error propagation in mixed statement and expression contexts"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_06_mixed_context"
 order: 6
 
 complexity: "advanced"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

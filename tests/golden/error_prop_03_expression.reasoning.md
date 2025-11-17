@@ -1,12 +1,12 @@
 ---
-title: "Error propagation in return expressions with ? operator"
+title: "⚡ Error propagation in return expressions with ? operator"
 category: "Error Handling"
 subcategory: "Error Propagation"
 test_id: "error_prop_03_expression"
 order: 3
 
 complexity: "intermediate"
-feature: "error-propagation"
+feature: "⚡ error-propagation"
 phase: "Phase 2.4"
 status: "implemented"
 

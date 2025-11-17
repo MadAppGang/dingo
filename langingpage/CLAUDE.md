@@ -22,6 +22,42 @@ Create a fast, SEO-optimized landing page that:
 
 ## Key Rules for AI Agents
 
+### CRITICAL: Agent Scope Separation
+
+**This landing page project uses DIFFERENT agents than the main Dingo transpiler.**
+
+#### ✅ **For Landing Page Work** (This Directory)
+**Working Directory**: `/Users/jack/mag/dingo/langingpage/`
+**Code**: `src/`, Astro components, React components, TypeScript, Tailwind CSS
+
+**Use these agents**:
+- ✅ `astro-developer` - Implementation (components, layouts, pages, styling)
+- ✅ `astro-reviewer` - Code review and visual validation with chrome-devtools
+- ⚠️ `code-reviewer` - Can review, but astro-reviewer preferred (Astro-specific knowledge)
+
+**Slash commands**:
+- ✅ `/astro-dev` - Development orchestrator for landing page
+- ✅ `/astro-fix` - Visual fix orchestrator with iterative refinement
+
+#### ❌ **NOT For Landing Page Work**
+**These agents are for the Dingo transpiler ONLY** (parent directory):
+- ❌ `golang-developer` - For Go/transpiler code only
+- ❌ `golang-architect` - For Go architecture only
+- ❌ `golang-tester` - For Go testing only
+- ❌ `/dev` - For transpiler development only
+
+#### Quick Decision Guide
+
+**If you're working in `/langingpage/` directory**:
+- Astro components, React components, styling → `astro-developer`
+- Code review, visual validation → `astro-reviewer`
+- Development workflow → `/astro-dev`
+- Visual bug fixes → `/astro-fix`
+
+**If someone asks you to work on**:
+- Transpiler, parser, AST, language features → **WRONG DIRECTORY!** → Use parent directory with golang-* agents
+- Landing page, UI, components, styling → **CORRECT!** → Use astro-* agents
+
 ### 1. Consult the AI Documentation First
 **IMPORTANT**: Before working on Astro-related tasks, consult the `ai-docs/` directory:
 

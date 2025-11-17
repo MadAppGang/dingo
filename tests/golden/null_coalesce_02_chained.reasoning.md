@@ -1,11 +1,11 @@
 ---
-title: "Chained null coalescing operators for fallback chains"
+title: "🛡️ Chained null coalescing operators for fallback chains"
 category: "Operators"
 subcategory: "Null Coalescing"
 test_id: "null_coalesce_02_chained"
 order: 2
 complexity: "intermediate"
-feature: "null-coalesce"
+feature: "🛡️ null-coalesce"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates chained null coalescing operators for multiple fallback values in sequence"

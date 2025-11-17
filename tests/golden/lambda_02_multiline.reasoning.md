@@ -1,11 +1,11 @@
 ---
-title: "Multiline lambda functions with block syntax"
+title: "🪄 Multiline lambda functions with block syntax"
 category: "Functional Programming"
 subcategory: "Lambda Functions"
 test_id: "lambda_02_multiline"
 order: 2
 complexity: "intermediate"
-feature: "lambdas"
+feature: "🪄 lambdas"
 phase: "Phase 2.6"
 status: "implemented"
 description: "Demonstrates multiline lambda syntax with explicit blocks for complex function bodies"

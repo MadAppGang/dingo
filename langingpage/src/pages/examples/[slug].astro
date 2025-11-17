@@ -23,17 +23,6 @@ const sortedExamples = allExamples.sort((a, b) => a.data.order - b.data.order);
 // Current slug from URL
 const currentSlug = Astro.params.slug;
 
-// Fetch README from GitHub
-let readmeContent = '';
-try {
-  const response = await fetch('https://raw.githubusercontent.com/MadAppGang/dingo/refs/heads/main/README.md');
-  const markdown = await response.text();
-  const rawHtml = await marked(markdown);
-  readmeContent = DOMPurify.sanitize(rawHtml);
-} catch (error) {
-  console.error('Error fetching README:', error);
-}
-
 // Process reasoning markdown for current example
 let processedReasoning = '';
 if (example.data.reasoning) {
@@ -104,15 +93,6 @@ if (example.data.reasoning) {
             </div>
           </div>
         )}
-
-        <!-- README Section -->
-        <div class="p-8 bg-white">
-          <div class="max-w-4xl mx-auto markdown-content">
-            <div class="prose prose-sm max-w-none text-xs">
-              <div set:html={readmeContent} />
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>

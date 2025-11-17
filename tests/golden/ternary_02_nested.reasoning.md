@@ -1,11 +1,11 @@
 ---
-title: "Nested ternary operators for multi-way conditionals"
+title: "⚖️ Nested ternary operators for multi-way conditionals"
 category: "Control Flow"
 subcategory: "Ternary Operator"
 test_id: "ternary_02_nested"
 order: 2
 complexity: "intermediate"
-feature: "ternary"
+feature: "⚖️ ternary"
 phase: "Phase 2.7"
 status: "implemented"
 description: "Demonstrates nested ternary operators for chained conditional logic"

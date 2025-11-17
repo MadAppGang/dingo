@@ -1,11 +1,11 @@
 ---
-title: "Basic lambda functions with inline syntax"
+title: "🪄 Basic lambda functions with inline syntax"
 category: "Functional Programming"
 subcategory: "Lambda Functions"
 test_id: "lambda_01_basic"
 order: 1
 complexity: "basic"
-feature: "lambdas"
+feature: "🪄 lambdas"
 phase: "Phase 2.6"
 status: "implemented"
 description: "Demonstrates basic lambda function syntax with inline parameter and expression for concise anonymous functions"

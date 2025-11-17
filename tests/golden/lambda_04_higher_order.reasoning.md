@@ -1,11 +1,11 @@
 ---
-title: "Higher-order functions accepting lambda parameters"
+title: "🪄 Higher-order functions accepting lambda parameters"
 category: "Functional Programming"
 subcategory: "Lambda Functions"
 test_id: "lambda_04_higher_order"
 order: 4
 complexity: "advanced"
-feature: "lambdas"
+feature: "🪄 lambdas"
 phase: "Phase 2.6"
 status: "implemented"
 description: "Demonstrates higher-order functions that accept lambdas as parameters for functional composition"

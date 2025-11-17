@@ -1,11 +1,11 @@
 ---
-title: "Basic Option type for null safety"
+title: "❓ Basic Option type for null safety"
 category: "Type System"
 subcategory: "Option Type"
 test_id: "option_01_basic"
 order: 1
 complexity: "basic"
-feature: "option-type"
+feature: "❓ option-type"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Demonstrates Option<T> type with Some and None variants for type-safe handling of nullable values, eliminating nil pointer bugs"

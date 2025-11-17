@@ -1,11 +1,11 @@
 ---
-title: "Option type with pattern matching for safe unwrapping"
+title: "❓ Option type with pattern matching for safe unwrapping"
 category: "Type System"
 subcategory: "Option Type"
 test_id: "option_02_pattern_match"
 order: 2
 complexity: "intermediate"
-feature: "option-type"
+feature: "❓ option-type"
 phase: "Phase 2.5"
 status: "implemented"
 description: "Demonstrates Option<T> with pattern matching for exhaustive handling of Some/None cases, preventing null pointer exceptions"
