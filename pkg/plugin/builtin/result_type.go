@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MadAppGang/dingo/pkg/plugin"
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 // ResultTypePlugin generates Result<T, E> type declarations and transformations
@@ -143,10 +144,11 @@ func (p *ResultTypePlugin) handleConstructorCall(call *ast.CallExpr) {
 }
 
 // transformOkConstructor transforms Ok(value) → Result_T_E{tag: ResultTag_Ok, ok_0: &value}
-func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) {
+// Returns the replacement node, or the original call if transformation fails
+func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 	if len(call.Args) != 1 {
 		p.ctx.Logger.Warn("Ok() expects exactly one argument, found %d", len(call.Args))
-		return
+		return call // Return unchanged
 	}
 
 	// Type inference: For now, use simple heuristics
@@ -166,20 +168,37 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) {
 		p.emittedTypes[resultTypeName] = true
 	}
 
-	// Transform the call to a struct literal
-	// Ok(value) → Result_T_E{tag: ResultTag_Ok, ok_0: &value}
+	// Log transformation
 	p.ctx.Logger.Debug("Transforming Ok(%s) → %s{tag: ResultTag_Ok, ok_0: &value}", okType, resultTypeName)
 
-	// Note: Actual AST transformation would happen here
-	// For now, we log the transformation for testing
-	// The actual replacement would be done in a Transform() method
+	// Create the replacement CompositeLit
+	// Ok(value) → Result_T_E{tag: ResultTag_Ok, ok_0: &value}
+	replacement := &ast.CompositeLit{
+		Type: ast.NewIdent(resultTypeName),
+		Elts: []ast.Expr{
+			&ast.KeyValueExpr{
+				Key:   ast.NewIdent("tag"),
+				Value: ast.NewIdent("ResultTag_Ok"),
+			},
+			&ast.KeyValueExpr{
+				Key: ast.NewIdent("ok_0"),
+				Value: &ast.UnaryExpr{
+					Op: token.AND,
+					X:  valueArg, // Use original argument expression
+				},
+			},
+		},
+	}
+
+	return replacement
 }
 
 // transformErrConstructor transforms Err(error) → Result_T_E{tag: ResultTag_Err, err_0: &error}
-func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) {
+// Returns the replacement node, or the original call if transformation fails
+func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr {
 	if len(call.Args) != 1 {
 		p.ctx.Logger.Warn("Err() expects exactly one argument, found %d", len(call.Args))
-		return
+		return call // Return unchanged
 	}
 
 	// Type inference: For Err, we need context to determine T
@@ -203,11 +222,29 @@ func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) {
 		p.emittedTypes[resultTypeName] = true
 	}
 
-	// Transform the call to a struct literal
-	// Err(error) → Result_T_E{tag: ResultTag_Err, err_0: &error}
+	// Log transformation
 	p.ctx.Logger.Debug("Transforming Err(%s) → %s{tag: ResultTag_Err, err_0: &value}", errType, resultTypeName)
 
-	// Note: Actual AST transformation would happen here
+	// Create the replacement CompositeLit
+	// Err(error) → Result_T_E{tag: ResultTag_Err, err_0: &error}
+	replacement := &ast.CompositeLit{
+		Type: ast.NewIdent(resultTypeName),
+		Elts: []ast.Expr{
+			&ast.KeyValueExpr{
+				Key:   ast.NewIdent("tag"),
+				Value: ast.NewIdent("ResultTag_Err"),
+			},
+			&ast.KeyValueExpr{
+				Key: ast.NewIdent("err_0"),
+				Value: &ast.UnaryExpr{
+					Op: token.AND,
+					X:  errorArg, // Use original argument expression
+				},
+			},
+		},
+	}
+
+	return replacement
 }
 
 // inferTypeFromExpr infers the type of an expression
