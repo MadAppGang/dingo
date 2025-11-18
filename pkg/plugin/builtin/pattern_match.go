@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"strings"
 
 	"github.com/MadAppGang/dingo/pkg/errors"
@@ -32,17 +33,17 @@ type PatternMatchPlugin struct {
 
 // matchExpression represents a discovered match expression
 type matchExpression struct {
-	startPos     token.Pos            // Position of DINGO_MATCH_START comment
-	scrutinee    string               // Scrutinee expression (e.g., "result", "option")
-	switchStmt   *ast.SwitchStmt      // The switch statement
-	patterns     []string             // Pattern names (Ok, Err, Some, None, wildcard)
-	hasWildcard  bool                 // Whether a wildcard (_) pattern exists
-	caseStmts    []*ast.CaseClause    // Case clauses for each pattern
-	isExpression bool                 // Whether this is an expression context (assigned/returned)
-	guards       []*guardInfo         // Guards for each case clause
-	isTuple      bool                 // Whether this is a tuple match
-	tupleArity   int                  // Arity of tuple (if isTuple)
-	tupleArms    []tupleArmInfo       // Tuple arm patterns (if isTuple)
+	startPos     token.Pos         // Position of DINGO_MATCH_START comment
+	scrutinee    string            // Scrutinee expression (e.g., "result", "option")
+	switchStmt   *ast.SwitchStmt   // The switch statement
+	patterns     []string          // Pattern names (Ok, Err, Some, None, wildcard)
+	hasWildcard  bool              // Whether a wildcard (_) pattern exists
+	caseStmts    []*ast.CaseClause // Case clauses for each pattern
+	isExpression bool              // Whether this is an expression context (assigned/returned)
+	guards       []*guardInfo      // Guards for each case clause
+	isTuple      bool              // Whether this is a tuple match
+	tupleArity   int               // Arity of tuple (if isTuple)
+	tupleArms    []tupleArmInfo    // Tuple arm patterns (if isTuple)
 }
 
 // tupleArmInfo represents one arm in a tuple match
@@ -272,10 +273,24 @@ func (p *PatternMatchPlugin) collectPatternCommentsInFile(file *ast.File) []patt
 				parts := strings.SplitN(c.Text, ":", 2)
 				if len(parts) == 2 {
 					fullPattern := strings.TrimSpace(parts[1])
-					pattern := p.extractConstructorName(fullPattern)
+
+					// Check for guard in the pattern comment
+					// Format: "Ok(x) | DINGO_GUARD: x > 0"
+					var pattern string
+					var guard string
+
+					if guardIdx := strings.Index(fullPattern, "| DINGO_GUARD:"); guardIdx >= 0 {
+						pattern = strings.TrimSpace(fullPattern[:guardIdx])
+						guard = strings.TrimSpace(fullPattern[guardIdx+len("| DINGO_GUARD:"):])
+					} else {
+						pattern = fullPattern
+					}
+
+					pattern = p.extractConstructorName(pattern)
 					result = append(result, patternComment{
 						pos:     c.Pos(),
 						pattern: pattern,
+						guard:   guard,
 					})
 				}
 			}
@@ -356,12 +371,13 @@ func (p *PatternMatchPlugin) collectPatternComments() []patternComment {
 type patternComment struct {
 	pos     token.Pos
 	pattern string
+	guard   string // Guard condition (empty if no guard)
 }
 
-// findPatternForCase finds the pattern comment closest to this case
-func (p *PatternMatchPlugin) findPatternForCase(caseClause *ast.CaseClause, patternComments []patternComment) string {
+// findPatternAndGuardForCase finds the pattern comment and guard for a case
+func (p *PatternMatchPlugin) findPatternAndGuardForCase(caseClause *ast.CaseClause, patternComments []patternComment) (string, string) {
 	if len(patternComments) == 0 {
-		return ""
+		return "", ""
 	}
 
 	casePos := caseClause.Pos()
@@ -369,13 +385,14 @@ func (p *PatternMatchPlugin) findPatternForCase(caseClause *ast.CaseClause, patt
 
 	// Find the comment within this case clause (after case start, before case end)
 	// OR immediately after the case (within 100 positions)
-	var bestMatch string
+	var bestMatch *patternComment
 	var bestDistance token.Pos = 1000000
 
-	for _, pc := range patternComments {
+	for i := range patternComments {
+		pc := &patternComments[i]
 		// Check if comment is within the case clause
 		if pc.pos >= casePos && pc.pos <= caseEnd {
-			return pc.pattern
+			return pc.pattern, pc.guard
 		}
 
 		// Also check if comment is shortly after case start (within 100 positions)
@@ -383,12 +400,21 @@ func (p *PatternMatchPlugin) findPatternForCase(caseClause *ast.CaseClause, patt
 			distance := pc.pos - casePos
 			if distance < bestDistance && distance < 100 {
 				bestDistance = distance
-				bestMatch = pc.pattern
+				bestMatch = pc
 			}
 		}
 	}
 
-	return bestMatch
+	if bestMatch != nil {
+		return bestMatch.pattern, bestMatch.guard
+	}
+	return "", ""
+}
+
+// findPatternForCase finds the pattern comment closest to this case (backward compatibility)
+func (p *PatternMatchPlugin) findPatternForCase(caseClause *ast.CaseClause, patternComments []patternComment) string {
+	pattern, _ := p.findPatternAndGuardForCase(caseClause, patternComments)
+	return pattern
 }
 
 // extractConstructorName extracts constructor name from pattern
@@ -634,7 +660,6 @@ func (p *PatternMatchPlugin) buildIfElseChain(match *matchExpression, file *ast.
 	patternComments := p.collectPatternCommentsInFile(file)
 	stmts := make([]ast.Stmt, 0)
 
-	
 	// Get scrutinee variable name from the switch init
 	scrutineeVar := match.scrutinee
 	if match.switchStmt.Init != nil {
@@ -660,8 +685,8 @@ func (p *PatternMatchPlugin) buildIfElseChain(match *matchExpression, file *ast.
 			continue
 		}
 
-		// Find pattern for this case
-		pattern := p.findPatternForCase(caseClause, patternComments)
+		// Find pattern and guard for this case
+		pattern, guardStr := p.findPatternAndGuardForCase(caseClause, patternComments)
 		if pattern == "" {
 			continue
 		}
@@ -673,11 +698,28 @@ func (p *PatternMatchPlugin) buildIfElseChain(match *matchExpression, file *ast.
 		}
 
 		// Build if condition: scrutineeVar.IsVariant()
-		condition := &ast.CallExpr{
+		var condition ast.Expr = &ast.CallExpr{
 			Fun: &ast.SelectorExpr{
 				X:   &ast.Ident{Name: scrutineeVar},
 				Sel: &ast.Ident{Name: "Is" + variantName},
 			},
+		}
+
+		// Validate and add guard if present
+		if guardStr != "" {
+			guardExpr, err := p.validateGuardExpression(guardStr, caseClause.Pos())
+			if err != nil {
+				// Guard validation failed - log error and skip this case
+				p.ctx.Logger.Error(fmt.Sprintf("Guard validation failed: %v", err))
+				continue
+			}
+
+			// Combine pattern check with guard: pattern && guard
+			condition = &ast.BinaryExpr{
+				X:  condition,
+				Op: token.LAND,
+				Y:  guardExpr,
+			}
 		}
 
 		// Convert case body to return statements
@@ -711,6 +753,41 @@ func (p *PatternMatchPlugin) buildIfElseChain(match *matchExpression, file *ast.
 	}
 
 	return stmts
+}
+
+// validateGuardExpression validates a guard expression string
+// Returns the parsed expression or an error if invalid
+func (p *PatternMatchPlugin) validateGuardExpression(guardStr string, casePos token.Pos) (ast.Expr, error) {
+	if guardStr == "" {
+		return nil, nil // No guard
+	}
+
+	// Parse guard expression
+	guardExpr, err := parser.ParseExpr(guardStr)
+	if err != nil {
+		// Invalid syntax
+		return nil, fmt.Errorf("invalid guard syntax at %s: %v",
+			p.ctx.FileSet.Position(casePos), err)
+	}
+
+	// Validate guard is boolean expression (if go/types available)
+	// Note: We allow outer scope references - the Go compiler will validate scope
+	if p.ctx != nil && p.ctx.TypeInfo != nil {
+		if typesInfo, ok := p.ctx.TypeInfo.(*types.Info); ok && typesInfo.Types != nil {
+			// Check if we have type information for this expression
+			if tv, exists := typesInfo.Types[guardExpr]; exists && tv.Type != nil {
+				// Validate it's a boolean type
+				if !types.Identical(tv.Type, types.Typ[types.Bool]) {
+					return nil, fmt.Errorf("guard must be boolean expression at %s, got %s",
+						p.ctx.FileSet.Position(casePos), tv.Type)
+				}
+			}
+			// If type info doesn't exist for this expression, we'll let the Go compiler
+			// validate it in the next phase (scope resolution happens later)
+		}
+	}
+
+	return guardExpr, nil
 }
 
 // convertCaseBodyToReturn converts case body statements to return statements
@@ -793,13 +870,11 @@ func (p *PatternMatchPlugin) Transform(node ast.Node) (ast.Node, error) {
 			return true
 		}
 
-
 		// Check for DINGO_MATCH_START marker
 		matchInfo := p.findMatchMarkerInFile(file, switchStmt)
 		if matchInfo == nil {
 			return true // Not a pattern match
 		}
-
 
 		// Parse pattern arms
 		patterns, hasWildcard := p.parsePatternArmsInFile(file, switchStmt)
@@ -815,7 +890,6 @@ func (p *PatternMatchPlugin) Transform(node ast.Node) (ast.Node, error) {
 	if len(matches) == 0 {
 		return file, nil
 	}
-
 
 	// Transform each match expression
 	// NOTE: Switch→if transformation disabled - switch-based output is clearer and preserves DINGO comments

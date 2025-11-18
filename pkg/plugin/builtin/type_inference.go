@@ -642,26 +642,184 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 
 // findFunctionReturnType finds the return type of the function containing a return statement
 func (s *TypeInferenceService) findFunctionReturnType(retStmt *ast.ReturnStmt) types.Type {
-	// TODO: Implement with parent tracking
+	if s.typesInfo == nil {
+		return nil
+	}
+
+	// Walk up parent chain to find *ast.FuncDecl or *ast.FuncLit
+	current := ast.Node(retStmt)
+	for current != nil {
+		parent := s.parentMap[current]
+		if parent == nil {
+			break
+		}
+
+		// Case 1: Named function
+		if funcDecl, ok := parent.(*ast.FuncDecl); ok {
+			return s.extractReturnTypeFromFuncType(funcDecl.Type, retStmt)
+		}
+
+		// Case 2: Anonymous function
+		if funcLit, ok := parent.(*ast.FuncLit); ok {
+			return s.extractReturnTypeFromFuncType(funcLit.Type, retStmt)
+		}
+
+		current = parent
+	}
+	return nil
+}
+
+// extractReturnTypeFromFuncType extracts the return type from a function type
+func (s *TypeInferenceService) extractReturnTypeFromFuncType(
+	funcType *ast.FuncType,
+	retStmt *ast.ReturnStmt,
+) types.Type {
+	if funcType.Results == nil || len(funcType.Results.List) == 0 {
+		return nil
+	}
+
+	// Determine which return value corresponds to the return statement
+	// For now, assume single return value (extend for multi-return later)
+	if len(funcType.Results.List) > 0 {
+		resultField := funcType.Results.List[0]
+		if tv, ok := s.typesInfo.Types[resultField.Type]; ok && tv.Type != nil {
+			return tv.Type
+		}
+	}
+
 	return nil
 }
 
 // findAssignmentType finds the type of variable in an assignment statement
 func (s *TypeInferenceService) findAssignmentType(assign *ast.AssignStmt, targetNode ast.Node) types.Type {
-	// TODO: Implement with parent tracking
+	if s.typesInfo == nil {
+		return nil
+	}
+
+	// Find which RHS position the targetNode is in
+	rhsIndex := -1
+	for i, rhs := range assign.Rhs {
+		if s.containsNode(rhs, targetNode) {
+			rhsIndex = i
+			break
+		}
+	}
+
+	if rhsIndex == -1 {
+		return nil
+	}
+
+	// Case 1: Regular assignment (same number of LHS and RHS)
+	if rhsIndex < len(assign.Lhs) {
+		lhsExpr := assign.Lhs[rhsIndex]
+
+		// Use go/types to get type of LHS expression
+		if tv, ok := s.typesInfo.Types[lhsExpr]; ok && tv.Type != nil {
+			return tv.Type
+		}
+	}
+
+	// Case 2: Multiple return values (one RHS, multiple LHS)
+	if len(assign.Rhs) == 1 && len(assign.Lhs) > 1 && rhsIndex == 0 {
+		// The RHS returns a tuple, find which LHS position we're assigning to
+		// This case is handled above - we can't determine which tuple element
+		// from just the RHS node. This would need more context.
+		return nil
+	}
+
 	return nil
 }
 
 // findVarDeclType finds the explicit type in a variable declaration
 func (s *TypeInferenceService) findVarDeclType(decl *ast.GenDecl, targetNode ast.Node) types.Type {
-	// TODO: Implement with parent tracking
+	if s.typesInfo == nil {
+		return nil
+	}
+
+	// Find the ValueSpec containing targetNode
+	for _, spec := range decl.Specs {
+		if valueSpec, ok := spec.(*ast.ValueSpec); ok {
+			// Check if targetNode is in this ValueSpec's values
+			for i, value := range valueSpec.Values {
+				if s.containsNode(value, targetNode) {
+					// Case 1: Explicit type annotation
+					if valueSpec.Type != nil {
+						if tv, ok := s.typesInfo.Types[valueSpec.Type]; ok && tv.Type != nil {
+							return tv.Type
+						}
+					}
+
+					// Case 2: Infer from initializer (same as assignment)
+					if i < len(valueSpec.Values) {
+						if tv, ok := s.typesInfo.Types[valueSpec.Values[i]]; ok && tv.Type != nil {
+							return tv.Type
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
 // findCallArgType finds the parameter type for a call argument
 func (s *TypeInferenceService) findCallArgType(call *ast.CallExpr, targetNode ast.Node) types.Type {
-	// TODO: Implement with parent tracking
+	if s.typesInfo == nil {
+		return nil
+	}
+
+	// Find which argument position targetNode is in
+	argIndex := -1
+	for i, arg := range call.Args {
+		if s.containsNode(arg, targetNode) {
+			argIndex = i
+			break
+		}
+	}
+
+	if argIndex == -1 {
+		return nil
+	}
+
+	// Get the function type from go/types
+	if tv, ok := s.typesInfo.Types[call.Fun]; ok && tv.Type != nil {
+		if sig, ok := tv.Type.(*types.Signature); ok {
+			params := sig.Params()
+
+			// Handle variadic functions
+			if sig.Variadic() && argIndex >= params.Len()-1 {
+				// Last parameter is variadic
+				if params.Len() > 0 {
+					lastParam := params.At(params.Len() - 1)
+					// Extract element type from slice
+					if slice, ok := lastParam.Type().(*types.Slice); ok {
+						return slice.Elem()
+					}
+				}
+			} else if argIndex < params.Len() {
+				return params.At(argIndex).Type()
+			}
+		}
+	}
+
 	return nil
+}
+
+// containsNode checks if parent AST node contains child in its subtree
+func (s *TypeInferenceService) containsNode(root, target ast.Node) bool {
+	if root == nil || target == nil {
+		return false
+	}
+	found := false
+	ast.Inspect(root, func(n ast.Node) bool {
+		if n == target {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 // inferTypeFromExpr infers types.Type from an AST expression
