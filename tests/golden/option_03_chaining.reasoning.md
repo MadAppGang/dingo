@@ -1,6 +1,7 @@
 ---
 title: "❓ Option type with combinator methods for functional composition"
 category: "Type System"
+category_order: 40
 subcategory: "Option Type"
 test_id: "option_03_chaining"
 order: 3

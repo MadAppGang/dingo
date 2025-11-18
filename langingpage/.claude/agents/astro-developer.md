@@ -98,6 +98,57 @@ claudish --model google/gemini-pro
 # Then: "Use the Task tool to invoke the astro-developer agent to create all landing page sections"
 ```
 
+**CRITICAL - Timeout Configuration for Proxy Mode**:
+
+When executing claudish commands via Bash tool, **ALWAYS specify timeout parameter**:
+
+```python
+# Correct usage with timeout
+Bash(
+    command='claudish --model x-ai/grok-code-fast-1 << \'EOF\'\n[implementation task]\nEOF',
+    timeout=600000,  # 10 minutes (MAXIMUM - required for complex implementations)
+    description='External Astro implementation via Grok'
+)
+```
+
+**Why 10 minutes is required**:
+- Complex Astro implementations take 5-10 minutes (components + validation)
+- Multiple component creation, styling, testing takes time
+- **Default Bash timeout is only 2 minutes** - will fail mid-implementation ❌
+- 10 minutes (600000ms) is the maximum available timeout
+- Covers: model processing + file writes + dev server testing + network latency
+
+**Tasks requiring full 10-minute timeout**:
+- Multi-component implementations (hero, features, footer, etc.)
+- Full page creation with layouts and content
+- Large-scale refactoring across src/ directory
+- Performance optimization with measurement
+- Complex Island implementations with React/Vue/Svelte
+
+**Examples**:
+
+```bash
+# ❌ BAD: Missing timeout - will fail after 2 minutes
+Bash(command='claudish --model x-ai/grok-code-fast-1 "Create landing page"')
+
+# ✅ GOOD: Explicit 10-minute timeout
+Bash(
+    command='claudish --model x-ai/grok-code-fast-1 "Create landing page"',
+    timeout=600000,
+    description='External implementation via Grok'
+)
+
+# ✅ GOOD: Complex task with heredoc
+Bash(
+    command='''claudish --model google/gemini-pro << 'EOF'
+Use the Task tool to invoke astro-developer agent.
+Task: Implement complete landing page with hero, features, code comparison...
+EOF''',
+    timeout=600000,
+    description='Landing page implementation via Gemini'
+)
+```
+
 **Proxy Prompt Template**:
 ```
 IMPORTANT: You MUST use the Task tool to invoke the astro-developer agent.

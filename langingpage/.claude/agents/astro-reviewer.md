@@ -219,6 +219,57 @@ cat review_context.txt | claudish --stdin --model x-ai/grok-code-fast-1 "Use the
 claudish --cost-tracker --model openai/gpt-5-codex "Use the Task tool to invoke the astro-reviewer agent for comprehensive review"
 ```
 
+**CRITICAL - Timeout Configuration for Proxy Mode**:
+
+When executing claudish commands via Bash tool, **ALWAYS specify timeout parameter**:
+
+```python
+# Correct usage with timeout
+Bash(
+    command='claudish --model x-ai/grok-code-fast-1 << \'EOF\'\n[review task]\nEOF',
+    timeout=600000,  # 10 minutes (MAXIMUM - required for comprehensive reviews)
+    description='External Astro review via Grok'
+)
+```
+
+**Why 10 minutes is required**:
+- Comprehensive Astro reviews take 5-10 minutes (code + visual validation)
+- Visual testing with chrome-devtools adds time
+- **Default Bash timeout is only 2 minutes** - will fail mid-review ❌
+- 10 minutes (600000ms) is the maximum available timeout
+- Covers: model processing + dev server startup + browser testing + network latency
+
+**Tasks requiring full 10-minute timeout**:
+- Comprehensive code reviews with visual validation
+- Multi-component reviews across src/ directory
+- Performance analysis with chrome-devtools
+- Accessibility testing with automated tools
+- Before/after comparison reviews
+
+**Examples**:
+
+```bash
+# ❌ BAD: Missing timeout - will fail after 2 minutes
+Bash(command='claudish --model x-ai/grok-code-fast-1 "Review landing page"')
+
+# ✅ GOOD: Explicit 10-minute timeout
+Bash(
+    command='claudish --model x-ai/grok-code-fast-1 "Review landing page"',
+    timeout=600000,
+    description='External Astro review via Grok'
+)
+
+# ✅ GOOD: Complex review with heredoc
+Bash(
+    command='''claudish --model openai/gpt-5-codex << 'EOF'
+Use the Task tool to invoke astro-reviewer agent.
+Task: Comprehensive review of landing page with visual validation...
+EOF''',
+    timeout=600000,
+    description='Comprehensive review via GPT-5'
+)
+```
+
 **Proxy Prompt Template**:
 ```
 IMPORTANT: You MUST use the Task tool to invoke the astro-reviewer agent.

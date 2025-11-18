@@ -465,6 +465,19 @@ Required Actions:
    ```
 
 2. Execute claudish to delegate review to external model:
+
+   **CRITICAL - Timeout Configuration**:
+   Use Bash tool with timeout=600000 (10 minutes):
+   ```python
+   Bash(
+       command='claudish --model [model-identifier] "..."',
+       timeout=600000,  # 10 minutes (REQUIRED for external Astro reviews)
+       description='External Astro review via [model-name]'
+   )
+   ```
+   **Why**: Astro reviews with visual validation take 5-10 minutes. Default 2-minute timeout will fail.
+
+   Example command:
    ```bash
    claudish --model [model-identifier] "$(cat <<'EXTERNAL_PROMPT'
    You are a code reviewer analyzing an Astro landing page implementation.

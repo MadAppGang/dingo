@@ -1,6 +1,7 @@
 ---
 title: "🎁 Basic Result type with Ok and Err variants"
 category: "Error Handling"
+category_order: 30
 subcategory: "Result Type"
 test_id: "result_01_basic"
 order: 1

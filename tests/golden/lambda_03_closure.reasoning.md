@@ -1,6 +1,7 @@
 ---
 title: "🪄 Lambda closures capturing variables from outer scope"
 category: "Functional Programming"
+category_order: 50
 subcategory: "Lambda Functions"
 test_id: "lambda_03_closure"
 order: 3

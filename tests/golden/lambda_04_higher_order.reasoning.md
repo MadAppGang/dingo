@@ -1,6 +1,7 @@
 ---
 title: "🪄 Higher-order functions accepting lambda parameters"
 category: "Functional Programming"
+category_order: 50
 subcategory: "Lambda Functions"
 test_id: "lambda_04_higher_order"
 order: 4

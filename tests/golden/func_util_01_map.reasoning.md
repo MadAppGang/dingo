@@ -1,6 +1,7 @@
 ---
 title: "🎨 Map function for transforming collections"
 category: "Functional Programming"
+category_order: 110
 subcategory: "Functional Utilities"
 test_id: "func_util_01_map"
 order: 1

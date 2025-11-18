@@ -1,6 +1,7 @@
 ---
 title: "⚡ Multiple sequential error propagations with ? operator"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_02_multiple"
 order: 2

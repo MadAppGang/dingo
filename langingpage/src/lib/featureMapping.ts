@@ -1,6 +1,7 @@
 // Feature type mapping from filename prefixes to display names
 
 export const featureTypes: Record<string, string> = {
+  showcase: 'Showcase',
   error_prop: 'Error Propagation',
   sum_types: 'Sum Types',
   option: 'Option Type',
@@ -15,6 +16,7 @@ export const featureTypes: Record<string, string> = {
 };
 
 export const featureOrder = [
+  'showcase',
   'error_prop',
   'result',
   'option',

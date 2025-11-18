@@ -567,7 +567,26 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 // RegisterResultType registers a Result type in the type registry
 //
 // CRITICAL FIX #1: Now requires original type strings for validation
+// CRITICAL FIX #4 (Code Review): Detects and reports type registry collisions
 func (s *TypeInferenceService) RegisterResultType(typeName string, okType, errType types.Type, okTypeStr, errTypeStr string) {
+	// CRITICAL FIX #4: Check for collision before registering
+	if existing, found := s.resultTypeCache[typeName]; found {
+		// Check if this is a different type combination with the same sanitized name
+		if existing.OkTypeString != okTypeStr || existing.ErrTypeString != errTypeStr {
+			s.logger.Error(fmt.Sprintf(
+				"Type registry collision detected: %s represents both Result<%s, %s> and Result<%s, %s>",
+				typeName,
+				existing.OkTypeString, existing.ErrTypeString,
+				okTypeStr, errTypeStr,
+			))
+			// Add warning to help users understand the issue
+			s.logger.Warn(
+				"Collision hint: Use explicit type aliases to avoid ambiguity, or file a bug report",
+			)
+		}
+		// If types match, this is just a re-registration (safe to continue)
+	}
+
 	info := &ResultTypeInfo{
 		TypeName:      typeName,
 		OkType:        okType,
@@ -611,7 +630,26 @@ func (s *TypeInferenceService) sanitizeTypeName(typeName string) string {
 // RegisterOptionType registers an Option type in the type registry
 //
 // CRITICAL FIX #1: Now requires original type string for validation
+// CRITICAL FIX #4 (Code Review): Detects and reports type registry collisions
 func (s *TypeInferenceService) RegisterOptionType(typeName string, valueType types.Type, valueTypeStr string) {
+	// CRITICAL FIX #4: Check for collision before registering
+	if existing, found := s.optionTypeCache[typeName]; found {
+		// Check if this is a different type with the same sanitized name
+		if existing.ValueTypeString != valueTypeStr {
+			s.logger.Error(fmt.Sprintf(
+				"Type registry collision detected: %s represents both Option<%s> and Option<%s>",
+				typeName,
+				existing.ValueTypeString,
+				valueTypeStr,
+			))
+			// Add warning to help users understand the issue
+			s.logger.Warn(
+				"Collision hint: Use explicit type aliases to avoid ambiguity, or file a bug report",
+			)
+		}
+		// If types match, this is just a re-registration (safe to continue)
+	}
+
 	info := &OptionTypeInfo{
 		TypeName:        typeName,
 		ValueType:       valueType,

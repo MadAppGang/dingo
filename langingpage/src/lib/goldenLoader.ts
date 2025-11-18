@@ -32,9 +32,10 @@ export interface GoldenExample {
 
   // Frontmatter metadata
   category?: string;
+  category_order?: number; // Controls category sorting on landing page
   subcategory?: string;
   test_id?: string;
-  order: number;
+  order: number; // Controls example order within category
 
   // Classification
   complexity?: 'basic' | 'intermediate' | 'advanced';
@@ -187,6 +188,7 @@ export function goldenLoader(): Loader {
 
             // Frontmatter metadata
             category: frontmatter.category,
+            category_order: frontmatter.category_order,
             subcategory: frontmatter.subcategory,
             test_id: frontmatter.test_id,
             order,
@@ -218,7 +220,7 @@ export function goldenLoader(): Loader {
           // Store entry in collection
           store.set({
             id: baseName,
-            data: entry as Record<string, unknown>,
+            data: entry as unknown as Record<string, unknown>,
           });
 
           logger.info(`Loaded example: ${baseName} (${featureDisplayName})`);

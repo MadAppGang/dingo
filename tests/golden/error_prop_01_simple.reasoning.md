@@ -1,6 +1,7 @@
 ---
 title: "⚡ Simple error propagation with ? operator in statement"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_01_simple"
 order: 1

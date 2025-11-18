@@ -187,24 +187,19 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 	valueArg := call.Args[0]
 
 	// CRITICAL FIX #3: Check error from inferTypeFromExpr
+	// CRITICAL FIX #5 (Code Review): Use interface{} fallback instead of returning unchanged
 	okType, err := p.inferTypeFromExpr(valueArg)
 	if err != nil {
-		// Type inference failed completely
-		errMsg := fmt.Sprintf("Type inference failed for Ok(%s): %v", FormatExprForDebug(valueArg), err)
-		p.ctx.Logger.Error(errMsg)
-		p.ctx.ReportError(
-			fmt.Sprintf("Cannot infer type for Ok() argument: %v", err),
-			call.Pos(),
-		)
-		return call // Return unchanged to avoid invalid code generation
+		// Type inference failed - use interface{} as fallback
+		p.ctx.Logger.Warn("Type inference failed for Ok(%s): %v, using interface{} fallback", FormatExprForDebug(valueArg), err)
+		okType = "interface{}"
 	}
 
 	// CRITICAL FIX #3: Validate okType is not empty
+	// CRITICAL FIX #5 (Code Review): Use interface{} fallback instead of returning unchanged
 	if okType == "" {
-		errMsg := fmt.Sprintf("Type inference returned empty string for Ok(%s)", FormatExprForDebug(valueArg))
-		p.ctx.Logger.Error(errMsg)
-		p.ctx.ReportError("Type inference incomplete for Ok() argument", call.Pos())
-		return call
+		p.ctx.Logger.Warn("Type inference returned empty string for Ok(%s), using interface{} fallback", FormatExprForDebug(valueArg))
+		okType = "interface{}"
 	}
 
 	errType := "error" // Default error type

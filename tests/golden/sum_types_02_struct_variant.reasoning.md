@@ -1,6 +1,7 @@
 ---
 title: "🎭 Enum with struct variants and associated data"
 category: "Type System"
+category_order: 20
 subcategory: "Sum Types"
 test_id: "sum_types_02_struct_variant"
 order: 2

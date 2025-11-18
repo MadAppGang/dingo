@@ -1,6 +1,7 @@
 ---
 title: "🎁 Result type with ? operator error propagation"
 category: "Error Handling"
+category_order: 30
 subcategory: "Result Type"
 test_id: "result_02_propagation"
 order: 2

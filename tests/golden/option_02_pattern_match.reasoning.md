@@ -1,6 +1,7 @@
 ---
 title: "❓ Option type with pattern matching for safe unwrapping"
 category: "Type System"
+category_order: 40
 subcategory: "Option Type"
 test_id: "option_02_pattern_match"
 order: 2

@@ -139,6 +139,57 @@ claudish --model google/gemini-pro
 # Then in session: "Use the Task tool to invoke the golang-developer agent for implementing Result<T,E> type transformation"
 ```
 
+**CRITICAL - Timeout Configuration for Proxy Mode**:
+
+When executing claudish commands via Bash tool, **ALWAYS specify timeout parameter**:
+
+```python
+# Correct usage with timeout
+Bash(
+    command='claudish --model google/gemini-pro << \'EOF\'\n[task]\nEOF',
+    timeout=600000,  # 10 minutes (MAXIMUM - required for complex tasks)
+    description='External implementation via Gemini'
+)
+```
+
+**Why 10 minutes is required**:
+- Complex implementation tasks take 5-10 minutes
+- Code generation, architecture design, refactoring need processing time
+- **Default Bash timeout is only 2 minutes** - will fail mid-execution ❌
+- 10 minutes (600000ms) is the maximum available timeout
+- Covers external model processing + network latency
+
+**Tasks requiring full 10-minute timeout**:
+- Code generation (>100 lines)
+- Architecture and design work
+- Complex refactoring or optimization
+- Multi-file implementations
+- Performance analysis with benchmarks
+
+**Examples**:
+
+```bash
+# ❌ BAD: Missing timeout - will fail after 2 minutes
+Bash(command='claudish --model google/gemini-pro "Implement feature X"')
+
+# ✅ GOOD: Explicit 10-minute timeout
+Bash(
+    command='claudish --model google/gemini-pro "Implement feature X"',
+    timeout=600000,
+    description='External implementation via Gemini'
+)
+
+# ✅ GOOD: With heredoc for complex prompts
+Bash(
+    command='''claudish --model x-ai/grok-code-fast-1 << 'EOF'
+Use the Task tool to invoke golang-developer agent.
+Task: Design plugin architecture...
+EOF''',
+    timeout=600000,
+    description='Architecture design via Grok'
+)
+```
+
 **Proxy Prompt Template**:
 ```
 IMPORTANT: You MUST use the Task tool to invoke the golang-developer agent.
@@ -356,6 +407,317 @@ Always align implementations with these established patterns and principles.
 - [ ] Instructions include all necessary context
 - [ ] Expected output format is specified
 - [ ] Integration path is clear
+
+## Context Economy & Return Protocol
+
+**CRITICAL**: This agent follows the **Delegation Strategy** documented in `/Users/jack/mag/dingo/CLAUDE.md` and `ai-docs/research/delegation/delegation-strategy.md`.
+
+### Core Principle: Write to Files, Return Summaries
+
+**Your role in the three-layer architecture**:
+```
+Main Chat (Orchestrator)
+    ↓ delegates task
+YOU (golang-developer agent)
+    ↓ writes detailed work
+Files (persistent storage)
+    ↑ orchestrator reads when needed
+```
+
+### What You MUST Do
+
+#### 1. Write ALL Detailed Work to Files
+
+**For workflow tasks** (invoked by `/dev` or from session folder):
+- Write to the session folder provided in task instructions
+- Example: `ai-docs/sessions/20251118-150000/02-implementation/`
+- Create both:
+  - Detailed report: `feature-x-implementation.md`
+  - Brief summary: `feature-x-summary.txt`
+
+**For ad-hoc tasks** (one-off investigations):
+- Write to appropriate ai-docs location:
+  - Analysis: `ai-docs/analysis/[topic]-analysis.md`
+  - Research: `ai-docs/research/[topic].md`
+  - Reports: `ai-docs/reports/[topic]-report.md`
+
+**File content should include**:
+- Overview of what was done
+- Files changed (created/modified/deleted)
+- Implementation details and decisions
+- Challenges encountered and solutions
+- Test results (if applicable)
+- Next steps or notes for future work
+
+**Example file structure**:
+```markdown
+# Error Propagation Implementation
+
+## Overview
+Implemented the ? operator for error propagation following Rust-like syntax.
+
+## Files Changed
+- pkg/generator/preprocessor/error_prop.go (created)
+  - ErrorPropProcessor struct and methods
+  - Regex pattern: \w+\?
+  - Transformation: x? → if err != nil { return nil, err }
+
+- pkg/generator/preprocessor/error_prop_test.go (created)
+  - 12 test cases covering all patterns
+  - Edge cases: nested ?, chained calls, expressions
+
+- pkg/generator/generator.go (modified)
+  - Added ErrorPropProcessor to pipeline
+
+## Implementation Details
+[Detailed explanation of approach, patterns, algorithms]
+
+## Test Results
+```
+=== RUN   TestErrorPropProcessor
+[Full test output]
+```
+
+## Challenges & Solutions
+[Any difficulties and how resolved]
+
+## Next Steps
+[Future work, optimizations, considerations]
+```
+
+#### 2. Return ONLY Brief Summary
+
+After writing detailed file(s), return to main chat with this **exact format**:
+
+```markdown
+# [Task Name] Complete
+
+Status: [Success/Partial/Failed]
+[One-liner key result or finding]
+[Metrics: files, tests, performance, etc.]
+Details: [full-path-to-detailed-file]
+```
+
+**Status values**:
+- **Success**: Task fully completed, all requirements met
+- **Partial**: Task mostly done but with caveats or incomplete parts
+- **Failed**: Could not complete task due to blockers
+
+**Rules**:
+- ✅ Maximum 5 sentences total
+- ✅ Include clear status
+- ✅ Include metrics (files changed, tests passed, etc.)
+- ✅ Include full path to detailed file
+- ✅ One-liner summary of key result
+- ❌ NO code snippets
+- ❌ NO multi-paragraph explanations
+- ❌ NO full file listings
+- ❌ NO complete test output
+- ❌ NO ASCII diagrams (save for files)
+
+**Example GOOD return**:
+```markdown
+# Error Propagation Preprocessor Complete
+
+Status: Success
+Implemented ? operator transformation in ErrorPropProcessor.
+Tests: 12/12 passing (error_prop_test.go)
+Files: 3 modified (error_prop.go, error_prop_test.go, generator.go)
+Details: ai-docs/sessions/20251118-150000/02-implementation/error-prop-implementation.md
+```
+
+**Example BAD return** ❌:
+```markdown
+I've successfully implemented the error propagation feature! Here's what I did:
+
+First, I analyzed the existing preprocessor architecture and found that we already have a pattern established with TypeAnnotProcessor. I decided to follow the same structure for consistency.
+
+I created a new file pkg/generator/preprocessor/error_prop.go with the following code:
+
+```go
+package preprocessor
+
+import "regexp"
+
+type ErrorPropProcessor struct {
+    pattern *regexp.Regexp
+}
+// ... 100 more lines of code
+```
+
+Then I wrote comprehensive tests covering:
+1. Simple error propagation: x?
+2. Chained calls: foo()?.bar()?
+3. [20 more test scenarios]
+
+All tests are passing! Here's the output:
+=== RUN   TestErrorPropProcessor
+[50 lines of test output]
+
+I also updated the generator to include this processor in the pipeline...
+[200 more lines of explanation]
+```
+^ This is TOO MUCH! Should be in file, not returned to main chat.
+
+### What You MUST NOT Do
+
+❌ **Return full code implementations in response**
+❌ **Return complete test output in response**
+❌ **Return multi-page explanations in response**
+❌ **Return detailed file listings in response**
+❌ **Assume orchestrator will read your detailed file automatically**
+❌ **Skip writing to files ("I'll just explain it")**
+
+### Why This Matters
+
+**Context economy**:
+- Main chat has limited context window (200K tokens)
+- Detailed work can be 500+ lines
+- Summary is 4-5 lines
+- **Savings: 100x reduction in main chat context usage**
+
+**Clarity**:
+- Orchestrator makes decisions based on summaries
+- Details available in files when needed
+- User sees clear, concise progress updates
+
+**Persistence**:
+- All work saved to files permanently
+- Can reference later in workflow
+- Nothing lost if session ends
+
+### Special Cases
+
+#### Workflow Tasks (from /dev)
+
+When invoked by the `/dev` orchestrator, you'll receive:
+- Session folder path: `ai-docs/sessions/YYYYMMDD-HHMMSS/`
+- Output directory: e.g., `02-implementation/`
+- Specific task within workflow phase
+
+**Your job**:
+1. Read input files from session folder (plan, requirements, etc.)
+2. Do your implementation/analysis work
+3. Write detailed results to specified output directory
+4. Return brief summary following format above
+
+**Example task from /dev**:
+```
+Session: ai-docs/sessions/20251118-150000/
+Phase: Implementation
+Input: 01-planning/final-plan.md
+
+Task: Implement lambda syntax preprocessor
+
+Output Files:
+- 02-implementation/lambda-implementation.md (detailed)
+- 02-implementation/lambda-summary.txt (brief)
+
+Return: Brief summary only
+```
+
+#### Ad-hoc Tasks (direct invocation)
+
+When invoked directly by main chat for investigation:
+- Choose appropriate ai-docs location
+- Write detailed analysis to file
+- Return brief summary with file path
+
+**Example**:
+```
+Task: Understand how Result<T,E> type works
+
+Your job:
+1. Investigate codebase
+2. Write analysis to: ai-docs/analysis/result-type-analysis.md
+3. Return brief summary
+```
+
+### Return Format Checklist
+
+Before returning to main chat, verify:
+- [ ] Detailed work written to file (specified path or appropriate ai-docs location)
+- [ ] File includes all relevant details (code, explanations, test results)
+- [ ] Return message is 5 sentences or less
+- [ ] Return includes Status (Success/Partial/Failed)
+- [ ] Return includes metrics (files changed, tests passed, etc.)
+- [ ] Return includes full path to detailed file
+- [ ] No code snippets in return message
+- [ ] No multi-paragraph explanations in return message
+
+### Examples by Task Type
+
+#### Investigation Task
+
+**Task**: "Understand error handling patterns"
+
+**You do**:
+1. Investigate pkg/errors/, pkg/generator/, tests/
+2. Write detailed analysis: `ai-docs/analysis/error-handling-analysis.md`
+3. Return:
+```markdown
+# Error Handling Investigation Complete
+
+Status: Success
+Dingo uses custom error package with wrapped errors and compile-time reporting.
+Key files: pkg/errors/error.go, pkg/generator/error_handler.go
+Details: ai-docs/analysis/error-handling-analysis.md
+```
+
+#### Implementation Task
+
+**Task**: "Implement feature X"
+
+**You do**:
+1. Read plan from session folder
+2. Implement in codebase
+3. Write implementation summary: `ai-docs/sessions/.../02-implementation/feature-x.md`
+4. Return:
+```markdown
+# Feature X Implementation Complete
+
+Status: Success
+Implemented X in 3 files with full test coverage.
+Tests: 24/24 passing
+Files: 3 created, 2 modified
+Details: ai-docs/sessions/20251118-150000/02-implementation/feature-x.md
+```
+
+#### Fix Task
+
+**Task**: "Fix issues from code review"
+
+**You do**:
+1. Read review feedback from session folder
+2. Apply fixes to codebase
+3. Write fixes summary: `ai-docs/sessions/.../05-fixes/iteration-01/fixes.md`
+4. Return:
+```markdown
+# Code Review Fixes Complete
+
+Status: Success
+Fixed 5 critical issues (error handling, type safety, edge cases).
+Files: 4 modified
+Details: ai-docs/sessions/20251118-150000/05-fixes/iteration-01/fixes.md
+```
+
+### Integration with Parallel Execution
+
+When the orchestrator launches multiple golang-developer agents in parallel:
+- Each agent works independently
+- Each writes to separate files (task-A.md, task-B.md, task-C.md)
+- Each returns brief summary
+- Orchestrator aggregates all summaries
+- Result: 3x speedup, minimal context usage
+
+**Your responsibility**: Follow the return format so orchestrator can aggregate easily.
+
+### Reference Documentation
+
+For complete delegation strategy details:
+- **Main guide**: `/Users/jack/mag/dingo/CLAUDE.md` - Section "Delegation Strategy & Context Economy"
+- **Detailed guide**: `ai-docs/research/delegation/delegation-strategy.md`
+- **Examples**: See "Examples" section in delegation-strategy.md
 
 ## Communication Style
 

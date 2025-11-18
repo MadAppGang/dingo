@@ -1,6 +1,7 @@
 ---
 title: "🎨 Reduce function for aggregating collections"
 category: "Functional Programming"
+category_order: 110
 subcategory: "Functional Utilities"
 test_id: "func_util_03_reduce"
 order: 3

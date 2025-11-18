@@ -1,6 +1,7 @@
 ---
 title: "🎯 Nested pattern matching for complex structures"
 category: "Control Flow"
+category_order: 60
 subcategory: "Pattern Matching"
 test_id: "pattern_match_03_nested"
 order: 3

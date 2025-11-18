@@ -1,6 +1,7 @@
 ---
 title: "🪄 Basic lambda functions with inline syntax"
 category: "Functional Programming"
+category_order: 50
 subcategory: "Lambda Functions"
 test_id: "lambda_01_basic"
 order: 1

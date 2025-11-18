@@ -16,6 +16,53 @@ go test -v -run TestGoldenFiles/error_prop_01_simple
 go test -v -run TestGoldenFilesCompilation
 ```
 
+---
+
+## 🎪 Showcase Examples - Future Vision!
+
+**⭐ ASPIRATIONAL: Complete Feature Demonstration ⭐**
+
+**[showcase_01_api_server.dingo](./showcase_01_api_server.dingo)** - Demonstrates ALL planned Dingo features from the [features/](../../features/) directory in one realistic API server scenario.
+
+**⚠️ IMPORTANT: This is an aspirational example showing Dingo's future vision.**
+- **Not tested:** Excluded from test suite (uses unimplemented features)
+- **Manually written Go:** `.go.golden` exists but is hand-crafted, not transpiled
+- **Purpose:** Landing page demo showing before/after comparison
+
+**Why this example is special:**
+- 🌟 **Landing page hero** - First code visitors see at dingolang.com
+- 🚀 **Future vision** - Shows ALL planned features, not just implemented ones
+- 📊 **Value proposition** - Dramatic code reduction (~50% less code)
+- 💼 **Production-ready** - Real user registration API, not toy code
+
+**Files:**
+- [showcase_01_api_server.dingo](./showcase_01_api_server.dingo) - Clean Dingo code (120 lines)
+- [showcase_01_api_server.go.golden](./showcase_01_api_server.go.golden) - Production Go with full enum boilerplate (239 lines, manually written)
+- [showcase_01_api_server.reasoning.md](./showcase_01_api_server.reasoning.md) - Complete feature analysis
+
+**Metrics:**
+- **50% fewer lines** (239 Go → 120 Dingo) 🎯
+- **Zero manual error checks** (10 `if err != nil` blocks eliminated by `?` operator + Go interop)
+- **Zero `errors.New()` calls** (`Err("message")` accepts strings directly)
+- **Zero enum boilerplate** (String(), MarshalJSON, IsX() methods auto-generated)
+- **Consistent `let` bindings** instead of `var` declarations
+- **Type-safe Result<T,E>** instead of `(T, error)` tuples
+- **Pattern matching** throughout (Result types, guards, boolean matching)
+- **Lambda syntax** instead of function literals
+
+**Features demonstrated (mix of implemented and planned):**
+- ✅ Type annotations (`:` syntax) - Implemented
+- ✅ Error propagation (`?` operator) - Implemented
+- ✅ `let` bindings - Implemented
+- ✅ Enums/Sum types - Implemented
+- 🔜 `Result<T,E>` generic type - Planned
+- 🔜 Lambda notation (`=>`) - Planned
+- 🔜 Pattern matching (`match`) - Planned
+
+**Maintenance:** This example MUST be updated to showcase ALL features from [features/](../../features/) directory. See [CLAUDE.md](../../CLAUDE.md) for guidelines.
+
+---
+
 ## What Are Golden Tests?
 
 Golden tests compare the transpiler's output against known-good reference files:
@@ -101,6 +148,7 @@ sum_types_01_simple_enum.go.golden
 
 | Category | Tests | Status |
 |----------|-------|--------|
+| **🎪 Showcase** | **1** | **✅ Complete** |
 | Error Propagation (`?`) | 8 | ✅ Complete |
 | Result Type | 5 | ✅ Complete |
 | Option Type | 4 | ✅ Complete |
@@ -112,6 +160,8 @@ sum_types_01_simple_enum.go.golden
 | Pattern Matching | 4 | ✅ Complete |
 | Tuples | 3 | ✅ Complete |
 | Functional Utilities | 4 | ✅ Complete |
+
+**Total: 47 tests** (46 feature-specific + 1 comprehensive showcase)
 
 See [INDEX.md](INDEX.md) for detailed test list.
 
@@ -127,6 +177,7 @@ See [INDEX.md](INDEX.md) for detailed test list.
 - `lambda_04_higher_order.dingo` - Lambdas, test #04, higher-order functions
 
 **Feature prefixes:**
+- `showcase_` - 🎪 Comprehensive feature demonstrations (landing page examples)
 - `error_prop_` - Error propagation (?)
 - `result_` - Result type
 - `option_` - Option type

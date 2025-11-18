@@ -1,6 +1,7 @@
 ---
 title: "❓ Basic Option type for null safety"
 category: "Type System"
+category_order: 40
 subcategory: "Option Type"
 test_id: "option_01_basic"
 order: 1

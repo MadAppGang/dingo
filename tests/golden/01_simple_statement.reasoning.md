@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation test suite with ? operator"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_suite"
 order: 0

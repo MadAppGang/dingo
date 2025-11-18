@@ -460,16 +460,16 @@ func TestConstructor_OkWithIdentifier(t *testing.T) {
 	}
 
 	// CRITICAL FIX #3: Type inference now fails for identifiers without go/types
-	// Should report error and not generate declarations
+	// CRITICAL FIX #5 (Code Review): Uses interface{} fallback instead of reporting error
 	errors := p.ctx.GetErrors()
-	if len(errors) == 0 {
-		t.Error("expected error to be reported for Ok with identifier (no go/types)")
+	if len(errors) != 0 {
+		t.Errorf("expected no errors (should use interface{} fallback), got %d errors", len(errors))
 	}
 
-	// No declarations should be generated when type inference fails
+	// Should generate declarations using interface{} fallback
 	decls := p.GetPendingDeclarations()
-	if len(decls) > 0 {
-		t.Error("should not generate declarations when type inference fails")
+	if len(decls) == 0 {
+		t.Error("expected declarations to be generated with interface{} fallback")
 	}
 }
 
@@ -496,16 +496,16 @@ func TestConstructor_OkWithFunctionCall(t *testing.T) {
 	}
 
 	// CRITICAL FIX #3: Function calls now fail type inference without go/types
-	// Should report error and not generate declarations
+	// CRITICAL FIX #5 (Code Review): Uses interface{} fallback instead of reporting error
 	errors := p.ctx.GetErrors()
-	if len(errors) == 0 {
-		t.Error("expected error to be reported for Ok with function call (no go/types)")
+	if len(errors) != 0 {
+		t.Errorf("expected no errors (should use interface{} fallback), got %d errors", len(errors))
 	}
 
-	// No declarations should be generated when type inference fails
+	// Should generate declarations using interface{} fallback
 	decls := p.GetPendingDeclarations()
-	if len(decls) > 0 {
-		t.Error("should not generate declarations when type inference fails")
+	if len(decls) == 0 {
+		t.Error("expected declarations to be generated with interface{} fallback")
 	}
 }
 

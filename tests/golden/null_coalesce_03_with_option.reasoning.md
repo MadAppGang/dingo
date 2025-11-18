@@ -1,6 +1,7 @@
 ---
 title: "🛡️ Null coalescing operator with Option<T> types"
 category: "Operators"
+category_order: 80
 subcategory: "Null Coalescing"
 test_id: "null_coalesce_03_with_option"
 order: 3

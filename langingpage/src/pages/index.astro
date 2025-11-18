@@ -1,31 +1,74 @@
 ---
 // Fetch real Dingo examples and pass to React App
 import App from '../components/react/App';
-import '../styles/tailwind-v4.css';
+import AuthStateListener from '../components/react/AuthStateListener';
+import { SignInButton } from '../components/react/SignInButton';
+import AuthError from '../components/react/AuthError';
+import '../styles/global.css';
 import '../styles/nav-classes.css'; // Explicit navigation classes for Tailwind v4
+import '../styles/shiki-markdown.css'; // Server-rendered code and markdown styling
 import { getCollection } from 'astro:content';
+import { codeToHtml } from 'shiki';
+import { marked } from 'marked';
 
 // Fetch all golden examples
 const allExamples = await getCollection('golden-examples');
 
-// Sort by order
-const sortedExamples = allExamples.sort((a, b) => a.data.order - b.data.order);
+// Sort by category_order first (showcase=0 appears first), then by order within category
+const sortedExamples = allExamples.sort((a, b) => {
+  // Primary sort: by category_order (showcase=0 is first)
+  const categoryOrderA = a.data.category_order ?? 999; // Default to end if missing
+  const categoryOrderB = b.data.category_order ?? 999;
 
-// Format for React App component (matching the structure it expects)
-const formattedExamples = sortedExamples.map((example, index) => ({
-  id: index + 1,
-  title: example.data.title,
-  language: 'go', // Dingo transpiles to Go
-  description: example.data.description || `## ${example.data.category}\n\nExample showing ${example.data.title.toLowerCase()}.`,
-  before: example.data.dingoCode,
-  after: example.data.goCode,
-  // New metadata from frontmatter
-  category: example.data.category,
-  subcategory: example.data.subcategory,
-  summary: example.data.summary,
-  complexity: example.data.complexity,
-  reasoning: example.data.reasoning,
-}));
+  if (categoryOrderA !== categoryOrderB) {
+    return categoryOrderA - categoryOrderB;
+  }
+
+  // Secondary sort: by example order within category
+  return a.data.order - b.data.order;
+});
+
+// Pre-render code blocks and markdown on server using Shiki + marked
+// This eliminates the need for react-syntax-highlighter and react-markdown
+const formattedExamples = await Promise.all(
+  sortedExamples.map(async (example, index) => {
+    // Render code blocks with Shiki (server-side, zero JS)
+    const beforeHtml = await codeToHtml(example.data.dingoCode, {
+      lang: 'go',
+      theme: 'dark-plus',
+    });
+
+    const afterHtml = await codeToHtml(example.data.goCode, {
+      lang: 'go',
+      theme: 'dark-plus',
+    });
+
+    // Render markdown with marked (server-side, zero JS)
+    const reasoningHtml = example.data.reasoning
+      ? await marked(example.data.reasoning, {
+          gfm: true,
+          breaks: true,
+        })
+      : null;
+
+    return {
+      id: index + 1,
+      title: example.data.title,
+      language: 'go',
+      description: example.data.description || `## ${example.data.category}\n\nExample showing ${example.data.title.toLowerCase()}.`,
+      // Send pre-rendered HTML instead of raw code
+      beforeHtml,
+      afterHtml,
+      reasoningHtml,
+      // Metadata
+      category: example.data.category,
+      subcategory: example.data.subcategory,
+      summary: example.data.summary,
+      complexity: example.data.complexity,
+      slug: example.id, // Use the collection ID as URL slug (e.g., "showcase_01_api_server")
+    };
+  })
+);
 ---
 
 <!DOCTYPE html>
@@ -59,6 +102,19 @@ const formattedExamples = sortedExamples.map((example, index) => ({
   <meta name="twitter:image" content="https://dingolang.com/og-image.png" />
 </head>
 <body>
+  <!-- Auth State Listener: client:load (CRITICAL - must run immediately) -->
+  <!-- Reference: ai-docs/02-islands-architecture.md - Critical island -->
+  <AuthStateListener client:load />
+
+  <!-- Authentication Button - Fixed top-right corner, always floating on top -->
+  <!-- Following ai-docs/02-islands-architecture.md: client:load for critical, above-fold UI -->
+  <SignInButton client:load />
+
+  <!-- Auth Error Display - Fixed top-center for visibility -->
+  <div class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50">
+    <AuthError client:load />
+  </div>
+
   <!-- Pass real Dingo examples to React App -->
   <App examples={formattedExamples} client:load />
 </body>

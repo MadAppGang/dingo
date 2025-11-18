@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation in return expressions with ? operator"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_03_expression"
 order: 3

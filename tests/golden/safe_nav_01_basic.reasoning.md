@@ -1,6 +1,7 @@
 ---
 title: "🧭 Basic safe navigation operator for nil checking"
 category: "Operators"
+category_order: 90
 subcategory: "Safe Navigation"
 test_id: "safe_nav_01_basic"
 order: 1

@@ -53,6 +53,7 @@ func TestGoldenFiles(t *testing.T) {
 		t.Run(baseName, func(t *testing.T) {
 			// Skip tests that require parser/transpiler features not yet implemented
 			skipPrefixes := []string{
+				"showcase_",        // Aspirational files demonstrating ALL planned features (not for testing)
 				"func_util_",       // Parser doesn't support function types in parameters
 				"lambda_",          // Lambda causes nil positioner crash in type checker
 				"sum_types_",       // Type checker crashes on method receivers in generated code

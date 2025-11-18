@@ -1,6 +1,7 @@
 ---
 title: "🪄 Multiline lambda functions with block syntax"
 category: "Functional Programming"
+category_order: 50
 subcategory: "Lambda Functions"
 test_id: "lambda_02_multiline"
 order: 2

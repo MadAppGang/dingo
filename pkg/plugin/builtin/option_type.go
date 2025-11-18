@@ -938,7 +938,20 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 
 // inferNoneTypeFromContext attempts to infer the Option<T> type from surrounding context
 //
-// Strategy:
+// LIMITATION (Phase 3): Full context-based None inference requires AST parent tracking
+// and complete go/types integration, which is planned for Phase 4.
+//
+// Current Behavior:
+// - Relies on TypeInferenceService.InferTypeFromContext() (currently a stub)
+// - WITHOUT go/types context: Always fails, user MUST use explicit type annotations
+// - WITH go/types context (Phase 4+): Will infer from assignment/return/parameter types
+//
+// Workarounds for Phase 3:
+// 1. Explicit type annotation: let x: Option<int> = None
+// 2. Explicit constructor: Option_int_None()
+// 3. Assignment to typed variable: var x Option_int = None (requires go/types)
+//
+// Strategy (when fully implemented in Phase 4):
 // 1. Walk up the AST to find parent nodes
 // 2. Analyze parent context (assignment, return, call)
 // 3. Extract type information from context
@@ -970,9 +983,9 @@ func (p *OptionTypePlugin) inferNoneTypeFromContext(noneIdent *ast.Ident) (strin
 	// This is a simplified implementation - full implementation requires
 	// AST visitor pattern with parent tracking
 
-	// For Phase 3, we'll rely on go/types inference
-	// If that fails, the user must use explicit syntax
-	p.ctx.Logger.Debug("None type inference: go/types not available or context not found")
+	// PHASE 3 LIMITATION: InferTypeFromContext() is a stub that always returns false
+	// Users must use explicit type annotations until Phase 4
+	p.ctx.Logger.Debug("None type inference: go/types not available or context not found (Phase 3 limitation)")
 	return "", false
 }
 

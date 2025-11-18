@@ -1,6 +1,7 @@
 ---
 title: "🎭 Multiple enum definitions in single file"
 category: "Type System"
+category_order: 20
 subcategory: "Sum Types"
 test_id: "sum_types_04_multiple"
 order: 4

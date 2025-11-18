@@ -8,13 +8,39 @@ import { marked } from 'marked';
 const manifestoPath = join(process.cwd(), '..', 'MANIFESTO.md');
 const manifestoContent = readFileSync(manifestoPath, 'utf-8');
 
-// Configure marked for better rendering
-marked.setOptions({
+// Helper function to generate heading IDs
+function generateId(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Create custom renderer to add IDs to headings
+const renderer = {
+  heading({ text, depth }: { text: string; depth: number }) {
+    const id = generateId(text);
+    return `<h${depth} id="${id}">${text}</h${depth}>`;
+  }
+};
+
+// Configure marked with custom renderer
+marked.use({
+  renderer,
   gfm: true, // GitHub Flavored Markdown
   breaks: false,
-  headerIds: true,
   mangle: false,
 });
+
+// Parse markdown to extract headings for TOC
+const tokens = marked.lexer(manifestoContent);
+const headings = tokens
+  .filter((token) => token.type === 'heading' && (token.depth === 2 || token.depth === 3))
+  .map((token) => ({
+    depth: token.depth,
+    text: token.text,
+    id: generateId(token.text),
+  }));
 
 // Convert markdown to HTML
 const manifestoHtml = marked.parse(manifestoContent);
@@ -76,33 +102,85 @@ const manifestoHtml = marked.parse(manifestoContent);
     </div>
   </nav>
 
-  <!-- Manifesto Content -->
-  <main class="max-w-4xl mx-auto px-6 py-12">
-    <article class="bg-white rounded-lg shadow-sm p-8 md:p-12">
-      <!-- Rendered markdown content -->
-      <div class="manifesto-content" set:html={manifestoHtml} />
-    </article>
+  <!-- Manifesto Content with TOC -->
+  <div class="manifesto-layout-container">
+    <!-- Desktop TOC Sidebar -->
+    <aside class="toc-sidebar">
+      <nav class="toc-nav">
+        <h2 class="toc-title">Contents</h2>
+        <ul class="toc-list">
+          {headings.map((heading) => (
+            <li class={`toc-item toc-depth-${heading.depth}`}>
+              <a href={`#${heading.id}`} class="toc-link" data-heading-id={heading.id}>
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
 
-    <!-- Call to Action -->
-    <div class="mt-12 text-center">
-      <div class="inline-flex flex-col sm:flex-row gap-4">
-        <a
-          href="https://github.com/MadAppGang/dingo"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Star on GitHub
-        </a>
-        <a
-          href="/"
-          class="inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
-          Explore Examples
-        </a>
+    <!-- Mobile TOC Toggle Button -->
+    <button class="toc-mobile-toggle" aria-label="Toggle table of contents">
+      <svg class="toc-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+      <span>Contents</span>
+    </button>
+
+    <!-- Mobile TOC Overlay -->
+    <div class="toc-mobile-overlay">
+      <div class="toc-mobile-panel">
+        <div class="toc-mobile-header">
+          <h2 class="toc-mobile-title">Contents</h2>
+          <button class="toc-mobile-close" aria-label="Close table of contents">
+            <svg class="toc-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <nav class="toc-mobile-nav">
+          <ul class="toc-list">
+            {headings.map((heading) => (
+              <li class={`toc-item toc-depth-${heading.depth}`}>
+                <a href={`#${heading.id}`} class="toc-link" data-heading-id={heading.id}>
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </div>
-  </main>
+
+    <!-- Main Article -->
+    <main class="toc-main-content">
+      <article class="bg-white rounded-lg shadow-sm p-8 md:p-12">
+        <!-- Rendered markdown content -->
+        <div class="manifesto-content" set:html={manifestoHtml} />
+      </article>
+
+      <!-- Call to Action -->
+      <div class="mt-12 text-center">
+        <div class="inline-flex flex-col sm:flex-row gap-4">
+          <a
+            href="https://github.com/MadAppGang/dingo"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Star on GitHub
+          </a>
+          <a
+            href="/"
+            class="inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            Explore Examples
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <!-- Footer -->
   <footer class="max-w-4xl mx-auto px-6 py-12 text-center text-gray-600 text-sm">
@@ -449,4 +527,342 @@ const manifestoHtml = marked.parse(manifestoContent);
       font-size: 1.5rem !important;
     }
   }
+
+  /* Table of Contents Styles */
+
+  /* Mobile-first: no sidebar, full-width content */
+  .manifesto-layout-container {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .toc-sidebar {
+    display: none;
+  }
+
+  .toc-main-content {
+    width: 100%;
+  }
+
+  /* Desktop: sidebar + content layout */
+  @media (min-width: 1024px) {
+    .manifesto-layout-container {
+      max-width: 80rem;
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      gap: 3rem;
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+
+    .toc-sidebar {
+      display: block;
+      position: sticky;
+      top: 7rem; /* Match scroll-padding-top for consistency */
+      height: fit-content;
+      max-height: calc(100vh - 9rem);
+      overflow-y: auto;
+      padding-right: 1rem;
+    }
+
+    .toc-main-content {
+      max-width: 56rem;
+      margin: 0 auto;
+    }
+  }
+
+  .toc-nav {
+    /* Sidebar parent already sticky, no need for nested sticky */
+  }
+
+  .toc-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toc-item {
+    margin-bottom: 0.5rem;
+  }
+
+  .toc-depth-3 {
+    margin-left: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .toc-link {
+    display: block;
+    color: #6b7280;
+    text-decoration: none;
+    padding: 0.25rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.75rem;
+    margin-left: -0.75rem;
+    transition: all 0.2s;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .toc-link:hover {
+    color: #2563eb;
+    border-left-color: #93c5fd;
+  }
+
+  .toc-link.active {
+    color: #2563eb;
+    font-weight: 600;
+    border-left-color: #2563eb;
+  }
+
+  /* Mobile Toggle Button */
+  .toc-mobile-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: linear-gradient(to right, #2563eb, #4f46e5);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 9999px;
+    border: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    z-index: 40;
+    transition: all 0.2s;
+  }
+
+  .toc-mobile-toggle:hover {
+    background: linear-gradient(to right, #3b82f6, #6366f1);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: scale(1.05);
+  }
+
+  @media (min-width: 1024px) {
+    .toc-mobile-toggle {
+      display: none;
+    }
+  }
+
+  .toc-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  /* Mobile Overlay */
+  .toc-mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    animation: fadeIn 0.2s;
+  }
+
+  .toc-mobile-overlay.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .toc-mobile-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 20rem;
+    background: white;
+    box-shadow: -10px 0 15px -3px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.2s;
+    overflow-y: auto;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .toc-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+  }
+
+  .toc-mobile-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .toc-mobile-close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.2s;
+  }
+
+  .toc-mobile-close:hover {
+    color: #111827;
+  }
+
+  .toc-mobile-nav {
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .toc-mobile-overlay {
+      display: none !important;
+    }
+  }
+
+  /* Smooth scrolling with offset for sticky nav */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 7rem; /* Account for sticky nav bar height */
+  }
+
+  /* Hide scrollbar for TOC sidebar but keep functionality */
+  .toc-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .toc-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .toc-sidebar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+
+  .toc-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
 </style>
+
+<script>
+  // Mobile TOC toggle functionality
+  const mobileToggle = document.querySelector('.toc-mobile-toggle');
+  const mobileOverlay = document.querySelector('.toc-mobile-overlay');
+  const mobileClose = document.querySelector('.toc-mobile-close');
+
+  function openMobileToc() {
+    mobileOverlay?.classList.add('active');
+  }
+
+  function closeMobileToc() {
+    mobileOverlay?.classList.remove('active');
+  }
+
+  mobileToggle?.addEventListener('click', openMobileToc);
+  mobileClose?.addEventListener('click', closeMobileToc);
+  mobileOverlay?.addEventListener('click', (e) => {
+    if (e.target === mobileOverlay) {
+      closeMobileToc();
+    }
+  });
+
+  // Close mobile TOC when clicking a link
+  const mobileTocLinks = document.querySelectorAll('.toc-mobile-overlay .toc-link');
+  mobileTocLinks.forEach((link) => {
+    link.addEventListener('click', closeMobileToc);
+  });
+
+  // Smooth scroll to section when clicking TOC links
+  const allTocLinks = document.querySelectorAll('.toc-link');
+  allTocLinks.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = link.getAttribute('data-heading-id');
+      if (targetId) {
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Update URL without triggering navigation
+          history.pushState(null, '', `#${targetId}`);
+        }
+      }
+    });
+  });
+
+  // Active section highlighting on scroll
+  const tocLinks = document.querySelectorAll('.toc-link');
+  const headingElements = Array.from(tocLinks)
+    .map((link) => {
+      const id = link.getAttribute('data-heading-id');
+      return id ? document.getElementById(id) : null;
+    })
+    .filter(Boolean) as HTMLElement[];
+
+  function updateActiveLink() {
+    // Find the current section based on scroll position
+    let currentId = '';
+    const scrollY = window.scrollY;
+    const offset = 150; // Offset for sticky nav
+
+    for (const heading of headingElements) {
+      const rect = heading.getBoundingClientRect();
+      const absoluteTop = scrollY + rect.top;
+
+      if (absoluteTop - offset <= scrollY) {
+        currentId = heading.id;
+      }
+    }
+
+    // Update active states
+    tocLinks.forEach((link) => {
+      const headingId = link.getAttribute('data-heading-id');
+      if (headingId === currentId) {
+        link.classList.add('active');
+      } else {
+        link.classList.remove('active');
+      }
+    });
+  }
+
+  // Update on scroll with throttling
+  let scrollTimeout: number | undefined;
+  window.addEventListener('scroll', () => {
+    if (scrollTimeout) {
+      window.clearTimeout(scrollTimeout);
+    }
+    scrollTimeout = window.setTimeout(updateActiveLink, 50);
+  });
+
+  // Initial update
+  updateActiveLink();
+</script>

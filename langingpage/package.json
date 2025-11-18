@@ -30,26 +30,25 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
+    "@nanostores/react": "^1.0.0",
     "@tailwindcss/vite": "^4.1.17",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
     "astro": "^5.15.8",
+    "firebase": "^12.6.0",
     "gray-matter": "^4.0.3",
     "isomorphic-dompurify": "^2.32.0",
     "lucide-react": "^0.553.0",
     "marked": "^17.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^16.1.0",
-    "remark-gfm": "^4.0.1",
+    "nanostores": "^1.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "sharp": "^0.34.5",
     "shiki": "^3.15.0",
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "typescript": "^5.9.3"
   }
 }

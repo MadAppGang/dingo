@@ -1,6 +1,7 @@
 ---
 title: "⚖️ Nested ternary operators for multi-way conditionals"
 category: "Control Flow"
+category_order: 70
 subcategory: "Ternary Operator"
 test_id: "ternary_02_nested"
 order: 2

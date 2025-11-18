@@ -1,6 +1,7 @@
 ---
 title: "📦 Basic tuple types and literals"
 category: "Data Structures"
+category_order: 100
 subcategory: "Tuples"
 test_id: "tuples_01_basic"
 order: 1

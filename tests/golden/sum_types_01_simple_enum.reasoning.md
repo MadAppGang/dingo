@@ -1,6 +1,7 @@
 ---
 title: "🎭 Simple enum with unit variants"
 category: "Type System"
+category_order: 20
 subcategory: "Sum Types"
 test_id: "sum_types_01_simple"
 order: 1

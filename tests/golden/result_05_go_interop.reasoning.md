@@ -1,6 +1,7 @@
 ---
 title: "🎁 Result type interoperability with Go standard library"
 category: "Error Handling"
+category_order: 30
 subcategory: "Result Type"
 test_id: "result_05_go_interop"
 order: 5

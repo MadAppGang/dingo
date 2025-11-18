@@ -1,6 +1,7 @@
 ---
 title: "⚖️ Complex ternary expressions with function calls"
 category: "Control Flow"
+category_order: 70
 subcategory: "Ternary Operator"
 test_id: "ternary_03_complex"
 order: 3

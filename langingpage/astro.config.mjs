@@ -28,6 +28,15 @@ export default defineConfig({
       cssMinify: true,      // Minify CSS
     },
 
+    // Configure esbuild to suppress CSS warnings from Tailwind arbitrary values
+    // Tailwind's [file:line] syntax generates {file:line} CSS which esbuild
+    // incorrectly flags as an unknown CSS property. This is a false positive.
+    esbuild: {
+      logOverride: {
+        'unsupported-css-property': 'silent',
+      },
+    },
+
     plugins: [tailwindcss()],
   },
 

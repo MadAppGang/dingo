@@ -1,6 +1,7 @@
 ---
 title: "📦 Nested tuples and complex destructuring"
 category: "Data Structures"
+category_order: 100
 subcategory: "Tuples"
 test_id: "tuples_03_nested"
 order: 3

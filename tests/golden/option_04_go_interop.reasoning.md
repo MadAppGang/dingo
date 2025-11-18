@@ -1,6 +1,7 @@
 ---
 title: "❓ Option type interoperability with Go nil pointers"
 category: "Type System"
+category_order: 40
 subcategory: "Option Type"
 test_id: "option_04_go_interop"
 order: 4

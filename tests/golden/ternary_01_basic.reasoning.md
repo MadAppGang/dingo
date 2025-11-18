@@ -1,6 +1,7 @@
 ---
 title: "⚖️ Basic ternary conditional operator"
 category: "Control Flow"
+category_order: 70
 subcategory: "Ternary Operator"
 test_id: "ternary_01_basic"
 order: 1

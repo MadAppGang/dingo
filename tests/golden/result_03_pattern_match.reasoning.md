@@ -1,6 +1,7 @@
 ---
 title: "🎁 Result type with pattern matching for exhaustive error handling"
 category: "Error Handling"
+category_order: 30
 subcategory: "Result Type"
 test_id: "result_03_pattern_match"
 order: 3

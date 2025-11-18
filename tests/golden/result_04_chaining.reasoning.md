@@ -1,6 +1,7 @@
 ---
 title: "🎁 Result type with method chaining combinators"
 category: "Error Handling"
+category_order: 30
 subcategory: "Result Type"
 test_id: "result_04_chaining"
 order: 4

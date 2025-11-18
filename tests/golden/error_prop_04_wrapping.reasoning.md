@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation with context wrapping using ? operator"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_04_wrapping"
 order: 4

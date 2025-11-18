@@ -1,25 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CodeComparison } from './CodeComparison';
 import logoImage from '../../assets/dingo-logo.png';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 interface Example {
   id: number;
   title: string;
   language: string;
   description: string;
-  before: string;
-  after: string;
+  // Pre-rendered HTML from server (Shiki + marked)
+  beforeHtml: string;
+  afterHtml: string;
+  reasoningHtml?: string | null;
   category?: string;
   subcategory?: string;
   summary?: string;
   complexity?: string;
   order?: number;
-  reasoning?: string;
+  slug?: string; // URL-friendly identifier
 }
 
 interface AppProps {
@@ -59,9 +57,54 @@ function groupExamples(examples: Example[]) {
 }
 
 export default function App({ examples }: AppProps) {
-  const [selectedId, setSelectedId] = useState(1);
+  // Find the Complete API Server showcase by slug (most reliable)
+  const apiServerExample = examples.find(ex => ex.slug === 'showcase_01_api_server');
+  const defaultId = apiServerExample?.id || 1;
+
+  const [selectedId, setSelectedId] = useState(defaultId);
+  const hasReadHash = useRef(false);
 
   const groupedExamples = groupExamples(examples);
+
+  // Read initial hash on mount (only once, when examples are available)
+  useEffect(() => {
+    if (hasReadHash.current || examples.length === 0) return;
+
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const example = examples.find(ex => ex.slug === hash);
+      if (example) {
+        setSelectedId(example.id);
+      }
+    }
+    hasReadHash.current = true;
+  }, [examples]); // Run when examples change, but only once thanks to ref
+
+  // Update URL hash when selection changes
+  useEffect(() => {
+    const selectedExample = examples.find(ex => ex.id === selectedId);
+    if (selectedExample?.slug) {
+      window.history.replaceState(null, '', `#${selectedExample.slug}`);
+    }
+  }, [selectedId, examples]);
+
+  // Listen for hash changes (e.g., browser back/forward)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        const example = examples.find(ex => ex.slug === hash);
+        if (example) {
+          setSelectedId(example.id);
+        }
+      } else {
+        setSelectedId(defaultId);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [examples, defaultId]);
 
   // Auto-expand all categories by default
   const allCategories = Object.keys(groupedExamples);
@@ -199,78 +242,18 @@ export default function App({ examples }: AppProps) {
         
         <div className="flex-1 overflow-auto pt-8">
           <CodeComparison
-            before={selectedExample.before}
-            after={selectedExample.after}
-            language={selectedExample.language}
+            beforeHtml={selectedExample.beforeHtml}
+            afterHtml={selectedExample.afterHtml}
           />
-          
-          {/* Reasoning content for this example */}
+
+          {/* Reasoning content for this example (pre-rendered markdown from server) */}
           <div className="p-8 bg-white">
-            <div className="max-w-4xl mx-auto markdown-content">
-              {selectedExample.reasoning || selectedExample.description ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h1: ({node, ...props}) => <h1 className="mt-4 mb-2 text-sm" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="mt-4 mb-2 text-sm" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="mt-3 mb-1 text-xs" {...props} />,
-                    h4: ({node, ...props}) => <h4 className="mt-3 mb-1 text-xs" {...props} />,
-                    p: ({node, ...props}) => <p className="mb-2 text-gray-700 leading-relaxed text-xs" {...props} />,
-                    ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc text-gray-700 text-xs" {...props} />,
-                    ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal text-gray-700 text-xs" {...props} />,
-                    li: ({node, ...props}) => <li className="mb-1 text-xs" {...props} />,
-                    code: ({node, className, children, ...props}: any) => {
-                      const inline = !className;
-                      const match = /language-(\w+)/.exec(className || '');
-                      const language = match ? match[1] : '';
-
-                      if (!inline && language) {
-                        // Block code with language - use syntax highlighter
-                        return (
-                          <SyntaxHighlighter
-                            language={language === 'dingo' ? 'go' : language}
-                            style={vscDarkPlus}
-                            customStyle={{
-                              margin: '0.5rem 0',
-                              padding: '1rem',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.75rem',
-                              lineHeight: '1.5',
-                            }}
-                            showLineNumbers={false}
-                            PreTag="div"
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        );
-                      }
-
-                      // Inline code or code without language
-                      return inline ? (
-                        <code className="inline-block bg-gray-100 px-1 py-0.5 rounded text-xs text-gray-800" {...props}>
-                          {children}
-                        </code>
-                      ) : (
-                        <code className="bg-gray-100 p-2 rounded text-xs overflow-x-auto block" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                    pre: ({node, ...props}) => <pre className="mb-2 bg-gray-100 p-2 rounded overflow-x-auto text-xs" {...props} />,
-                    a: ({node, ...props}) => <a className="text-blue-600 hover:underline text-xs" {...props} />,
-                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600 mb-2 text-xs" {...props} />,
-                    img: ({node, ...props}) => <img className="max-w-full h-auto rounded my-2" {...props} />,
-                    hr: ({node, ...props}) => <hr className="my-4 border-gray-200" {...props} />,
-                    table: ({node, ...props}) => <table className="mb-2 border-collapse w-full text-xs" {...props} />,
-                    thead: ({node, ...props}) => <thead className="bg-gray-50" {...props} />,
-                    tbody: ({node, ...props}) => <tbody {...props} />,
-                    tr: ({node, ...props}) => <tr className="border-b border-gray-200" {...props} />,
-                    th: ({node, ...props}) => <th className="px-2 py-1 text-left text-xs" {...props} />,
-                    td: ({node, ...props}) => <td className="px-2 py-1 text-gray-700 text-xs" {...props} />,
-                  }}
-                >
-                  {selectedExample.reasoning || selectedExample.description}
-                </ReactMarkdown>
+            <div className="max-w-4xl mx-auto prose prose-sm prose-gray">
+              {selectedExample.reasoningHtml ? (
+                <div
+                  className="markdown-content"
+                  dangerouslySetInnerHTML={{ __html: selectedExample.reasoningHtml }}
+                />
               ) : (
                 <p className="text-gray-500 text-xs">No reasoning documentation available for this example.</p>
               )}

@@ -2,6 +2,90 @@
 
 This file contains instructions and context for Claude AI agents working on the Dingo project.
 
+## ⚠️ CRITICAL: Token Budget Enforcement (READ FIRST)
+
+**EVERY action must pass this pre-check:**
+
+### Token Budget Limits (HARD LIMITS)
+
+| Operation | Limit | Violation Remedy |
+|-----------|-------|------------------|
+| File reads per message | 2 files OR 200 lines total | Delegate to agent |
+| Bash output | 50 lines | Use `head -50` OR delegate |
+| Grep results | 20 matches | Use `head_limit: 20` OR delegate |
+| Agent response summary | 5 sentences max | Agent MUST compress |
+
+**IF ANY LIMIT EXCEEDED → MUST delegate to agent instead**
+
+### Pre-Check Decision Tree
+
+```
+┌─────────────────────────────────────────┐
+│ Before EVERY action, ask:               │
+└─────────────────────────────────────────┘
+                   ↓
+    [Will this exceed token budget?]
+         /
+       YES         NO
+        │           │
+        │           ↓
+        │    [Is it multi-step task?]
+        │         /
+        │       YES         NO
+        │        │           │
+        │        │           ↓
+        │        │    Execute directly
+        │        │    (simple query/file op)
+        │        │
+        ↓        ↓
+   Use Task tool (delegate to agent)
+        │
+        ↓
+   Read ONLY summary (< 100 lines)
+```
+
+### Forbidden Patterns in Main Chat
+
+**❌ NEVER DO THESE:**
+
+1. **Reading Multiple Code Files**
+   - ❌ Read 3+ files in one conversation turn
+   - ✅ Delegate to agent → Read summary only
+
+2. **Implementing Code**
+   - ❌ Edit multiple files directly
+   - ✅ Delegate to golang-developer → Read summary
+
+3. **Running Tests**
+   - ❌ Show full test output (>50 lines)
+   - ✅ Delegate to golang-tester → Read summary
+
+4. **Searching Codebase**
+   - ❌ Multiple Grep calls, reading results
+   - ✅ Delegate to Explore agent → Read summary
+
+### Mandatory Pattern: Session Folders
+
+For ANY multi-step task:
+
+```bash
+# Create session immediately
+SESSION=$(date +%Y%m%d-%H%M%S)
+mkdir -p ai-docs/sessions/$SESSION/{input,output}
+
+# Write user request
+echo "Request: ..." > ai-docs/sessions/$SESSION/input/request.md
+
+# Delegate with file paths
+Task → agent:
+  Input: ai-docs/sessions/$SESSION/input/request.md
+  Output: ai-docs/sessions/$SESSION/output/summary.txt
+
+# Main chat reads ONLY summary
+```
+
+**Main chat NEVER reads detail files (unless presenting to user).**
+
 ## Project Structure Rules
 
 ### Root Directory (Minimal)

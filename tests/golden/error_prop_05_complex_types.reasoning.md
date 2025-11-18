@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation with complex return types"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_05_complex_types"
 order: 5

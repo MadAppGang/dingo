@@ -1,6 +1,7 @@
 ---
 title: "🎨 Filter function for selecting collection elements"
 category: "Functional Programming"
+category_order: 110
 subcategory: "Functional Utilities"
 test_id: "func_util_02_filter"
 order: 2

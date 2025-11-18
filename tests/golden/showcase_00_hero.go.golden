@@ -1,0 +1,62 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+)
+
+type User struct {
+	ID    int
+	Name  string
+	Email string
+}
+
+func validateEmail(email string) (string, error) {
+	if email == "" {
+		return "", errors.New("email required")
+	}
+	return email, nil
+}
+
+func fetchUser(id int) (*User, error) {
+
+	if id <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
+	return &User{ID: id, Name: "Alice", Email: "alice@example.com"}, nil
+}
+
+func getUserData(id int, email string) (*User, error) {
+	__tmp0, __err0 := validateEmail(email)
+
+	// dingo:s:1
+	if __err0 != nil {
+		return nil, __err0
+	}
+	// dingo:e:1
+
+	var validEmail = __tmp0
+	__tmp1, __err1 := fetchUser(id)
+
+	// dingo:s:1
+	if __err1 != nil {
+		return nil, __err1
+	}
+	// dingo:e:1
+
+	var user = __tmp1
+
+	user.Email = validEmail
+	return user, nil
+}
+
+func handleGetUser(w http.ResponseWriter, r *http.Request) {
+	user, err := getUserData(42, "alice@example.com")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
+}

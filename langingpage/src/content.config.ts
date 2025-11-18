@@ -22,9 +22,10 @@ const goldenExamples = defineCollection({
 
     // New frontmatter metadata
     category: z.string().optional(),
+    category_order: z.number().optional(), // Controls category sorting on landing page
     subcategory: z.string().optional(),
     test_id: z.string().optional(),
-    order: z.number(),
+    order: z.number(), // Controls example order within category
 
     // Classification
     complexity: z.enum(['basic', 'intermediate', 'advanced']).optional(),

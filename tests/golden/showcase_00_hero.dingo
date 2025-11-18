@@ -1,0 +1,49 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+)
+
+type User struct {
+	ID    int
+	Name  string
+	Email string
+}
+
+// Validation with explicit error returns
+func validateEmail(email: string) (string, error) {
+	if email == "" {
+		return "", errors.New("email required")
+	}
+	return email, nil
+}
+
+func fetchUser(id: int) (*User, error) {
+	// Simulate DB lookup
+	if id <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
+	return &User{ID: id, Name: "Alice", Email: "alice@example.com"}, nil
+}
+
+// Clean error handling with ? operator
+// Notice: Zero manual error checks!
+func getUserData(id: int, email: string) (*User, error) {
+	let validEmail = validateEmail(email)?
+	let user = fetchUser(id)?
+
+	user.Email = validEmail
+	return user, nil
+}
+
+func handleGetUser(w http.ResponseWriter, r *http.Request) {
+	user, err := getUserData(42, "alice@example.com")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
+}

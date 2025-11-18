@@ -1,6 +1,7 @@
 ---
 title: "📦 Tuple destructuring in assignments and patterns"
 category: "Data Structures"
+category_order: 100
 subcategory: "Tuples"
 test_id: "tuples_02_destructure"
 order: 2

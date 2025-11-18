@@ -1,6 +1,7 @@
 ---
 title: "🎭 Nested sum types with recursive structures"
 category: "Type System"
+category_order: 20
 subcategory: "Sum Types"
 test_id: "sum_types_05_nested"
 order: 5

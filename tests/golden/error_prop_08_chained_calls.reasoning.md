@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation with chained method calls and multiple ? operators"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_08_chained_calls"
 order: 8

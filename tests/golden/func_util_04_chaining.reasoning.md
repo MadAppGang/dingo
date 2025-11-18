@@ -1,6 +1,7 @@
 ---
 title: "🎨 Chained functional utilities for data pipelines"
 category: "Functional Programming"
+category_order: 110
 subcategory: "Functional Utilities"
 test_id: "func_util_04_chaining"
 order: 4

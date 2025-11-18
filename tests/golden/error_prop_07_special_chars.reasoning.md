@@ -1,6 +1,7 @@
 ---
 title: "⚡ Error propagation with special characters in error messages"
 category: "Error Handling"
+category_order: 10
 subcategory: "Error Propagation"
 test_id: "error_prop_07_special_chars"
 order: 7

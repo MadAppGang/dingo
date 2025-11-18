@@ -1,6 +1,7 @@
 ---
 title: "🧭 Safe navigation with method calls on optional receivers"
 category: "Operators"
+category_order: 90
 subcategory: "Safe Navigation"
 test_id: "safe_nav_03_with_methods"
 order: 3

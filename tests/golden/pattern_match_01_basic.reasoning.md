@@ -1,6 +1,7 @@
 ---
 title: "🎯 Basic pattern matching with match expression"
 category: "Control Flow"
+category_order: 60
 subcategory: "Pattern Matching"
 test_id: "pattern_match_01_basic"
 order: 1

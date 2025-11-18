@@ -1,0 +1,239 @@
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+)
+
+// Sum type for user status - manual tagged union with ALL the boilerplate
+type UserStatusTag uint8
+
+const (
+	UserStatusTag_Active UserStatusTag = iota
+	UserStatusTag_Pending
+	UserStatusTag_Suspended
+)
+
+type UserStatus struct {
+	tag UserStatusTag
+}
+
+// Constructor functions
+func UserStatus_Active() UserStatus {
+	return UserStatus{tag: UserStatusTag_Active}
+}
+
+func UserStatus_Pending() UserStatus {
+	return UserStatus{tag: UserStatusTag_Pending}
+}
+
+func UserStatus_Suspended() UserStatus {
+	return UserStatus{tag: UserStatusTag_Suspended}
+}
+
+// Helper methods for type checking
+func (s UserStatus) IsActive() bool {
+	return s.tag == UserStatusTag_Active
+}
+
+func (s UserStatus) IsPending() bool {
+	return s.tag == UserStatusTag_Pending
+}
+
+func (s UserStatus) IsSuspended() bool {
+	return s.tag == UserStatusTag_Suspended
+}
+
+// String method for debugging/logging
+func (s UserStatus) String() string {
+	switch s.tag {
+	case UserStatusTag_Active:
+		return "Active"
+	case UserStatusTag_Pending:
+		return "Pending"
+	case UserStatusTag_Suspended:
+		return "Suspended"
+	default:
+		return "Unknown"
+	}
+}
+
+// MarshalJSON for JSON serialization
+func (s UserStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
+// UnmarshalJSON for JSON deserialization
+func (s *UserStatus) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+
+	switch str {
+	case "Active":
+		s.tag = UserStatusTag_Active
+	case "Pending":
+		s.tag = UserStatusTag_Pending
+	case "Suspended":
+		s.tag = UserStatusTag_Suspended
+	default:
+		return errors.New("invalid UserStatus: " + str)
+	}
+	return nil
+}
+
+// Domain models
+type User struct {
+	ID       int
+	Username string
+	Email    string
+	Status   UserStatus
+}
+
+type RegisterRequest struct {
+	Username string
+	Email    string
+	Password string
+}
+
+// Validation functions - traditional Go error handling
+func validateEmail(email string) (string, error) {
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return "", errors.New("invalid email format")
+	}
+	return email, nil
+}
+
+func validatePassword(password string) (string, error) {
+	if len(password) < 8 {
+		return "", errors.New("password must be at least 8 characters")
+	}
+	return password, nil
+}
+
+func validateUsername(username string) (string, error) {
+	if len(username) < 3 {
+		return "", errors.New("username must be at least 3 characters")
+	}
+	if len(username) > 20 {
+		return "", errors.New("username too long")
+	}
+	return username, nil
+}
+
+// Database operations - traditional error handling
+func checkUserExists(db *sql.DB, email string) (bool, error) {
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)"
+	err := db.QueryRow(query, email).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func hashPassword(password string) (string, error) {
+	// Simplified for example - real code would use bcrypt
+	if password == "" {
+		return "", errors.New("cannot hash empty password")
+	}
+	hashed := "hashed_" + password
+	return hashed, nil
+}
+
+func saveUser(db *sql.DB, username string, email string, hashedPwd string, status UserStatus) (int64, error) {
+	query := "INSERT INTO users (username, email, password, status) VALUES (?, ?, ?, ?)"
+	result, err := db.Exec(query, username, email, hashedPwd, status)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+// Main business logic - VERBOSE manual error handling
+// Notice: 6 manual "if err != nil" blocks! Each requires boilerplate.
+func registerUser(db *sql.DB, req RegisterRequest) (User, error) {
+	// Manual error check #1
+	email, err := validateEmail(req.Email)
+	if err != nil {
+		return User{}, err
+	}
+
+	// Manual error check #2
+	password, err := validatePassword(req.Password)
+	if err != nil {
+		return User{}, err
+	}
+
+	// Manual error check #3
+	username, err := validateUsername(req.Username)
+	if err != nil {
+		return User{}, err
+	}
+
+	// Manual error check #4
+	exists, err := checkUserExists(db, email)
+	if err != nil {
+		return User{}, err
+	}
+	if exists {
+		return User{}, errors.New("user already exists")
+	}
+
+	// Manual error check #5
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		return User{}, err
+	}
+
+	// Manual error check #6
+	id, err := saveUser(db, username, email, hashedPassword, UserStatus_Pending())
+	if err != nil {
+		return User{}, err
+	}
+
+	// Return created user with type-safe enum status
+	user := User{
+		ID:       int(id),
+		Username: username,
+		Email:    email,
+		Status:   UserStatus_Pending(),
+	}
+
+	return user, nil
+}
+
+// HTTP handler - verbose function literal (no lambda syntax)
+func handleRegister(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req RegisterRequest
+
+		// Parse request
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Process registration - manual if/else (no pattern matching)
+		user, err := registerUser(db, req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Success response
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(user)
+	}
+}

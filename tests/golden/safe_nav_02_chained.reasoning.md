@@ -1,6 +1,7 @@
 ---
 title: "🧭 Chained safe navigation through nested structures"
 category: "Operators"
+category_order: 90
 subcategory: "Safe Navigation"
 test_id: "safe_nav_02_chained"
 order: 2

@@ -316,6 +316,18 @@ INPUT FILES:
 YOUR TASK (PROXY MODE):
 1. Read the input files above to gather context
 2. Use the claudish CLI tool to delegate this review to {MODEL_NAME} (model ID: {MODEL_ID})
+
+   **CRITICAL - Timeout Configuration**:
+   When executing claudish via Bash tool, ALWAYS use:
+   ```python
+   Bash(
+       command='claudish --model {MODEL_ID} ...',
+       timeout=600000,  # 10 minutes (REQUIRED for external reviews)
+       description='External review via {MODEL_NAME}'
+   )
+   ```
+   **Why**: External reviews take 5-10 minutes. Default 2-minute timeout will fail.
+
 3. Provide the external model with:
    - Context from the input files
    - The list of changed files from changes-made.md

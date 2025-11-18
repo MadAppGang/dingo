@@ -121,8 +121,20 @@ type Context struct {
 	Registry       *Registry
 	Logger         Logger
 	CurrentFile    interface{}
-	TempVarCounter int     // Counter for generating unique temporary variable names
+	TempVarCounter int     // Counter for generating unique temporary variable names (NOT thread-safe, plugins run sequentially)
 	errors         []error // Accumulated compile errors
+}
+
+// NextTempVar generates the next unique temporary variable name
+//
+// CRITICAL FIX #6 (Code Review): Encapsulation for TempVarCounter
+//
+// Returns a string like "__tmp0", "__tmp1", etc.
+// Note: NOT thread-safe. Plugins MUST run sequentially.
+func (ctx *Context) NextTempVar() string {
+	varName := fmt.Sprintf("__tmp%d", ctx.TempVarCounter)
+	ctx.TempVarCounter++
+	return varName
 }
 
 // Config for code generation
@@ -216,11 +228,3 @@ func (ctx *Context) HasErrors() bool {
 	return len(ctx.errors) > 0
 }
 
-// NextTempVar generates a unique temporary variable name
-// Used for IIFE pattern when wrapping non-addressable expressions
-// Example: __tmp0, __tmp1, __tmp2, ...
-func (ctx *Context) NextTempVar() string {
-	name := fmt.Sprintf("__tmp%d", ctx.TempVarCounter)
-	ctx.TempVarCounter++
-	return name
-}

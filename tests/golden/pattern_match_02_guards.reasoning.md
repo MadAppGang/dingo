@@ -1,6 +1,7 @@
 ---
 title: "🎯 Pattern matching with guard clauses for conditions"
 category: "Control Flow"
+category_order: 60
 subcategory: "Pattern Matching"
 test_id: "pattern_match_02_guards"
 order: 2

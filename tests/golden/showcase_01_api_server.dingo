@@ -1,0 +1,120 @@
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"strings"
+)
+
+// Sum type for user status - no boilerplate needed!
+enum UserStatus {
+	Active,
+	Pending,
+	Suspended
+}
+
+// Domain models
+type User struct {
+	ID       int
+	Username string
+	Email    string
+	Status   UserStatus
+}
+
+type RegisterRequest struct {
+	Username string
+	Email    string
+	Password string
+}
+
+// Validation functions return Result types - explicit success/failure
+// These will be called with the ? operator for automatic error propagation
+
+func validateEmail(email string) Result<string, error> {
+	return match {
+		!strings.Contains(email, "@") || !strings.Contains(email, ".") => Err("invalid email format")
+		_ => Ok(email)
+	}
+}
+
+func validatePassword(password string) Result<string, error> {
+	return match {
+		len(password) < 8 => Err("password must be at least 8 characters")
+		_ => Ok(password)
+	}
+}
+
+func validateUsername(username string) Result<string, error> {
+	return match {
+		len(username) < 3 => Err("username must be at least 3 characters")
+		len(username) > 20 => Err("username too long")
+		_ => Ok(username)
+	}
+}
+
+// Database operations using Result types
+func checkUserExists(db *sql.DB, email string) Result<bool, error> {
+	let exists bool
+	db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)").Scan(&exists)?
+	return Ok(exists)
+}
+
+func hashPassword(password string) Result<string, error> {
+	// Simplified for example - real code would use bcrypt
+	return match {
+		password == "" => Err("cannot hash empty password")
+		_ => Ok("hashed_" + password)
+	}
+}
+
+func saveUser(db *sql.DB, username string, email string, hashedPwd string, status UserStatus) Result<int64, error> {
+	let result = db.Exec("INSERT INTO users (username, email, password, status) VALUES (?, ?, ?, ?)", username, email, hashedPwd, status)?
+	let id = result.LastInsertId()?
+	return Ok(id)
+}
+
+// Main business logic - showcases error propagation with ? operator
+// Notice: Zero manual error checks! The ? operator handles all error propagation.
+// Across all functions, 10 if err != nil blocks are eliminated by the ? operator.
+func registerUser(db *sql.DB, req RegisterRequest) Result<User, error> {
+	// All validations with error context annotations
+	let email = validateEmail(req.Email)? "email validation failed"
+	let password = validatePassword(req.Password)? "password validation failed"
+	let username = validateUsername(req.Username)? "username validation failed"
+
+	// Check if user exists - guard clause with error context
+	if checkUserExists(db, email)? "failed to check user existence" {
+		return Err("user already exists")
+	}
+
+	// Hash password and save user
+	let hashedPassword = hashPassword(password)? "password hashing failed"
+	let id = saveUser(db, username, email, hashedPassword, UserStatus_Pending())? "failed to save user"
+
+	// Return created user with type-safe enum status
+	return Ok(User{
+		ID:       int(id),
+		Username: username,
+		Email:    email,
+		Status:   UserStatus_Pending(),
+	})
+}
+
+// HTTP handler - clean and focused on business logic
+// Using lambda notation with type inference
+func handleRegister(db *sql.DB) http.HandlerFunc {
+	return (w, r) => {
+		let req RegisterRequest
+		json.NewDecoder(r.Body).Decode(&req)? "invalid request body"
+
+		// Process registration - pattern matching on Result type
+		match registerUser(db, req) {
+			Ok(user) => {
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(user)
+			}
+			Err(err) => http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}

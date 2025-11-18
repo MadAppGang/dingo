@@ -1,6 +1,7 @@
 ---
 title: "🎭 Generic sum types with type parameters"
 category: "Type System"
+category_order: 20
 subcategory: "Sum Types"
 test_id: "sum_types_03_generic"
 order: 3

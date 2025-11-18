@@ -1,6 +1,7 @@
 ---
 title: "🎯 Exhaustive pattern matching with compiler checks"
 category: "Control Flow"
+category_order: 60
 subcategory: "Pattern Matching"
 test_id: "pattern_match_04_exhaustive"
 order: 4

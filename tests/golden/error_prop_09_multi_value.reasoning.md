@@ -1,6 +1,7 @@
 ---
 feature: "⚡ error-propagation"
 category: Multi-Value Returns
+category_order: 10
 dingo_version: "0.1.0-alpha"
 go_version: "1.23+"
 test_number: 9
