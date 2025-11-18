@@ -10,6 +10,9 @@ import (
 // SourceMap tracks position mappings between original Dingo source
 // and preprocessed Go source for error reporting and LSP integration
 type SourceMap struct {
+	Version  int       `json:"version"`           // Source map format version
+	DingoFile string   `json:"dingo_file,omitempty"` // Original .dingo file path
+	GoFile    string   `json:"go_file,omitempty"`    // Generated .go file path
 	Mappings []Mapping `json:"mappings"`
 }
 
@@ -33,6 +36,7 @@ type Mapping struct {
 // NewSourceMap creates a new empty source map
 func NewSourceMap() *SourceMap {
 	return &SourceMap{
+		Version:  1, // Current version
 		Mappings: make([]Mapping, 0),
 	}
 }
@@ -45,19 +49,49 @@ func (sm *SourceMap) AddMapping(m Mapping) {
 // MapToOriginal maps a preprocessed position to the original Dingo position
 // Returns the mapped position or the input position if no mapping found
 func (sm *SourceMap) MapToOriginal(line, col int) (int, int) {
-	// Find the mapping that contains this position
-	for _, m := range sm.Mappings {
-		if m.GeneratedLine == line &&
-		   col >= m.GeneratedColumn &&
-		   col < m.GeneratedColumn+m.Length {
-			// Calculate offset within the mapping
-			offset := col - m.GeneratedColumn
-			return m.OriginalLine, m.OriginalColumn + offset
+	// CRITICAL FIX C7: Use column information for disambiguation
+	// When multiple mappings exist for same generated line, choose closest column
+	var bestMatch *Mapping
+
+	for i := range sm.Mappings {
+		m := &sm.Mappings[i]
+		if m.GeneratedLine == line {
+			// Check if position is within this mapping's range
+			if col >= m.GeneratedColumn && col < m.GeneratedColumn+m.Length {
+				// Exact match within range
+				offset := col - m.GeneratedColumn
+				return m.OriginalLine, m.OriginalColumn + offset
+			}
+
+			// Track closest mapping for fallback
+			if bestMatch == nil {
+				bestMatch = m
+			} else {
+				// Closer column match wins
+				currDist := abs(m.GeneratedColumn - col)
+				bestDist := abs(bestMatch.GeneratedColumn - col)
+				if currDist < bestDist {
+					bestMatch = m
+				}
+			}
 		}
+	}
+
+	if bestMatch != nil {
+		// Calculate offset within mapping
+		offset := col - bestMatch.GeneratedColumn
+		return bestMatch.OriginalLine, bestMatch.OriginalColumn + offset
 	}
 
 	// No mapping found, return as-is
 	return line, col
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // MapToGenerated maps an original Dingo position to the preprocessed position

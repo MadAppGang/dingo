@@ -1,0 +1,30 @@
+package main
+
+import "errors"
+
+// Test: Wildcard patterns in tuples - catch-all semantics
+// Feature: Tuple pattern destructuring - wildcards
+// Complexity: intermediate
+
+enum Result {
+	Ok(int),
+	Err(error),
+}
+
+func analyzeResults(r1 Result, r2 Result, r3 Result) string {
+	return match (r1, r2, r3) {
+		(Ok(x), Ok(y), Ok(z)) => "All succeeded: sum = " + string(x+y+z),
+		(Ok(_), Ok(_), Err(e)) => "First two ok, third failed: " + e.Error(),
+		(Err(e), _, _) => "First failed immediately: " + e.Error(),
+		(_, Err(e), _) => "Second failed: " + e.Error(),
+		(_, _, Err(e)) => "Third failed: " + e.Error()
+	}
+}
+
+func main() {
+	r1 := Result_Ok(10)
+	r2 := Result_Err(errors.New("database error"))
+	r3 := Result_Ok(30)
+	result := analyzeResults(r1, r2, r3)
+	println(result)
+}

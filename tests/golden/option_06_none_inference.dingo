@@ -1,0 +1,60 @@
+// Test: None constant context inference
+// Feature: None type inference from context
+// Description: Tests that None constants infer their types from surrounding context
+
+package main
+
+// Test 1: Return statement context
+enum Option {
+	Some(int),
+	None,
+}
+
+func getAge() Option {
+	return Option_None()  // Inferred as Option<int> from return type
+}
+
+// Test 2: Function call parameter context
+func processAge(age Option) {
+	println("Processing age")
+}
+
+func main() {
+	processAge(Option_None())  // Inferred as Option<int> from parameter type
+	explicitType()
+	assignmentContext()
+	user := createUser()
+	println("Created user:", user.name)
+}
+
+// Test 3: Explicit type annotation (always valid)
+func explicitType() {
+	var x Option = Option_None()  // Explicit type annotation
+	println("x is None")
+}
+
+// Test 4: Assignment to typed variable
+func assignmentContext() {
+	var age Option
+	age = Option_None()  // Inferred from variable type
+	println("age is None")
+}
+
+// Test 5: Struct field context
+type User struct {
+	name string
+	age Option
+}
+
+func createUser() User {
+	return User{
+		name: "Alice",
+		age: Option_None(),  // Inferred as Option<int> from field type
+	}
+}
+
+// ERROR CASE: This should fail compilation
+// Uncomment to test error handling
+// fn ambiguousNone() {
+//     let x = None  // ERROR: cannot infer type for None constant
+// }

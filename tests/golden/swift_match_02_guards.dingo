@@ -1,0 +1,55 @@
+package main
+
+// Test: Swift pattern matching with guards
+// Feature: Swift where/if guard keywords
+// Complexity: intermediate
+
+// Example 1: where guards (Swift authentic)
+func validatePositive(result: Result_int_error) int {
+	switch result {
+	case .Ok(let x) where x > 0:
+		return x
+	case .Ok(let x):
+		return 0
+	case .Err(let e):
+		return -1
+	}
+}
+
+// Example 2: if guards (Rust-style, also supported)
+func validateInRange(result: Result_int_error) int {
+	switch result {
+	case .Ok(let x) if x >= 0 && x <= 100:
+		return x
+	case .Ok(let x):
+		return 100
+	case .Err(let e):
+		return -1
+	}
+}
+
+// Example 3: Mixed guards in same switch
+func processValue(opt: Option_int) string {
+	switch opt {
+	case .Some(let x) where x > 100:
+		return "large"
+	case .Some(let x) if x > 0:
+		return "positive"
+	case .Some(let x):
+		return "non-positive"
+	case .None:
+		return "none"
+	}
+}
+
+// Example 4: Complex guard expression
+func filterValue(result: Result_string_error) string {
+	switch result {
+	case .Ok(let s) where len(s) > 0 && s[0] == 'A':
+		return "valid"
+	case .Ok(let s):
+		return "invalid"
+	case .Err(let e):
+		return "error"
+	}
+}

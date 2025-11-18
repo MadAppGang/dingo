@@ -1,0 +1,57 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_None OptionTag = iota
+)
+
+type Option struct {
+	tag OptionTag
+}
+
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+
+func getAge() Option {
+	return Option_None()
+}
+
+func processAge(age Option) {
+	println("Processing age")
+}
+
+func main() {
+	processAge(Option_None())
+	explicitType()
+	assignmentContext()
+	user := createUser()
+	println("Created user:", user.name)
+}
+
+func explicitType() {
+	var x Option = Option_None()
+	println("x is None")
+}
+
+func assignmentContext() {
+	var age Option
+	age = Option_None()
+	println("age is None")
+}
+
+type User struct {
+	name string
+	age  Option
+}
+
+func createUser() User {
+	return User{
+		name: "Alice",
+		age:  Option_None(),
+	}
+}

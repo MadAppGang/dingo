@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useStore } from "@nanostores/react";
 import { Button } from "../ui/button";
 import {
@@ -6,7 +6,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "../ui/avatar";
-import { LogOut, Github, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { userAtom } from "../../stores/auth";
 import { signInWithGitHub as firebaseSignInGitHub, signInWithGoogle as firebaseSignInGoogle, signOut as firebaseSignOut } from "../../lib/firebase";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -99,7 +99,18 @@ export function SignInButton({ className = "" }: SignInButtonProps) {
                     variant="outline"
                     className="w-full gap-2 justify-start"
                   >
-                    <Github className="w-4 h-4" />
+                    <svg
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5A5.4 5.4 0 0 0 19 6a5.7 5.7 0 0 0 .1-3.5s-1 0-3 1.5a11.7 11.7 0 0 0-8 0C6.2 2 5.2 2 5.2 2A5.7 5.7 0 0 0 5.3 5.5 5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.4.5-.7 1-.9 1.7-.2.6-.2 1.3-.2 1.8v4"/>
+                      <path d="M9 18c-4.51 2-5-2-7-2"/>
+                    </svg>
                     Continue with GitHub
                   </Button>
                   <Button

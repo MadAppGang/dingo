@@ -140,6 +140,7 @@ func (it *ImportTracker) GetNeededImports() []string {
 
 // ErrorPropProcessor handles the ? operator for error propagation
 // Transforms: expr? → full error handling expansion
+// For context-aware features like pattern matching, we need to enhance this with markers or metadata
 type ErrorPropProcessor struct {
 	tryCounter    int
 	lines         []string

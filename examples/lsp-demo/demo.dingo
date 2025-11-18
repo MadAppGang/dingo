@@ -1,0 +1,69 @@
+package main
+
+import "fmt"
+
+// Example demonstrating Dingo LSP features with Phase 3 + 4.1 syntax
+
+type User struct {
+	Name: string
+	Email: string
+}
+
+func fetchUserData(id: int) Result[User, error] {
+	if id <= 0 {
+		return Err[User](fmt.Errorf("invalid user ID: %d", id))
+	}
+	return Ok(User{Name: "Alice", Email: "alice@example.com"})
+}
+
+func example() {
+	// Test autocomplete: type 'result.' after this line
+	result := fetchUserData(123)?
+
+	// Test go-to-definition: F12 on 'User' should jump to line 6
+	opt := Option[User](result)
+
+	// Test hover: hover over 'opt' should show 'Option[User]'
+	if opt.IsSome() {
+		user := opt.Unwrap()
+
+		// Test diagnostics: change 'Name' to 'Age' to see error
+		// Test autocomplete: type 'user.' to see fields
+		fmt.Println(user.Name)
+	}
+}
+
+// Sum type (enum) example
+enum Status {
+	Pending
+	Active { userId: int }
+	Inactive { reason: string }
+}
+
+func processStatus(status: Status) {
+	// Test pattern matching autocomplete (Phase 4.1)
+	// Try: Remove one pattern to see exhaustiveness check error
+	status.
+	match status {
+		Status.Pending => fmt.Println("Still pending")
+		Status.Active{userId} => fmt.Printf("User %d is active\n", userId)
+		Status.Inactive{reason} => fmt.Printf("Inactive: %s\n", reason)
+	}
+}
+
+// Nested pattern matching example (Phase 4.1)
+func handleResult(result: Result[Option[User], error]) {
+	// Test nested pattern autocomplete
+	// Hover over 'user' to see it's type User (not Option[User]
+result.
+match result {
+		Ok(Some(user)) => fmt.Printf("Got user: %s\n", user.Name)
+		Ok(None) => fmt.Println("No user found")
+		Err(e) => fmt.Printf("Error: %v\n", e)
+	}
+}
+
+func main() {
+	example()
+	processStatus(Status.Active{userId: 42})
+}

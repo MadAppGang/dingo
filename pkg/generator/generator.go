@@ -56,12 +56,28 @@ func NewWithPlugins(fset *token.FileSet, registry *plugin.Registry, logger plugi
 		return nil, fmt.Errorf("failed to create plugin pipeline: %w", err)
 	}
 
-	// Register built-in plugins
+	// Register built-in plugins in correct order
+	// Phase 4 Integration: Added PatternMatchPlugin and NoneContextPlugin
+	// Order matters for dependencies:
+	// 1. ResultTypePlugin (injects Result types)
+	// 2. OptionTypePlugin (injects Option types)
+	// 3. PatternMatchPlugin (uses Result/Option types, checks exhaustiveness)
+	// 4. NoneContextPlugin (uses parent map and types.Info)
+	// 5. UnusedVarsPlugin (cleanup, runs last)
+
 	resultPlugin := builtin.NewResultTypePlugin()
 	pipeline.RegisterPlugin(resultPlugin)
 
 	optionPlugin := builtin.NewOptionTypePlugin()
 	pipeline.RegisterPlugin(optionPlugin)
+
+	// Phase 4 - Pattern matching plugin (Task D, F)
+	patternMatchPlugin := builtin.NewPatternMatchPlugin()
+	pipeline.RegisterPlugin(patternMatchPlugin)
+
+	// Phase 4 - None context inference plugin (Task E)
+	noneContextPlugin := builtin.NewNoneContextPlugin()
+	pipeline.RegisterPlugin(noneContextPlugin)
 
 	// Register unused variable handling plugin (runs last)
 	unusedVarsPlugin := builtin.NewUnusedVarsPlugin()
@@ -96,7 +112,16 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		g.pipeline.Ctx.CurrentFile = file
 	}
 
-	// Step 2: Run type checker to populate type information (Fix A5)
+	// Step 2: Build parent map for context-aware inference (Phase 4 - Task B)
+	// This must happen BEFORE type checking and plugin execution
+	if g.pipeline != nil && g.pipeline.Ctx != nil {
+		g.pipeline.Ctx.BuildParentMap(file.File)
+		if g.logger != nil {
+			g.logger.Debug("Parent map built successfully")
+		}
+	}
+
+	// Step 3: Run type checker to populate type information (Fix A5)
 	// This enables accurate type inference for plugins
 	typesInfo, err := g.runTypeChecker(file.File)
 	if err != nil {
@@ -115,7 +140,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		}
 	}
 
-	// Step 3: Transform AST using plugin pipeline (if configured)
+	// Step 4: Transform AST using plugin pipeline (if configured)
 	transformed := file.File
 	if g.pipeline != nil {
 		var err error
@@ -129,9 +154,23 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 			g.logger.Debug("Transformation complete: %d/%d plugins executed",
 				stats.EnabledPlugins, stats.TotalPlugins)
 		}
+
+		// C3 FIX: Check for compile errors from plugins (exhaustiveness, type inference, etc.)
+		if g.pipeline.Ctx != nil && g.pipeline.Ctx.HasErrors() {
+			errors := g.pipeline.Ctx.GetErrors()
+			// Format all errors into a single message
+			var errMsg strings.Builder
+			errMsg.WriteString("compilation errors detected:\n")
+			for _, e := range errors {
+				errMsg.WriteString("  - ")
+				errMsg.WriteString(e.Error())
+				errMsg.WriteString("\n")
+			}
+			return nil, fmt.Errorf("%s", errMsg.String())
+		}
 	}
 
-	// Step 3: Print AST to Go source code
+	// Step 5: Print AST to Go source code
 	var buf bytes.Buffer
 
 	cfg := printer.Config{
@@ -143,7 +182,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		return nil, fmt.Errorf("failed to print AST: %w", err)
 	}
 
-	// Step 4: Format the generated code
+	// Step 6: Format the generated code
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
 		// If formatting fails, return unformatted code
@@ -154,7 +193,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		return buf.Bytes(), nil
 	}
 
-	// Step 5: Inject DINGO:GENERATED markers (post-processing)
+	// Step 7: Inject DINGO:GENERATED markers (post-processing)
 	markersEnabled := true // Default
 	if g.pipeline != nil && g.pipeline.Ctx != nil && g.pipeline.Ctx.Config != nil {
 		markersEnabled = g.pipeline.Ctx.Config.EmitGeneratedMarkers
@@ -169,10 +208,10 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		return formatted, nil // Return without markers on error
 	}
 
-	// Step 6: Remove extra blank lines around dingo source mapping markers
+	// Step 8: Remove extra blank lines around dingo source mapping markers
 	cleaned := removeBlankLinesAroundDingoMarkers(withMarkers)
 
-	// Step 7: Remove extra blank lines between top-level declarations
+	// Step 9: Remove extra blank lines between top-level declarations
 	// This ensures consistent formatting matching golden files
 	final := removeBlankLinesBetweenDeclarations(cleaned)
 

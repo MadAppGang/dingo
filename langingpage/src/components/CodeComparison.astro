@@ -10,10 +10,16 @@ import golangLogo from '../assets/golang-logo-small.png';
 interface Props {
   before: string;
   after: string;
-  language: string;
+  beforeLanguage?: string;
+  afterLanguage?: string;
 }
 
-const { before, after, language } = Astro.props;
+const {
+  before,
+  after,
+  beforeLanguage = 'dingo',
+  afterLanguage = 'go',
+} = Astro.props;
 ---
 
 <div class="grid grid-cols-2 gap-8 p-8">
@@ -32,7 +38,7 @@ const { before, after, language } = Astro.props;
       </div>
       <h3 class="text-lg font-semibold text-gray-800">Dingo</h3>
     </div>
-    <CodeBlock code={before} language={language} />
+    <CodeBlock code={before} language={beforeLanguage} />
   </div>
 
   <!-- Goal (Go) -->
@@ -50,6 +56,6 @@ const { before, after, language } = Astro.props;
       </div>
       <h3 class="text-lg font-semibold text-gray-800">Go</h3>
     </div>
-    <CodeBlock code={after} language={language} />
+    <CodeBlock code={after} language={afterLanguage} />
   </div>
 </div>

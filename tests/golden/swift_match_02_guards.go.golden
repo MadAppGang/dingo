@@ -1,0 +1,96 @@
+package main
+
+// Test: Swift pattern matching with guards
+// Feature: Swift where/if guard keywords
+// Complexity: intermediate
+
+// Example 1: where guards (Swift authentic)
+func validatePositive(result Result_int_error) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		return x
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return 0
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+
+}
+
+// Example 2: if guards (Rust-style, also supported)
+func validateInRange(result Result_int_error) int {
+	__match_1 := result
+	// DINGO_MATCH_START: result
+	switch __match_1.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x >= 0 && x <= 100
+		x := *__match_1.ok_0
+		return x
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_1.ok_0
+		return 100
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_1.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+
+}
+
+// Example 3: Mixed guards in same switch
+func processValue(opt Option_int) string {
+	__match_2 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_2.tag {
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x > 100
+		x := *__match_2.some_0
+		return "large"
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x > 0
+		x := *__match_2.some_0
+		return "positive"
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x)
+		x := *__match_2.some_0
+		return "non-positive"
+	case OptionTagNone:
+		// DINGO_PATTERN: None
+		return "none"
+	}
+	// DINGO_MATCH_END
+
+}
+
+// Example 4: Complex guard expression
+func filterValue(result Result_string_error) string {
+	__match_3 := result
+	// DINGO_MATCH_START: result
+	switch __match_3.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(s) | DINGO_GUARD: len(s) > 0 && s[0] == 'A'
+		s := *__match_3.ok_0
+		return "valid"
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(s)
+		s := *__match_3.ok_0
+		return "invalid"
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_3.err_0
+		return "error"
+	}
+	// DINGO_MATCH_END
+
+}

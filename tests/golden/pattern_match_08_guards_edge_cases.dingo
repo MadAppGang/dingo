@@ -1,0 +1,80 @@
+package main
+
+// Test: Guard edge cases - all arms guarded, wildcard with guard, performance
+// Feature: Edge cases for pattern guard behavior
+// Complexity: advanced
+
+enum Value {
+	Small(int),
+	Medium(int),
+	Large(int),
+}
+
+// All patterns have guards (requires fallback wildcard)
+func classify(val Value) string {
+	return match val {
+		Value_Small(x) if x > 10 => "actually medium",
+		Value_Medium(x) if x > 100 => "actually large",
+		Value_Large(x) if x > 1000 => "actually huge",
+		_ => "normal range",
+	}
+}
+
+// Wildcard pattern with guard
+func filterPositive(val Value) string {
+	return match val {
+		Value_Small(x) if x > 0 => "positive small",
+		Value_Medium(x) if x > 0 => "positive medium",
+		Value_Large(x) if x > 0 => "positive large",
+		_ where true => "non-positive or zero",
+	}
+}
+
+// Many guarded arms (performance test)
+func granularClassify(val Value) string {
+	return match val {
+		Value_Small(x) if x == 1 => "one",
+		Value_Small(x) if x == 2 => "two",
+		Value_Small(x) if x == 3 => "three",
+		Value_Small(x) if x == 4 => "four",
+		Value_Small(x) if x == 5 => "five",
+		Value_Small(x) if x > 5 && x < 10 => "five to ten",
+		Value_Small(_) => "small other",
+		Value_Medium(x) if x < 50 => "lower medium",
+		Value_Medium(x) if x >= 50 && x < 100 => "mid medium",
+		Value_Medium(_) => "upper medium",
+		Value_Large(_) => "large",
+	}
+}
+
+// Guard with constant condition (optimization test)
+func alwaysMatch(val Value) string {
+	return match val {
+		Value_Small(_) where true => "small",
+		Value_Medium(_) if 1 > 0 => "medium",
+		Value_Large(_) => "large",
+	}
+}
+
+// Guard with side effects (not recommended but valid)
+func countMatches(val Value) string {
+	var count int = 0
+	return match val {
+		Value_Small(x) if increment(&count) && x > 0 => "small positive",
+		Value_Medium(x) if increment(&count) && x > 0 => "medium positive",
+		Value_Large(x) if increment(&count) && x > 0 => "large positive",
+		_ => "other",
+	}
+}
+
+func increment(p *int) bool {
+	*p++
+	return true
+}
+
+func main() {
+	println(classify(Value_Small(15)))
+	println(filterPositive(Value_Medium(-5)))
+	println(granularClassify(Value_Small(3)))
+	println(alwaysMatch(Value_Medium(42)))
+}

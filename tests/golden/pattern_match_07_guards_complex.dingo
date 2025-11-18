@@ -1,0 +1,66 @@
+package main
+
+import "strings"
+
+// Test: Complex guard expressions with mixed 'if' and 'where'
+// Feature: Guards with complex boolean logic, field access, and method calls
+// Complexity: advanced
+
+enum Request {
+	Get(string),
+	Post(string, string),
+	Delete(string),
+}
+
+enum Status {
+	Active(int),
+	Paused(int),
+	Stopped,
+}
+
+// Mixed if/where keywords in same match
+func routeRequest(req Request) string {
+	return match req {
+		Request_Get(path) if strings.HasPrefix(path, "/api/") => "API endpoint",
+		Request_Get(path) where len(path) > 0 => "static resource",
+		Request_Post(path, body) if len(body) > 100 && strings.Contains(path, "upload") => "large upload",
+		Request_Post(_, body) where len(body) > 0 => "post request",
+		Request_Delete(path) if isProtected(path) => "forbidden",
+		Request_Delete(_) => "delete request",
+		_ => "unknown",
+	}
+}
+
+// Guards with logical operators
+func classifyStatus(status Status) string {
+	return match status {
+		Status_Active(count) if count > 1000 || count < 0 => "unusual",
+		Status_Active(count) where count >= 100 && count <= 1000 => "normal",
+		Status_Active(_) => "low activity",
+		Status_Paused(duration) if duration > 3600 => "long pause",
+		Status_Paused(_) where true => "short pause",
+		Status_Stopped => "stopped",
+	}
+}
+
+// Guards on different pattern types
+func processValue(val interface{}) string {
+	return match val.(type) {
+		int if val.(int) > 0 => "positive integer",
+		int where val.(int) < 0 => "negative integer",
+		int => "zero",
+		string if len(val.(string)) > 0 => "non-empty string",
+		string => "empty string",
+		_ => "other type",
+	}
+}
+
+func isProtected(path string) bool {
+	return strings.HasPrefix(path, "/admin/")
+}
+
+func main() {
+	println(routeRequest(Request_Get("/api/users")))
+	println(classifyStatus(Status_Active(500)))
+	println(processValue(42))
+}

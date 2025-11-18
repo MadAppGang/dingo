@@ -1,0 +1,73 @@
+package main
+
+import "errors"
+
+// Test: 3-element tuple patterns with realistic parsing scenario
+// Feature: Tuple pattern destructuring
+// Complexity: intermediate
+
+type ResultTag uint8
+
+const (
+	ResultTagOk ResultTag = iota
+	ResultTagErr
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *string
+	err_0 *error
+}
+
+func Result_Ok(v0 string) Result {
+	return Result{tag: ResultTagOk, ok_0: &v0}
+}
+
+func Result_Err(v0 error) Result {
+	return Result{tag: ResultTagErr, err_0: &v0}
+}
+
+func parseConfig(host Result, port Result, timeout Result) string {
+	// DINGO_MATCH_START: (host, port, timeout)
+	__match_0_elem0, __match_0_elem1, __match_0_elem2 := host, port, timeout
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok) | (Ok, Ok, Err) | (Ok, Err, _) | (Err, _, _) | ARITY: 3
+	switch __match_0_elem0.tag {
+	case ResultTagOk:
+		h := *__match_0_elem0.ok_0
+		switch __match_0_elem1.tag {
+		case ResultTagOk:
+			p := *__match_0_elem1.ok_0
+			switch __match_0_elem2.tag {
+			case ResultTagOk:
+				t := *__match_0_elem2.ok_0
+				return "Config: " + h + ":" + p + " timeout=" + t
+			case ResultTagErr:
+				e := *__match_0_elem2.err_0
+				return "Config: " + h + ":" + p + " (default timeout, error: " + e.Error() + ")"
+			default:
+				panic("unreachable: exhaustive match")
+			}
+		case ResultTagErr:
+			e := *__match_0_elem1.err_0
+			// Wildcard at position 2: matches all
+			return "Host " + h + " but invalid port: " + e.Error()
+		default:
+			panic("unreachable: exhaustive match")
+		}
+	case ResultTagErr:
+		e := *__match_0_elem0.err_0
+		// Wildcards at positions 1, 2: matches all
+		return "Invalid host: " + e.Error()
+	default:
+		panic("unreachable: exhaustive match")
+	}
+	// DINGO_MATCH_END
+}
+
+func main() {
+	h := Result_Ok("localhost")
+	p := Result_Ok("8080")
+	t := Result_Err(errors.New("timeout not specified"))
+	config := parseConfig(h, p, t)
+	println(config)
+}

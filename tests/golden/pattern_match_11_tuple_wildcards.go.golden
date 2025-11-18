@@ -1,0 +1,73 @@
+package main
+
+import "errors"
+
+// Test: Wildcard patterns in tuples - catch-all semantics
+// Feature: Tuple pattern destructuring - wildcards
+// Complexity: intermediate
+
+type ResultTag uint8
+
+const (
+	ResultTagOk ResultTag = iota
+	ResultTagErr
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *int
+	err_0 *error
+}
+
+func Result_Ok(v0 int) Result {
+	return Result{tag: ResultTagOk, ok_0: &v0}
+}
+
+func Result_Err(v0 error) Result {
+	return Result{tag: ResultTagErr, err_0: &v0}
+}
+
+func analyzeResults(r1 Result, r2 Result, r3 Result) string {
+	// DINGO_MATCH_START: (r1, r2, r3)
+	__match_0_elem0, __match_0_elem1, __match_0_elem2 := r1, r2, r3
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok) | (Ok, Ok, Err) | (Err, _, _) | (_, Err, _) | (_, _, Err) | ARITY: 3
+	switch __match_0_elem0.tag {
+	case ResultTagOk:
+		x := *__match_0_elem0.ok_0
+		switch __match_0_elem1.tag {
+		case ResultTagOk:
+			y := *__match_0_elem1.ok_0
+			switch __match_0_elem2.tag {
+			case ResultTagOk:
+				z := *__match_0_elem2.ok_0
+				return "All succeeded: sum = " + string(x+y+z)
+			case ResultTagErr:
+				e := *__match_0_elem2.err_0
+				return "First two ok, third failed: " + e.Error()
+			default:
+				panic("unreachable: exhaustive match")
+			}
+		case ResultTagErr:
+			e := *__match_0_elem1.err_0
+			// Wildcard at position 2: matches all
+			return "Second failed: " + e.Error()
+		default:
+			panic("unreachable: exhaustive match")
+		}
+	case ResultTagErr:
+		e := *__match_0_elem0.err_0
+		// Wildcards at positions 1, 2: matches all
+		return "First failed immediately: " + e.Error()
+	default:
+		panic("unreachable: exhaustive match")
+	}
+	// DINGO_MATCH_END
+}
+
+func main() {
+	r1 := Result_Ok(10)
+	r2 := Result_Err(errors.New("database error"))
+	r3 := Result_Ok(30)
+	result := analyzeResults(r1, r2, r3)
+	println(result)
+}

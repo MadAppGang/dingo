@@ -1,0 +1,57 @@
+package main
+
+import "errors"
+
+// Test: Exhaustiveness checking with max 6-element tuple
+// Feature: Tuple pattern destructuring - exhaustiveness
+// Complexity: advanced
+
+enum Result {
+	Ok(int),
+	Err(error),
+}
+
+// 6-element tuple (max limit) - demonstrates exhaustiveness with wildcards
+func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
+	return match (s1, s2, s3, s4, s5, s6) {
+		(Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => "All 6 steps succeeded",
+		(Err(e), _, _, _, _, _) => "Step 1 failed: " + e.Error(),
+		(_, Err(e), _, _, _, _) => "Step 2 failed: " + e.Error(),
+		(_, _, Err(e), _, _, _) => "Step 3 failed: " + e.Error(),
+		(_, _, _, Err(e), _, _) => "Step 4 failed: " + e.Error(),
+		(_, _, _, _, Err(e), _) => "Step 5 failed: " + e.Error(),
+		(_, _, _, _, _, Err(e)) => "Step 6 failed: " + e.Error()
+	}
+}
+
+// Example of exhaustive 4-element tuple
+func processFourResults(r1, r2, r3, r4 Result) string {
+	return match (r1, r2, r3, r4) {
+		(Ok(a), Ok(b), Ok(c), Ok(d)) => "All ok: " + string(a+b+c+d),
+		(_, _, _, _) => "At least one error occurred"
+	}
+}
+
+func main() {
+	r1 := Result_Ok(1)
+	r2 := Result_Ok(2)
+	r3 := Result_Err(errors.New("step 3 error"))
+	r4 := Result_Ok(4)
+	r5 := Result_Ok(5)
+	r6 := Result_Ok(6)
+
+	result := validateSixSteps(r1, r2, r3, r4, r5, r6)
+	println(result)
+
+	result2 := processFourResults(r1, r2, r3, r4)
+	println(result2)
+}
+
+// Non-exhaustive example (would fail - commented out):
+// func nonExhaustive(r1, r2 Result) string {
+//     return match (r1, r2) {
+//         (Ok(x), Ok(y)) => "both ok",
+//         (Ok(x), Err(e)) => "second error"
+//         // Missing: (Err, Ok) and (Err, Err)
+//     }
+// }

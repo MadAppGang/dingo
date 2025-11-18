@@ -3,6 +3,7 @@ import '../styles/tailwind-v4.css';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { marked } from 'marked';
+import type { Tokens, RendererObject } from 'marked';
 
 // Read the manifesto from parent directory
 const manifestoPath = join(process.cwd(), '..', 'MANIFESTO.md');
@@ -17,11 +18,11 @@ function generateId(text: string): string {
 }
 
 // Create custom renderer to add IDs to headings
-const renderer = {
-  heading({ text, depth }: { text: string; depth: number }) {
+const renderer: RendererObject = {
+  heading({ text, depth }) {
     const id = generateId(text);
     return `<h${depth} id="${id}">${text}</h${depth}>`;
-  }
+  },
 };
 
 // Configure marked with custom renderer
@@ -29,13 +30,15 @@ marked.use({
   renderer,
   gfm: true, // GitHub Flavored Markdown
   breaks: false,
-  mangle: false,
 });
 
 // Parse markdown to extract headings for TOC
 const tokens = marked.lexer(manifestoContent);
 const headings = tokens
-  .filter((token) => token.type === 'heading' && (token.depth === 2 || token.depth === 3))
+  .filter(
+    (token): token is Tokens.Heading =>
+      token.type === 'heading' && (token.depth === 2 || token.depth === 3),
+  )
   .map((token) => ({
     depth: token.depth,
     text: token.text,

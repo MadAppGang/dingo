@@ -7,6 +7,7 @@ import logoImage from '../../assets/dingo-logo.png';
 import { Image } from 'astro:assets';
 import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
+import { highlightMarkdownTokens } from '../../lib/markdownHighlight';
 
 export async function getStaticPaths() {
   const examples = await getCollection('golden-examples');
@@ -26,8 +27,12 @@ const currentSlug = Astro.params.slug;
 // Process reasoning markdown for current example
 let processedReasoning = '';
 if (example.data.reasoning) {
-  const rawHtml = await marked(example.data.reasoning);
-  processedReasoning = DOMPurify.sanitize(rawHtml);
+  const tokens = marked.lexer(example.data.reasoning);
+  await highlightMarkdownTokens(tokens);
+  const rawHtml = marked.parser(tokens);
+  processedReasoning = DOMPurify.sanitize(rawHtml, {
+    ADD_ATTR: ['style'],
+  });
 }
 ---
 
@@ -80,8 +85,9 @@ if (example.data.reasoning) {
         <!-- Single example content -->
         <CodeComparison
           before={example.data.dingoCode}
+          beforeLanguage="dingo"
           after={example.data.goCode}
-          language="go"
+          afterLanguage="go"
         />
 
         {processedReasoning && (
@@ -101,6 +107,7 @@ if (example.data.reasoning) {
 
 <style is:global>
   @import '../../styles/global.css';
+  @import '../../styles/shiki-markdown.css';
 
   * {
     margin: 0;

@@ -1,0 +1,238 @@
+package main
+
+type ValueTag uint8
+
+const (
+	ValueTag_Small ValueTag = iota
+	ValueTag_Medium
+	ValueTag_Large
+)
+
+type Value struct {
+	tag      ValueTag
+	small_0  *int
+	medium_0 *int
+	large_0  *int
+}
+
+func Value_Small(arg0 int) Value {
+	return Value{tag: ValueTag_Small, small_0: &arg0}
+}
+func Value_Medium(arg0 int) Value {
+	return Value{tag: ValueTag_Medium, medium_0: &arg0}
+}
+func Value_Large(arg0 int) Value {
+	return Value{tag: ValueTag_Large, large_0: &arg0}
+}
+func (e Value) IsSmall() bool {
+	return e.tag == ValueTag_Small
+}
+func (e Value) IsMedium() bool {
+	return e.tag == ValueTag_Medium
+}
+func (e Value) IsLarge() bool {
+	return e.tag == ValueTag_Large
+}
+
+// All patterns have guards (requires fallback wildcard)
+func classify(val Value) string {
+	__match_0 := val
+	// DINGO_MATCH_START: val
+	switch __match_0.tag {
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x > 10
+		x := *__match_0.small_0
+		if x > 10 {
+			return "actually medium"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(x) | DINGO_GUARD: x > 100
+		x := *__match_0.medium_0
+		if x > 100 {
+			return "actually large"
+		}
+	case ValueTag_Large:
+		// DINGO_PATTERN: Large(x) | DINGO_GUARD: x > 1000
+		x := *__match_0.large_0
+		if x > 1000 {
+			return "actually huge"
+		}
+	default:
+		// DINGO_PATTERN: _
+		return "normal range"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Wildcard pattern with guard
+func filterPositive(val Value) string {
+	__match_1 := val
+	// DINGO_MATCH_START: val
+	switch __match_1.tag {
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x > 0
+		x := *__match_1.small_0
+		if x > 0 {
+			return "positive small"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(x) | DINGO_GUARD: x > 0
+		x := *__match_1.medium_0
+		if x > 0 {
+			return "positive medium"
+		}
+	case ValueTag_Large:
+		// DINGO_PATTERN: Large(x) | DINGO_GUARD: x > 0
+		x := *__match_1.large_0
+		if x > 0 {
+			return "positive large"
+		}
+	default:
+		// DINGO_PATTERN: _ | DINGO_GUARD: true
+		if true {
+			return "non-positive or zero"
+		}
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Many guarded arms (performance test)
+func granularClassify(val Value) string {
+	__match_2 := val
+	// DINGO_MATCH_START: val
+	switch __match_2.tag {
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x == 1
+		x := *__match_2.small_0
+		if x == 1 {
+			return "one"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x == 2
+		x := *__match_2.small_0
+		if x == 2 {
+			return "two"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x == 3
+		x := *__match_2.small_0
+		if x == 3 {
+			return "three"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x == 4
+		x := *__match_2.small_0
+		if x == 4 {
+			return "four"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x == 5
+		x := *__match_2.small_0
+		if x == 5 {
+			return "five"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: x > 5 && x < 10
+		x := *__match_2.small_0
+		if x > 5 && x < 10 {
+			return "five to ten"
+		}
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(_)
+		_ = *__match_2.small_0
+		return "small other"
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(x) | DINGO_GUARD: x < 50
+		x := *__match_2.medium_0
+		if x < 50 {
+			return "lower medium"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(x) | DINGO_GUARD: x >= 50 && x < 100
+		x := *__match_2.medium_0
+		if x >= 50 && x < 100 {
+			return "mid medium"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(_)
+		_ = *__match_2.medium_0
+		return "upper medium"
+	case ValueTag_Large:
+		// DINGO_PATTERN: Large(_)
+		_ = *__match_2.large_0
+		return "large"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guard with constant condition (optimization test)
+func alwaysMatch(val Value) string {
+	__match_3 := val
+	// DINGO_MATCH_START: val
+	switch __match_3.tag {
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(_) | DINGO_GUARD: true
+		_ = *__match_3.small_0
+		if true {
+			return "small"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(_) | DINGO_GUARD: 1 > 0
+		_ = *__match_3.medium_0
+		if 1 > 0 {
+			return "medium"
+		}
+	case ValueTag_Large:
+		// DINGO_PATTERN: Large(_)
+		_ = *__match_3.large_0
+		return "large"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guard with side effects (not recommended but valid)
+func countMatches(val Value) string {
+	var count int = 0
+	__match_4 := val
+	// DINGO_MATCH_START: val
+	switch __match_4.tag {
+	case ValueTag_Small:
+		// DINGO_PATTERN: Small(x) | DINGO_GUARD: increment(&count) && x > 0
+		x := *__match_4.small_0
+		if increment(&count) && x > 0 {
+			return "small positive"
+		}
+	case ValueTag_Medium:
+		// DINGO_PATTERN: Medium(x) | DINGO_GUARD: increment(&count) && x > 0
+		x := *__match_4.medium_0
+		if increment(&count) && x > 0 {
+			return "medium positive"
+		}
+	case ValueTag_Large:
+		// DINGO_PATTERN: Large(x) | DINGO_GUARD: increment(&count) && x > 0
+		x := *__match_4.large_0
+		if increment(&count) && x > 0 {
+			return "large positive"
+		}
+	default:
+		// DINGO_PATTERN: _
+		return "other"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+func increment(p *int) bool {
+	*p++
+	return true
+}
+func main() {
+	println(classify(Value_Small(15)))
+	println(filterPositive(Value_Medium(-5)))
+	println(granularClassify(Value_Small(3)))
+	println(alwaysMatch(Value_Medium(42)))
+}

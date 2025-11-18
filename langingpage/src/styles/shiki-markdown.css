@@ -1,14 +1,45 @@
 /* Shiki code block styling (server-rendered) */
 .shiki-code pre {
   margin: 0;
-  padding: 18px;
+  padding: 18px 18px 18px 54px;
   font-size: 12px;
   line-height: 1.6;
   overflow-x: auto;
+  position: relative;
 }
 
 .shiki-code code {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  counter-reset: shiki-line;
+  font-size: 0;
+  line-height: 0;
+}
+
+.shiki-code .line {
+  counter-increment: shiki-line;
+  display: inline-flex;
+  width: 100%;
+  position: relative;
+  font-size: 12px;
+  line-height: 1.6;
+  padding-left: 0;
+  align-items: baseline;
+}
+
+.shiki-code .line:empty::after {
+  content: '\00a0';
+}
+
+.shiki-code .line::before {
+  content: counter(shiki-line);
+  position: absolute;
+  left: -36px;
+  width: 26px;
+  text-align: right;
+  color: rgba(148, 163, 184, 0.7);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* Markdown content styling (server-rendered) */
@@ -78,8 +109,8 @@
   color: #1f2937;
 }
 
-.markdown-content pre {
-  margin-bottom: 0.5rem;
+.markdown-content pre:not(.shiki) {
+  margin-bottom: 0.75rem;
   background-color: #f3f4f6;
   padding: 0.5rem;
   border-radius: 0.375rem;
@@ -87,9 +118,64 @@
   font-size: 0.75rem;
 }
 
+.markdown-content pre.shiki {
+  background: transparent !important;
+  padding: 0;
+  margin: 0;
+  border-radius: 0.5rem;
+}
+
 .markdown-content pre code {
   background-color: transparent;
   padding: 0;
+}
+
+.markdown-content .markdown-shiki-block pre {
+  padding: 20px 26px;
+  margin: 0;
+}
+
+.markdown-shiki-block {
+  margin: 1rem 0;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(180deg, #f9fbff 0%, #f6f8fc 100%);
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.markdown-shiki-block pre {
+  margin: 0;
+  padding: 20px 26px;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.markdown-shiki-block pre code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0;
+  line-height: 0;
+}
+
+.markdown-shiki-block pre code .line {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.markdown-content .markdown-shiki-block pre {
+  font-size: 0.7rem;
+  line-height: 0.8;
+  padding: 12px 18px;
+  letter-spacing: -0.02em;
+}
+
+.markdown-content .markdown-shiki-block pre code .line {
+  font-size: 0.7rem;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
 }
 
 .markdown-content a {

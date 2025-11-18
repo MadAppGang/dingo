@@ -24,6 +24,21 @@ This file contains instructions and context for Claude AI agents working on the 
 │ Before EVERY action, ask:               │
 └─────────────────────────────────────────┘
                    ↓
+    [User wants multiple model perspectives?]
+         ↓ YES
+    [Create session folder]
+         ↓
+    [Write investigation prompt to file]
+         ↓
+    [Launch specialized agents in PARALLEL]
+    (golang-architect for Go, etc.)
+         ↓
+    [Each agent invokes ONE external model via claudish]
+         ↓
+    [Results → files, Summaries → main chat (< 5 sentences)]
+         ↓
+    [Optional: Consolidation agent synthesizes]
+                   ↓ NO
     [Will this exceed token budget?]
          /
        YES         NO
@@ -199,7 +214,7 @@ Completed comprehensive research on:
 - Language server proxy architecture
 - Source mapping strategies
 
-**Current: Phase 3 - Fix A4/A5 + Complete Result/Option** ✅ Complete
+**Phase 3: Fix A4/A5 + Complete Result/Option** ✅ Complete
 
 Implemented:
 1. Two-stage transpilation: Preprocessor + go/parser ✅
@@ -211,6 +226,25 @@ Implemented:
 7. Fix A4: IIFE pattern for literal handling (Ok(42), Some("hello")) ✅
 8. Comprehensive test suite (261/267 passing, 97.8%) ✅
 9. End-to-end: `.dingo` → preprocessor → `.go` → compile ✅
+
+**Phase 4.1: Pattern Matching + None Inference** ✅ Complete (2025-11-18)
+
+Implemented:
+1. Configuration system (dingo.toml) for pattern matching syntax ✅
+2. AST parent tracking for context-aware inference (<10ms) ✅
+3. Rust pattern match syntax (`match result { Ok(x) => ... }`) ✅
+4. Strict exhaustiveness checking (compile-time errors) ✅
+5. Pattern transformation with tag-based dispatch ✅
+6. None context inference (5 context types) ✅
+7. 57/57 Phase 4 tests passing, 9 critical fixes applied ✅
+
+**Current: Phase 4.2 - Pattern Matching Enhancements** 🚧 In Progress
+
+Objectives:
+1. Pattern guards (`pattern if condition => expr`)
+2. Swift pattern syntax (`switch { case .Variant(let x): }`)
+3. Tuple destructuring (`(pattern1, pattern2)`)
+4. Enhanced error messages (rustc-style source snippets)
 
 ### Key Research Findings
 
@@ -314,6 +348,39 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 - In doubt? Check your working directory:
   - Root (`/Users/jack/mag/dingo/`) → golang-* agents
   - Langingpage (`/Users/jack/mag/dingo/langingpage/`) → astro-* agents
+
+### Common Delegation Patterns (Skills)
+
+For complex delegation workflows, use these **skills** (detailed instructions loaded only when invoked):
+
+**1. Multi-Model Consultation** → Use skill `multi-model-consult`
+- **When**: Need perspectives from multiple LLMs (gpt-5, gemini, grok, etc.)
+- **Triggers**: "run multiple models", "get perspectives from different models"
+- **How**: Skill orchestrates parallel external model consultation via claudish
+- **Result**: 2-3x faster, 10x less context, diverse expert opinions
+
+**2. Deep Investigation** → Use skill `investigate`
+- **When**: Need to understand how codebase works
+- **Triggers**: "how does X work?", "find all usages of Y"
+- **How**: Skill delegates to appropriate agent (Explore, golang-developer, etc.)
+- **Result**: 10-20x less context, file paths with line numbers
+
+**3. Feature Implementation** → Use skill `implement`
+- **When**: Multi-file feature implementation needed
+- **Triggers**: "implement feature X", "add support for Y"
+- **How**: Skill orchestrates planning → implementation → testing
+- **Result**: Structured workflow, parallel execution, tracked progress
+
+**4. Testing** → Use skill `test`
+- **When**: Run tests, create tests, fix failing tests
+- **Triggers**: "run tests", "create golden tests", "fix failing tests"
+- **How**: Skill delegates to golang-tester with appropriate scope
+- **Result**: Pass/fail summary, detailed results in files
+
+**Why Skills?**
+- **Context Economy**: Detailed patterns loaded ONLY when needed
+- **Consistency**: Standardized execution across all delegation tasks
+- **Maintainability**: Update patterns in one place, all uses benefit
 
 ## 🎯 Delegation Strategy & Context Economy
 
@@ -502,6 +569,31 @@ If an agent is uncertain whether to delegate:
 
 **Default action for agents: Implement directly.**
 
+#### Rule 6: External Model Invocation
+
+When a specialized agent (golang-architect, astro-developer, etc.) is asked to invoke an external model:
+
+✅ **Correct approach:**
+- Use Bash tool to invoke claudish
+- Read input prompt from file
+- Save full response to file
+- Return brief summary (MAX 5 sentences)
+
+❌ **Incorrect approaches:**
+- Delegating to another agent to invoke claudish
+- Trying to invoke claudish via Task tool
+- Returning full analysis in response (context bloat)
+
+**Example (golang-architect agent)**:
+```bash
+# Read prompt
+cat /path/to/investigation-prompt.md | \
+  claudish --model openai/gpt-5.1-codex > \
+  /path/to/output/gpt-5.1-codex-analysis.md
+
+# Return brief summary only
+```
+
 #### Examples
 
 **✅ CORRECT Delegation (Different Agent Types):**
@@ -517,48 +609,30 @@ If an agent is uncertain whether to delegate:
 
 ### When to Delegate vs. Handle Directly
 
-#### ✅ DELEGATE to Agent When:
+#### ✅ DELEGATE (Use Skills or Task Tool)
 
-1. **Code Investigation**
-   - "Find all usages of type X"
-   - "Understand how error handling works"
-   - "Analyze performance bottlenecks"
+**Use Skills for Common Patterns**:
+- Multi-model consultation → `multi-model-consult` skill
+- Codebase investigation → `investigate` skill
+- Feature implementation → `implement` skill
+- Testing tasks → `test` skill
 
-2. **Implementation**
-   - "Implement feature Y"
-   - "Refactor module Z"
-   - "Fix bug in component A"
+**Use Task Tool Directly** (without skill):
+- One-off agent tasks
+- Simple code review
+- Quick analysis
+- Tasks not covered by skills
 
-3. **Analysis**
-   - "Review this code for issues"
-   - "Test this implementation"
-   - "Validate against requirements"
+#### ⚠️ HANDLE DIRECTLY (Main Chat)
 
-4. **Multi-Step Tasks**
-   - "Research then implement X"
-   - "Plan, build, and test feature Y"
-   - "Investigate, document, and fix bug Z"
+**Only handle these yourself**:
+- User interaction (questions, approvals, summaries)
+- Single file read (known path)
+- Single line fix
+- Git status check
+- Coordination (launching agents, deciding next phase)
 
-#### ⚠️ HANDLE DIRECTLY (Main Chat) When:
-
-1. **User Interaction**
-   - Asking clarifying questions
-   - Getting approval for plans
-   - Presenting final summaries
-
-2. **Simple File Operations**
-   - Reading a specific known file
-   - Writing a quick fix to one file
-   - Checking git status
-
-3. **Coordination**
-   - Launching multiple parallel agents
-   - Deciding next phase
-   - Aggregating agent summaries
-
-4. **Quick Queries**
-   - "What's in this file?" (known path)
-   - "Show me the error" (specific location)
+**Rule of thumb**: If it takes >3 steps or >2 files → Delegate!
 
 ### File-Based Communication Patterns
 
@@ -776,96 +850,36 @@ Main Chat:
 - Quick, clear decision points
 - No context overwhelm
 
-### Tool: Quick Delegation Templates
+### Quick Delegation Templates
 
-**CRITICAL**: All agents MUST return concise summaries (max 5 sentences).
+**For common patterns**, use skills (investigate, implement, test, multi-model-consult).
 
-#### Template 1: Investigation
+**For ad-hoc tasks**, delegate directly with Task tool:
 
+**Basic Template**:
 ```
-Task tool → golang-developer (or Explore):
+Task tool → [agent-type]:
 
-Investigate: [What to understand]
+[Task description]
 
 Your Tasks:
-1. Search codebase thoroughly
-2. Analyze findings
-3. Write detailed report to: ai-docs/analysis/[topic]-analysis.md
+1. [Action 1]
+2. [Action 2]
+3. Write detailed results to: [output-path]
 
 Return to Main Chat (MAX 5 sentences):
-What: [One-line description]
-Where: [Key file locations]
-How: [Brief mechanism]
-Details: ai-docs/analysis/[topic]-analysis.md
+[Brief summary format]
+Details: [output-path]
 
-DO NOT return full code or analysis in response.
+DO NOT return full details in response.
 ```
 
-#### Template 2: Implementation
+**Agent MUST**:
+- Write ALL details to files
+- Return ONLY 2-5 sentence summary
+- Include file path in response
 
-```
-Task tool → golang-developer:
-
-Implement: [Feature description]
-
-Input: [path-to-requirements or empty if inline]
-
-Your Tasks:
-1. Implement feature
-2. Write changes to codebase
-3. Write summary to: ai-docs/sessions/[session]/output/impl-summary.txt
-
-Return to Main Chat (MAX 5 sentences):
-Status: Success/Partial/Failed
-Files: [count] files modified
-Tests: [pass/fail if run]
-Details: ai-docs/sessions/[session]/output/impl-summary.txt
-
-DO NOT return code or detailed changes in response.
-```
-
-#### Template 3: Testing
-
-```
-Task tool → golang-tester:
-
-Test: [What to test]
-
-Your Tasks:
-1. Run test suite (full or specific)
-2. Identify failures
-3. Write summary to: ai-docs/sessions/[session]/output/test-summary.txt
-
-Return to Main Chat (MAX 4 sentences):
-Status: All Pass / Some Fail / Error
-Pass rate: [N/M (percentage)]
-New failures: [count or "none"]
-Details: ai-docs/sessions/[session]/output/test-summary.txt
-
-DO NOT return full test output in response.
-```
-
-#### Template 4: Code Review
-
-```
-Task tool → code-reviewer:
-
-Review: [what to review]
-Context: [optional context or file path]
-
-Your Tasks:
-1. Review code thoroughly
-2. Categorize issues (CRITICAL/MEDIUM/MINOR)
-3. Write full report to: ai-docs/sessions/[session]/output/review.md
-
-Return to Main Chat (MAX 5 sentences):
-Status: APPROVED / NEEDS_FIXES
-Critical: [count] | Medium: [count] | Minor: [count]
-Top Issue: [one-liner]
-Details: ai-docs/sessions/[session]/output/review.md
-
-DO NOT return full review in response.
-```
+See skills (`investigate.md`, `implement.md`, `test.md`) for detailed templates.
 
 ### Summary: Delegation Strategy Benefits
 
@@ -976,10 +990,10 @@ This is the key to handling complex projects without context overload!
 
 ---
 
-**Last Updated**: 2025-11-18
-**Current Phase**: Phase 3 Complete (Fix A4/A5 + Complete Result/Option Implementation)
-**Next Milestone**: Phase 4 - Pattern Matching + Full go/types Context
-**Session**: 20251118-114514
+**Last Updated**: 2025-11-18 (Phase 4.1 complete, Phase 4.2 started)
+**Current Phase**: Phase 4.2 - Pattern Matching Enhancements (In Progress)
+**Previous Phase**: Phase 4.1 Complete - Pattern Matching + None Inference (57/57 tests passing)
+**Session**: 20251118-173201
 
 ### Additional Project Information
 

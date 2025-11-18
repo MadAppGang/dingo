@@ -1,0 +1,53 @@
+package main
+
+// Test: Guards with 'where' keyword and nested patterns
+// Feature: Swift-style 'where' guards and guard combinations
+// Complexity: intermediate
+
+enum Option {
+	Some(int),
+	None,
+}
+
+enum Result {
+	Ok(Option),
+	Err(error),
+}
+
+// Using 'where' keyword (Swift-style)
+func analyzeValue(opt Option) string {
+	return match opt {
+		Option_Some(x) where x > 100 => "large",
+		Option_Some(x) where x > 10 => "medium",
+		Option_Some(x) where x > 0 => "small",
+		Option_Some(_) => "non-positive",
+		Option_None => "none",
+	}
+}
+
+// Nested pattern with guards
+func processNestedResult(result Result) string {
+	return match result {
+		Result_Ok(Option_Some(val)) where val > 0 => "positive value",
+		Result_Ok(Option_Some(_)) => "non-positive value",
+		Result_Ok(Option_None) => "no value",
+		Result_Err(_) => "error",
+	}
+}
+
+// Guard fallthrough demonstration
+func categorize(opt Option) string {
+	return match opt {
+		Option_Some(x) where x%3 == 0 && x%5 == 0 => "fizzbuzz",
+		Option_Some(x) where x%3 == 0 => "fizz",
+		Option_Some(x) where x%5 == 0 => "buzz",
+		Option_Some(x) => "number",
+		Option_None => "empty",
+	}
+}
+
+func main() {
+	println(analyzeValue(Option_Some(150)))
+	println(processNestedResult(Result_Ok(Option_Some(42))))
+	println(categorize(Option_Some(15)))
+}

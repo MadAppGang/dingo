@@ -1,0 +1,28 @@
+package main
+
+import "errors"
+
+// Test: Basic 2-element tuple matching with Result types
+// Feature: Tuple pattern destructuring
+// Complexity: basic
+
+enum Result {
+	Ok(int),
+	Err(error),
+}
+
+func processResults(r1 Result, r2 Result) string {
+	return match (r1, r2) {
+		(Ok(x), Ok(y)) => "Both succeeded: " + string(x) + ", " + string(y),
+		(Ok(x), Err(e)) => "First succeeded: " + string(x) + ", second failed: " + e.Error(),
+		(Err(e), Ok(y)) => "First failed: " + e.Error() + ", second succeeded: " + string(y),
+		(Err(e1), Err(e2)) => "Both failed: " + e1.Error() + ", " + e2.Error()
+	}
+}
+
+func main() {
+	r1 := Result_Ok(42)
+	r2 := Result_Err(errors.New("network error"))
+	result := processResults(r1, r2)
+	println(result)
+}

@@ -1,0 +1,31 @@
+package main
+
+// Test: Swift/Rust syntax equivalence demonstration
+// Feature: Verify Swift syntax produces same output as Rust
+// Complexity: basic
+// NOTE: This file uses Rust syntax (default), compare with swift_match_01_basic
+
+// Example 1: Simple Result<T,E> match (Rust syntax)
+func processResult(result: Result_int_error)  int {
+	match result {
+		Ok(value) => value * 2,
+		Err(e) => 0
+	}
+}
+
+// Example 2: Option<T> match (Rust syntax)
+func getValueOrDefault(opt: Option_string)  string {
+	match opt {
+		Some(s) => s,
+		None => "default"
+	}
+}
+
+// Example 3: Match in expression context (Rust syntax)
+func doubleIfSome(opt: Option_int)  int {
+	let result = match opt {
+		Some(x) => x * 2,
+		None => 0
+	}
+	return result
+}

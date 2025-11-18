@@ -1,0 +1,29 @@
+package main
+
+import "errors"
+
+// Test: 3-element tuple patterns with realistic parsing scenario
+// Feature: Tuple pattern destructuring
+// Complexity: intermediate
+
+enum Result {
+	Ok(string),
+	Err(error),
+}
+
+func parseConfig(host Result, port Result, timeout Result) string {
+	return match (host, port, timeout) {
+		(Ok(h), Ok(p), Ok(t)) => "Config: " + h + ":" + p + " timeout=" + t,
+		(Ok(h), Ok(p), Err(e)) => "Config: " + h + ":" + p + " (default timeout, error: " + e.Error() + ")",
+		(Ok(h), Err(e), _) => "Host " + h + " but invalid port: " + e.Error(),
+		(Err(e), _, _) => "Invalid host: " + e.Error()
+	}
+}
+
+func main() {
+	h := Result_Ok("localhost")
+	p := Result_Ok("8080")
+	t := Result_Err(errors.New("timeout not specified"))
+	config := parseConfig(h, p, t)
+	println(config)
+}

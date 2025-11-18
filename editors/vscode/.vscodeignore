@@ -1,7 +1,6 @@
 .vscode/**
 .gitignore
 scripts/**
-node_modules/**
 *.md
 !README.md
 .vscodeignore

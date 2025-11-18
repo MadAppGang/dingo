@@ -1,0 +1,57 @@
+package main
+
+// Test: Basic Swift pattern matching syntax
+// Feature: Swift-style switch/case with .Variant syntax
+// Complexity: basic
+
+// Example 1: Simple Result<T,E> match
+func processResult(result Result_int_error) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(value)
+		value := *__match_0.ok_0
+		return value * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return 0
+	}
+	// DINGO_MATCH_END
+
+}
+
+// Example 2: Option<T> match
+func getValueOrDefault(opt Option_string) string {
+	__match_1 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_1.tag {
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(s)
+		s := *__match_1.some_0
+		return s
+	case OptionTagNone:
+		// DINGO_PATTERN: None
+		return "default"
+	}
+	// DINGO_MATCH_END
+
+}
+
+// Example 3: Match with variable assignment
+func doubleIfSome(opt Option_int) int {
+	__match_2 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_2.tag {
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x)
+		x := *__match_2.some_0
+		return x * 2
+	case OptionTagNone:
+		// DINGO_PATTERN: None
+		return 0
+	}
+	// DINGO_MATCH_END
+
+}

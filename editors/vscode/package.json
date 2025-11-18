@@ -61,6 +61,32 @@
     "configuration": {
       "title": "Dingo",
       "properties": {
+        "dingo.lsp.path": {
+          "type": "string",
+          "default": "dingo-lsp",
+          "description": "Path to dingo-lsp binary (default: searches $PATH)"
+        },
+        "dingo.transpileOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically transpile .dingo files on save"
+        },
+        "dingo.showTranspileNotifications": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show notifications when transpilation succeeds/fails"
+        },
+        "dingo.lsp.logLevel": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info",
+          "description": "LSP server log level"
+        },
         "dingo.highlightGeneratedCode": {
           "type": "boolean",
           "default": true,
@@ -107,6 +133,18 @@
     },
     "commands": [
       {
+        "command": "dingo.transpileCurrentFile",
+        "title": "Dingo: Transpile Current File"
+      },
+      {
+        "command": "dingo.transpileWorkspace",
+        "title": "Dingo: Transpile All Files in Workspace"
+      },
+      {
+        "command": "dingo.restartLSP",
+        "title": "Dingo: Restart Language Server"
+      },
+      {
         "command": "dingo.toggleGeneratedCodeHighlighting",
         "title": "Dingo: Toggle Generated Code Highlighting"
       },
@@ -132,6 +170,9 @@
     "build-grammar": "node scripts/build-grammar.js",
     "package": "vsce package",
     "publish": "vsce publish"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",

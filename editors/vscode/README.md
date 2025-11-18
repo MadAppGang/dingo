@@ -4,11 +4,22 @@ Syntax highlighting and language support for [Dingo](https://github.com/youruser
 
 ## Features
 
+### Language Server Protocol (LSP) Support (NEW in v0.2.0)
+- **Full IDE support** via `dingo-lsp` language server
+- **Autocomplete** for Dingo code (powered by gopls)
+- **Go-to-definition** (F12) - jump to type/function definitions
+- **Hover information** - type information on hover
+- **Inline diagnostics** - real-time error reporting
+- **Auto-transpile on save** (configurable)
+- Requires: `dingo-lsp` binary and `gopls` installed
+
 ### Syntax Highlighting
 - **Dingo language features**:
   - `Result<T, E>` and `Option<T>` types
   - `?` error propagation operator
-  - `match` pattern matching expressions
+  - `match` pattern matching expressions (Rust-style)
+  - Exhaustiveness checking for match statements
+  - Nested pattern destructuring (`Ok(Some(value))`)
   - Lambda functions with `|params| expr` syntax
   - Enums and sum types
   - All standard Go syntax
@@ -43,10 +54,41 @@ Syntax highlighting and language support for [Dingo](https://github.com/youruser
 - **Syntax highlighting**: `.go.golden` files get full Dingo syntax support
 
 ### Commands
+- `Dingo: Transpile Current File` - Manually transpile the active .dingo file
+- `Dingo: Transpile All Files in Workspace` - Transpile all .dingo files
+- `Dingo: Restart Language Server` - Restart dingo-lsp (useful after updates)
 - `Dingo: Toggle Generated Code Highlighting` - Quickly enable/disable highlighting
 - `Dingo: Compare with Source File` - Open side-by-side diff view (keyboard: `Ctrl+Shift+D`)
 
+## Requirements
+
+For full LSP support (autocomplete, go-to-definition, etc.):
+
+1. **Dingo transpiler** (`dingo` binary in $PATH)
+   - Install from: https://dingolang.com/docs/installation
+
+2. **gopls** (Go language server)
+   ```bash
+   go install golang.org/x/tools/gopls@latest
+   ```
+
+3. **dingo-lsp** (LSP server - included with Dingo)
+   - Automatically available after installing Dingo
+
+**Note:** Syntax highlighting works without these requirements. LSP features require all three.
+
 ## Installation
+
+### From .vsix Package (Recommended)
+
+1. Download `dingo-0.2.0.vsix` from releases
+2. Install via command line:
+   ```bash
+   code --install-extension dingo-0.2.0.vsix
+   ```
+   Or via VS Code: Extensions → `...` → Install from VSIX
+
+3. Reload VS Code
 
 ### From Marketplace (Coming Soon)
 
@@ -125,7 +167,27 @@ let doubled = evens.map(|n| n * 2)
 
 ## Configuration
 
-The extension provides several settings to customize generated code highlighting:
+The extension provides several settings to customize behavior:
+
+### LSP Settings
+
+```json
+{
+  // Path to dingo-lsp binary (default: searches $PATH)
+  "dingo.lsp.path": "dingo-lsp",
+
+  // Automatically transpile .dingo files on save (default: true)
+  "dingo.transpileOnSave": true,
+
+  // Show transpilation success/failure notifications (default: false)
+  "dingo.showTranspileNotifications": false,
+
+  // LSP server log level: debug, info, warn, error (default: info)
+  "dingo.lsp.logLevel": "info"
+}
+```
+
+### Generated Code Highlighting Settings
 
 ### `dingo.highlightGeneratedCode`
 - **Type**: boolean
@@ -211,6 +273,58 @@ Example: Adding ternary operator support
 4. Create `examples/ternary.dingo` with test cases
 5. Test in VS Code with Scope Inspector
 6. Commit with descriptive message
+
+## Troubleshooting
+
+### Autocomplete not working
+
+1. **Ensure .dingo file is transpiled**
+   - Manual: `dingo build file.dingo`
+   - Or enable auto-transpile: Set `dingo.transpileOnSave: true`
+
+2. **Check gopls is installed**
+   ```bash
+   gopls version
+   ```
+   If not installed:
+   ```bash
+   go install golang.org/x/tools/gopls@latest
+   ```
+
+3. **Restart LSP**
+   - Command Palette → "Dingo: Restart Language Server"
+
+4. **Check LSP logs**
+   - Output panel → "Dingo Language Server"
+   - Set `dingo.lsp.logLevel: "debug"` for verbose logs
+
+### Transpilation errors
+
+- Errors appear inline as diagnostics (red squiggly lines)
+- Hover over the error to see details
+- Check Output panel → "Dingo Language Server" for full error messages
+
+### Extension not activating
+
+- Ensure you're opening a `.dingo` file (triggers activation)
+- Check VS Code extension host logs: Developer → Show Logs → Extension Host
+- Verify extension is enabled in Extensions view
+
+### dingo-lsp not found
+
+If you see "dingo-lsp binary not found":
+
+1. **Ensure Dingo is installed**
+   - Check: `dingo version`
+
+2. **Add dingo-lsp to PATH**
+   - Find binary: `which dingo-lsp` or `where dingo-lsp`
+   - Add to PATH or set full path in settings:
+     ```json
+     {
+       "dingo.lsp.path": "/full/path/to/dingo-lsp"
+     }
+     ```
 
 ## Contributing
 

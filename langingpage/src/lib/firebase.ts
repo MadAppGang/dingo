@@ -36,7 +36,7 @@ function getFirebaseApp() {
 
 // Initialize Firebase Authentication (lazy)
 export const auth: Auth = new Proxy({} as Auth, {
-  get(target, prop) {
+  get(_target, prop) {
     if (!_auth && typeof window !== 'undefined') {
       const app = getFirebaseApp();
       if (app) {

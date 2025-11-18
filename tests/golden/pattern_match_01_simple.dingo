@@ -1,0 +1,61 @@
+package main
+
+import "fmt"
+
+// Simple pattern matching examples for Result<T,E> and Option<T>
+
+// Example 1: Pattern match on Result<T,E>
+func processResult(result: Result<int, error>) -> int {
+	match result {
+		Ok(value) => value * 2,
+		Err(e) => 0
+	}
+}
+
+// Example 2: Pattern match on Option<T>
+func processOption(opt: Option<string>) -> string {
+	match opt {
+		Some(s) => s,
+		None => "default"
+	}
+}
+
+// Example 3: Pattern match with wildcard
+func handleStatus(status: Status) -> string {
+	match status {
+		Active => "running",
+		Pending => "waiting",
+		_ => "unknown"
+	}
+}
+
+// Example 4: Pattern match in assignment context
+func doubleIfPresent(opt: Option<int>) -> Option<int> {
+	let result = match opt {
+		Some(x) => Some(x * 2),
+		None => None
+	}
+	return result
+}
+
+// Example 5: Nested pattern matching
+func processNested(result: Result<Option<int>, error>) -> int {
+	match result {
+		Ok(inner) => {
+			match inner {
+				Some(val) => val,
+				None => 0
+			}
+		},
+		Err(e) => -1
+	}
+}
+
+// Helper enum for example 3
+type Status int
+
+const (
+	Active Status = iota
+	Pending
+	Completed
+)

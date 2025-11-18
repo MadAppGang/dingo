@@ -10,6 +10,8 @@ import '../styles/shiki-markdown.css'; // Server-rendered code and markdown styl
 import { getCollection } from 'astro:content';
 import { codeToHtml } from 'shiki';
 import { marked } from 'marked';
+import { dingoLanguage } from '../lib/dingoLanguage';
+import { highlightMarkdownTokens } from '../lib/markdownHighlight';
 
 // Fetch all golden examples
 const allExamples = await getCollection('golden-examples');
@@ -34,7 +36,7 @@ const formattedExamples = await Promise.all(
   sortedExamples.map(async (example, index) => {
     // Render code blocks with Shiki (server-side, zero JS)
     const beforeHtml = await codeToHtml(example.data.dingoCode, {
-      lang: 'go',
+      lang: dingoLanguage as any,
       theme: 'dark-plus',
     });
 
@@ -44,11 +46,16 @@ const formattedExamples = await Promise.all(
     });
 
     // Render markdown with marked (server-side, zero JS)
-    const reasoningHtml = example.data.reasoning
-      ? await marked(example.data.reasoning, {
-          gfm: true,
-          breaks: true,
-        })
+    const reasoningSource = example.data.reasoning;
+    const reasoningHtml = reasoningSource
+      ? await (async () => {
+          const tokens = marked.lexer(reasoningSource);
+          await highlightMarkdownTokens(tokens);
+          return marked.parser(tokens, {
+            gfm: true,
+            breaks: true,
+          });
+        })()
       : null;
 
     return {

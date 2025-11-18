@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
+	"github.com/MadAppGang/dingo/pkg/config"
 	"github.com/MadAppGang/dingo/pkg/generator"
 	"github.com/MadAppGang/dingo/pkg/parser"
 	"github.com/MadAppGang/dingo/pkg/plugin"
@@ -96,12 +98,29 @@ func TestGoldenFiles(t *testing.T) {
 			dingoSrc, err := os.ReadFile(dingoFile)
 			require.NoError(t, err, "Failed to read Dingo source: %s", dingoFile)
 
+			// Load config if test has a subdirectory with dingo.toml
+			var cfg *config.Config
+			testConfigDir := filepath.Join(goldenDir, baseName)
+			testConfigPath := filepath.Join(testConfigDir, "dingo.toml")
+			if _, err := os.Stat(testConfigPath); err == nil {
+				// Config exists, load it
+				cfg = config.DefaultConfig()
+				if _, err := toml.DecodeFile(testConfigPath, cfg); err != nil {
+					t.Fatalf("Failed to load test config %s: %v", testConfigPath, err)
+				}
+			}
+
 			// Preprocess THEN parse
-			preprocessor := preprocessor.New(dingoSrc)
-			preprocessed, _, err := preprocessor.Process()
+			var preprocessorInst *preprocessor.Preprocessor
+			if cfg != nil {
+				preprocessorInst = preprocessor.NewWithMainConfig(dingoSrc, cfg)
+			} else {
+				preprocessorInst = preprocessor.New(dingoSrc)
+			}
+			preprocessed, _, err := preprocessorInst.Process()
 			require.NoError(t, err, "Failed to preprocess Dingo file: %s", dingoFile)
 
-			dingoAST, err := parser.ParseFile(fset, dingoFile, []byte(preprocessed), 0)
+			dingoAST, err := parser.ParseFile(fset, dingoFile, []byte(preprocessed), parser.ParseComments)
 			require.NoError(t, err, "Failed to parse preprocessed Dingo file: %s", dingoFile)
 
 			// Create generator (plugins are registered internally)

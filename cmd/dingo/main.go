@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/MadAppGang/dingo/pkg/config"
 	"github.com/MadAppGang/dingo/pkg/generator"
 	"github.com/MadAppGang/dingo/pkg/parser"
 	"github.com/MadAppGang/dingo/pkg/plugin"
@@ -147,14 +148,17 @@ func versionCmd() *cobra.Command {
 }
 
 func runBuild(files []string, output string, watch bool, multiValueReturnMode string) error {
-	// Create config from flags
-	config := &preprocessor.Config{
-		MultiValueReturnMode: multiValueReturnMode,
-	}
-
-	// Validate config
-	if err := config.ValidateMultiValueReturnMode(); err != nil {
-		return fmt.Errorf("configuration error: %w", err)
+	// Load main Dingo configuration (C1: Config Integration)
+	//
+	// Priority order:
+	// 1. dingo.toml in current directory
+	// 2. ~/.dingo/config.toml
+	// 3. Built-in defaults
+	cfg, err := config.Load(nil)
+	if err != nil {
+		// Non-fatal: fall back to defaults and warn
+		cfg = config.DefaultConfig()
+		fmt.Fprintf(os.Stderr, "Warning: config load failed, using defaults: %v\n", err)
 	}
 
 	// Create beautiful output handler
@@ -171,7 +175,7 @@ func runBuild(files []string, output string, watch bool, multiValueReturnMode st
 	var lastError error
 
 	for _, file := range files {
-		if err := buildFile(file, output, buildUI, config); err != nil {
+		if err := buildFile(file, output, buildUI, cfg); err != nil {
 			success = false
 			lastError = err
 			buildUI.PrintError(err.Error())
@@ -194,7 +198,7 @@ func runBuild(files []string, output string, watch bool, multiValueReturnMode st
 	return nil
 }
 
-func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, config *preprocessor.Config) error {
+func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg *config.Config) error {
 	if outputPath == "" {
 		// Default: replace .dingo with .go
 		if len(inputPath) > 6 && inputPath[len(inputPath)-6:] == ".dingo" {
@@ -213,9 +217,9 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, con
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// Step 2: Preprocess (with config)
+	// Step 2: Preprocess (with main config - C1 integration)
 	prepStart := time.Now()
-	prep := preprocessor.NewWithConfig(src, config)
+	prep := preprocessor.NewWithMainConfig(src, cfg)
 	goSource, sourceMap, err := prep.Process()
 	prepDuration := time.Since(prepStart)
 
@@ -237,7 +241,7 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, con
 	// Step 3: Parse preprocessed Go
 	parseStart := time.Now()
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, inputPath, []byte(goSource), 0)
+	file, err := parser.ParseFile(fset, inputPath, []byte(goSource), parser.ParseComments)
 	parseDuration := time.Since(parseStart)
 
 	if err != nil {
@@ -347,15 +351,11 @@ func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode s
 	// Step 1: Build (transpile)
 	buildStart := time.Now()
 
-	// Create config from flags
-	config := &preprocessor.Config{
-		MultiValueReturnMode: multiValueReturnMode,
-	}
-
-	// Validate config
-	if err := config.ValidateMultiValueReturnMode(); err != nil {
-		buildUI.PrintError(fmt.Sprintf("Configuration error: %v", err))
-		return err
+	// Load main Dingo configuration (C1: Config Integration)
+	cfg, err := config.Load(nil)
+	if err != nil {
+		// Non-fatal: fall back to defaults
+		cfg = config.DefaultConfig()
 	}
 
 	// Read source
@@ -365,8 +365,8 @@ func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode s
 		return err
 	}
 
-	// Preprocess (with config)
-	prep := preprocessor.NewWithConfig(src, config)
+	// Preprocess (with main config - C1 integration)
+	prep := preprocessor.NewWithMainConfig(src, cfg)
 	goSource, _, err := prep.Process()
 	if err != nil {
 		buildUI.PrintError(fmt.Sprintf("Preprocessing error: %v", err))
@@ -375,7 +375,7 @@ func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode s
 
 	// Parse
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, inputPath, []byte(goSource), 0)
+	file, err := parser.ParseFile(fset, inputPath, []byte(goSource), parser.ParseComments)
 	if err != nil {
 		buildUI.PrintError(fmt.Sprintf("Parse error: %v", err))
 		return err

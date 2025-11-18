@@ -1,0 +1,1102 @@
+package builtin
+
+import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"strings"
+	"testing"
+
+	"github.com/MadAppGang/dingo/pkg/plugin"
+)
+
+func TestPatternMatchPlugin_Name(t *testing.T) {
+	p := NewPatternMatchPlugin()
+	if p.Name() != "pattern_match" {
+		t.Errorf("expected name 'pattern_match', got %q", p.Name())
+	}
+}
+
+func TestPatternMatchPlugin_ExhaustiveResult(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_string) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return 0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have no errors (exhaustive)
+	if ctx.HasErrors() {
+		t.Errorf("expected no errors for exhaustive match, got: %v", ctx.GetErrors())
+	}
+
+	// Should discover 1 match expression
+	if len(p.matchExpressions) != 1 {
+		t.Fatalf("expected 1 match expression, got %d", len(p.matchExpressions))
+	}
+
+	match := p.matchExpressions[0]
+	if len(match.patterns) != 2 {
+		t.Errorf("expected 2 patterns (Ok, Err), got %d", len(match.patterns))
+	}
+}
+
+func TestPatternMatchPlugin_NonExhaustiveResult(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_string) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x * 2
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have 1 error (non-exhaustive, missing Err)
+	if !ctx.HasErrors() {
+		t.Fatalf("expected error for non-exhaustive match")
+	}
+
+	errors := ctx.GetErrors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errors))
+	}
+
+	errMsg := errors[0].Error()
+	if !strings.Contains(errMsg, "non-exhaustive") {
+		t.Errorf("expected 'non-exhaustive' in error, got: %s", errMsg)
+	}
+	if !strings.Contains(errMsg, "Err") {
+		t.Errorf("expected 'Err' in missing cases, got: %s", errMsg)
+	}
+}
+
+func TestPatternMatchPlugin_ExhaustiveOption(t *testing.T) {
+	src := `package main
+
+func handleOption(opt Option_int) int {
+	__match_0 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_0.tag {
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x)
+		x := *__match_0.some_0
+		return x
+	case OptionTagNone:
+		// DINGO_PATTERN: None
+		return 0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have no errors (exhaustive)
+	if ctx.HasErrors() {
+		t.Errorf("expected no errors for exhaustive match, got: %v", ctx.GetErrors())
+	}
+}
+
+func TestPatternMatchPlugin_NonExhaustiveOption(t *testing.T) {
+	src := `package main
+
+func handleOption(opt Option_int) int {
+	__match_0 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_0.tag {
+	case OptionTagSome:
+		// DINGO_PATTERN: Some(x)
+		x := *__match_0.some_0
+		return x
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have 1 error (non-exhaustive, missing None)
+	if !ctx.HasErrors() {
+		t.Fatalf("expected error for non-exhaustive match")
+	}
+
+	errors := ctx.GetErrors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errors))
+	}
+
+	errMsg := errors[0].Error()
+	if !strings.Contains(errMsg, "non-exhaustive") {
+		t.Errorf("expected 'non-exhaustive' in error, got: %s", errMsg)
+	}
+	if !strings.Contains(errMsg, "None") {
+		t.Errorf("expected 'None' in missing cases, got: %s", errMsg)
+	}
+}
+
+func TestPatternMatchPlugin_WildcardCoversAll(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_string) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x * 2
+	default:
+		// DINGO_PATTERN: _
+		return 0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have no errors (wildcard covers Err)
+	if ctx.HasErrors() {
+		t.Errorf("expected no errors with wildcard, got: %v", ctx.GetErrors())
+	}
+
+	// Should detect wildcard
+	if len(p.matchExpressions) != 1 {
+		t.Fatalf("expected 1 match expression, got %d", len(p.matchExpressions))
+	}
+
+	match := p.matchExpressions[0]
+	if !match.hasWildcard {
+		t.Errorf("expected wildcard to be detected")
+	}
+}
+
+func TestPatternMatchPlugin_GetAllVariants(t *testing.T) {
+	p := NewPatternMatchPlugin()
+
+	tests := []struct {
+		name      string
+		scrutinee string
+		want      []string
+	}{
+		{
+			name:      "Result type",
+			scrutinee: "result",
+			want:      []string{"Ok", "Err"},
+		},
+		{
+			name:      "Result_T_E type",
+			scrutinee: "Result_int_string",
+			want:      []string{"Ok", "Err"},
+		},
+		{
+			name:      "Option type",
+			scrutinee: "option",
+			want:      []string{"Some", "None"},
+		},
+		{
+			name:      "Option_T type",
+			scrutinee: "Option_int",
+			want:      []string{"Some", "None"},
+		},
+		{
+			name:      "Unknown type",
+			scrutinee: "someValue",
+			want:      []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.getAllVariants(tt.scrutinee)
+			if len(got) != len(tt.want) {
+				t.Errorf("getAllVariants(%q) = %v, want %v", tt.scrutinee, got, tt.want)
+				return
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("getAllVariants(%q)[%d] = %q, want %q", tt.scrutinee, i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestPatternMatchPlugin_ExtractConstructorName(t *testing.T) {
+	p := NewPatternMatchPlugin()
+
+	tests := []struct {
+		pattern string
+		want    string
+	}{
+		{"Ok(x)", "Ok"},
+		{"Err(e)", "Err"},
+		{"Some(v)", "Some"},
+		{"None", "None"},
+		{"_", "_"},
+		{"Active(id)", "Active"},
+		{"Pending", "Pending"},
+		{" Ok(x) ", "Ok"}, // with whitespace
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern, func(t *testing.T) {
+			got := p.extractConstructorName(tt.pattern)
+			if got != tt.want {
+				t.Errorf("extractConstructorName(%q) = %q, want %q", tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPatternMatchPlugin_IsExpressionMode(t *testing.T) {
+	// Test expression mode detection
+	// Note: Switch statements as expressions aren't valid Go syntax,
+	// but we can test with function calls that get transformed
+	src := `package main
+
+func test() int {
+	// Expression mode: return statement
+	return match(x)
+
+	// Statement mode: standalone
+	match(y)
+}
+
+func match(v int) int {
+	switch {
+	case v > 0:
+		return 1
+	}
+	return 0
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	// Find all call expressions (match(x) and match(y))
+	var calls []*ast.CallExpr
+	ast.Inspect(file, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "match" {
+				calls = append(calls, call)
+			}
+		}
+		return true
+	})
+
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 match calls, got %d", len(calls))
+	}
+
+	// First call is in return statement (expression context via parent)
+	// This test is simplified - in real usage, we check if switch is in expression context
+	// For this test, we just verify the parent walking works
+	parent1 := ctx.GetParent(calls[0])
+	if parent1 == nil {
+		t.Errorf("expected parent for first call")
+	}
+
+	parent2 := ctx.GetParent(calls[1])
+	if parent2 == nil {
+		t.Errorf("expected parent for second call")
+	}
+}
+
+func TestPatternMatchPlugin_MultipleMatches(t *testing.T) {
+	src := `package main
+
+func test(r1 Result_int_string, r2 Result_int_string) {
+	// First match - non-exhaustive
+	__match_0 := r1
+	// DINGO_MATCH_START: r1
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+	}
+	// DINGO_MATCH_END
+
+	// Second match - exhaustive
+	__match_1 := r2
+	// DINGO_MATCH_START: r2
+	switch __match_1.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(y)
+		y := *__match_1.ok_0
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_1.err_0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should discover 2 match expressions
+	if len(p.matchExpressions) != 2 {
+		t.Fatalf("expected 2 match expressions, got %d", len(p.matchExpressions))
+	}
+
+	// First match is non-exhaustive (should have error)
+	if !ctx.HasErrors() {
+		t.Fatalf("expected error for first non-exhaustive match")
+	}
+
+	// Should have exactly 1 error (only first match is non-exhaustive)
+	errors := ctx.GetErrors()
+	if len(errors) != 1 {
+		t.Errorf("expected 1 error, got %d", len(errors))
+	}
+}
+
+func TestPatternMatchPlugin_Transform_AddsPanic(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_string) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return 0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	// Process first to discover matches
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Get the switch statement before transformation
+	var switchStmt *ast.SwitchStmt
+	ast.Inspect(file, func(n ast.Node) bool {
+		if sw, ok := n.(*ast.SwitchStmt); ok {
+			switchStmt = sw
+			return false
+		}
+		return true
+	})
+
+	if switchStmt == nil {
+		t.Fatalf("switch statement not found")
+	}
+
+	// Check initial case count (should be 2: Ok, Err)
+	initialCaseCount := len(switchStmt.Body.List)
+	if initialCaseCount != 2 {
+		t.Fatalf("expected 2 initial cases, got %d", initialCaseCount)
+	}
+
+	// Transform to add default panic
+	_, err = p.Transform(file)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	// Check that default case was added (should now be 3)
+	finalCaseCount := len(switchStmt.Body.List)
+	if finalCaseCount != 3 {
+		t.Errorf("expected 3 cases after transform (Ok, Err, default), got %d", finalCaseCount)
+	}
+
+	// Check that last case is default with panic
+	lastCase := switchStmt.Body.List[2].(*ast.CaseClause)
+	if lastCase.List != nil && len(lastCase.List) > 0 {
+		t.Errorf("last case should be default (nil List), got: %v", lastCase.List)
+	}
+
+	// Check that panic call exists
+	if len(lastCase.Body) == 0 {
+		t.Fatalf("default case should have panic statement")
+	}
+
+	exprStmt, ok := lastCase.Body[0].(*ast.ExprStmt)
+	if !ok {
+		t.Fatalf("expected ExprStmt in default case")
+	}
+
+	callExpr, ok := exprStmt.X.(*ast.CallExpr)
+	if !ok {
+		t.Fatalf("expected CallExpr in default case")
+	}
+
+	if ident, ok := callExpr.Fun.(*ast.Ident); !ok || ident.Name != "panic" {
+		t.Errorf("expected panic call, got: %v", callExpr.Fun)
+	}
+}
+
+func TestPatternMatchPlugin_Transform_WildcardNoPanic(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_string) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x * 2
+	default:
+		// DINGO_PATTERN: _
+		return 0
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	var switchStmt *ast.SwitchStmt
+	ast.Inspect(file, func(n ast.Node) bool {
+		if sw, ok := n.(*ast.SwitchStmt); ok {
+			switchStmt = sw
+			return false
+		}
+		return true
+	})
+
+	initialCaseCount := len(switchStmt.Body.List)
+
+	// Transform should NOT add default panic (wildcard already exists)
+	_, err = p.Transform(file)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	finalCaseCount := len(switchStmt.Body.List)
+	if finalCaseCount != initialCaseCount {
+		t.Errorf("expected case count to remain %d (no panic added), got %d", initialCaseCount, finalCaseCount)
+	}
+}
+
+// Guard transformation tests
+
+func TestPatternMatchPlugin_GuardParsing(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return 0
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should discover 1 match expression
+	if len(p.matchExpressions) != 1 {
+		t.Fatalf("expected 1 match expression, got %d", len(p.matchExpressions))
+	}
+
+	match := p.matchExpressions[0]
+
+	// Should have 1 guard
+	if len(match.guards) != 1 {
+		t.Fatalf("expected 1 guard, got %d", len(match.guards))
+	}
+
+	// Check guard condition
+	guard := match.guards[0]
+	if guard.condition != "x > 0" {
+		t.Errorf("expected guard condition 'x > 0', got %q", guard.condition)
+	}
+
+	// Check guard is on first case (armIndex 0)
+	if guard.armIndex != 0 {
+		t.Errorf("expected guard on arm 0, got arm %d", guard.armIndex)
+	}
+}
+
+func TestPatternMatchPlugin_GuardTransformation(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Get switch statement
+	var switchStmt *ast.SwitchStmt
+	ast.Inspect(file, func(n ast.Node) bool {
+		if sw, ok := n.(*ast.SwitchStmt); ok {
+			switchStmt = sw
+			return false
+		}
+		return true
+	})
+
+	if switchStmt == nil {
+		t.Fatalf("switch statement not found")
+	}
+
+	// Get first case (Ok with guard)
+	firstCase := switchStmt.Body.List[0].(*ast.CaseClause)
+	initialBodyLen := len(firstCase.Body)
+
+	// Transform to inject nested if
+	_, err = p.Transform(file)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	// Check that first case body is now wrapped in if statement
+	if len(firstCase.Body) != 1 {
+		t.Fatalf("expected 1 statement in guarded case body (if statement), got %d", len(firstCase.Body))
+	}
+
+	ifStmt, ok := firstCase.Body[0].(*ast.IfStmt)
+	if !ok {
+		t.Fatalf("expected if statement in guarded case body, got %T", firstCase.Body[0])
+	}
+
+	// Check if statement has correct number of original statements
+	if len(ifStmt.Body.List) != initialBodyLen {
+		t.Errorf("expected %d statements in if body (original statements), got %d", initialBodyLen, len(ifStmt.Body.List))
+	}
+
+	// Check if statement has no else clause (fallthrough)
+	if ifStmt.Else != nil {
+		t.Errorf("expected no else clause (fallthrough), got: %v", ifStmt.Else)
+	}
+
+	// Verify second case (Err without guard) is unchanged
+	secondCase := switchStmt.Body.List[1].(*ast.CaseClause)
+	if len(secondCase.Body) == 1 {
+		if _, isIf := secondCase.Body[0].(*ast.IfStmt); isIf {
+			t.Errorf("expected second case (no guard) to not have if statement")
+		}
+	}
+}
+
+func TestPatternMatchPlugin_MultipleGuards(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x == 0
+		x := *__match_0.ok_0
+		return 0
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x)
+		x := *__match_0.ok_0
+		return x
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should discover 2 guards (first two Ok cases)
+	if len(p.matchExpressions) != 1 {
+		t.Fatalf("expected 1 match expression, got %d", len(p.matchExpressions))
+	}
+
+	match := p.matchExpressions[0]
+	if len(match.guards) != 2 {
+		t.Fatalf("expected 2 guards, got %d", len(match.guards))
+	}
+
+	// Check first guard
+	if match.guards[0].condition != "x > 0" {
+		t.Errorf("expected first guard 'x > 0', got %q", match.guards[0].condition)
+	}
+
+	// Check second guard
+	if match.guards[1].condition != "x == 0" {
+		t.Errorf("expected second guard 'x == 0', got %q", match.guards[1].condition)
+	}
+
+	// Transform and verify both guards get if statements
+	_, err = p.Transform(file)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	var switchStmt *ast.SwitchStmt
+	ast.Inspect(file, func(n ast.Node) bool {
+		if sw, ok := n.(*ast.SwitchStmt); ok {
+			switchStmt = sw
+			return false
+		}
+		return true
+	})
+
+	// Check first two cases have if statements
+	for i := 0; i < 2; i++ {
+		caseClause := switchStmt.Body.List[i].(*ast.CaseClause)
+		if len(caseClause.Body) != 1 {
+			t.Fatalf("case %d: expected 1 statement (if), got %d", i, len(caseClause.Body))
+		}
+		if _, ok := caseClause.Body[0].(*ast.IfStmt); !ok {
+			t.Errorf("case %d: expected if statement, got %T", i, caseClause.Body[0])
+		}
+	}
+
+	// Third case (Ok without guard) should not have if statement
+	thirdCase := switchStmt.Body.List[2].(*ast.CaseClause)
+	if len(thirdCase.Body) == 1 {
+		if _, isIf := thirdCase.Body[0].(*ast.IfStmt); isIf {
+			t.Errorf("third case (no guard) should not have if statement")
+		}
+	}
+}
+
+func TestPatternMatchPlugin_ComplexGuardExpression(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0 && x < 100
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	match := p.matchExpressions[0]
+	if len(match.guards) != 1 {
+		t.Fatalf("expected 1 guard, got %d", len(match.guards))
+	}
+
+	// Check complex guard condition
+	if match.guards[0].condition != "x > 0 && x < 100" {
+		t.Errorf("expected guard 'x > 0 && x < 100', got %q", match.guards[0].condition)
+	}
+
+	// Transform should succeed
+	_, err = p.Transform(file)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+}
+
+func TestPatternMatchPlugin_InvalidGuardSyntax(t *testing.T) {
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > @ invalid
+		x := *__match_0.ok_0
+		return x * 2
+	case ResultTagErr:
+		// DINGO_PATTERN: Err(e)
+		e := __match_0.err_0
+		return -1
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Transform should fail with invalid guard syntax
+	_, err = p.Transform(file)
+	if err == nil {
+		t.Fatalf("expected error for invalid guard syntax")
+	}
+
+	if !strings.Contains(err.Error(), "invalid guard condition") {
+		t.Errorf("expected 'invalid guard condition' in error, got: %s", err.Error())
+	}
+}
+
+func TestPatternMatchPlugin_GuardExhaustivenessIgnored(t *testing.T) {
+	// Guards should NOT satisfy exhaustiveness checking
+	src := `package main
+
+func handleResult(result Result_int_int) int {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTagOk:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		return x * 2
+	}
+	// DINGO_MATCH_END
+}
+`
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	ctx := &plugin.Context{
+		FileSet:     fset,
+		CurrentFile: file,
+		Logger:      plugin.NewNoOpLogger(),
+	}
+	ctx.BuildParentMap(file)
+
+	p := NewPatternMatchPlugin()
+	p.SetContext(ctx)
+
+	err = p.Process(file)
+	if err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	// Should have error for non-exhaustive match (missing Err)
+	// Guards do NOT satisfy exhaustiveness
+	if !ctx.HasErrors() {
+		t.Fatalf("expected error for non-exhaustive match (guards ignored)")
+	}
+
+	errors := ctx.GetErrors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errors))
+	}
+
+	errMsg := errors[0].Error()
+	if !strings.Contains(errMsg, "non-exhaustive") {
+		t.Errorf("expected 'non-exhaustive' in error, got: %s", errMsg)
+	}
+	if !strings.Contains(errMsg, "Err") {
+		t.Errorf("expected 'Err' in missing cases, got: %s", errMsg)
+	}
+}

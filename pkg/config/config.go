@@ -50,9 +50,19 @@ const (
 	FormatNone SourceMapFormat = "none"
 )
 
+// MatchConfig controls pattern matching feature behavior
+type MatchConfig struct {
+	// Syntax selects the pattern matching syntax style
+	// Valid values: "rust", "swift"
+	// - "rust": Rust-style match syntax (match expr { ... })
+	// - "swift": Swift-style switch syntax (switch expr { ... })
+	Syntax string `toml:"syntax"`
+}
+
 // Config represents the complete Dingo project configuration
 type Config struct {
 	Features  FeatureConfig   `toml:"features"`
+	Match     MatchConfig     `toml:"match"`
 	SourceMap SourceMapConfig `toml:"sourcemaps"`
 }
 
@@ -171,6 +181,9 @@ func DefaultConfig() *Config {
 				GoInterop: "opt-in", // Default to safe explicit wrapping
 			},
 		},
+		Match: MatchConfig{
+			Syntax: "rust", // Default to Rust-style match syntax
+		},
 		SourceMap: SourceMapConfig{
 			Enabled: true,
 			Format:  FormatInline, // Default to inline for development
@@ -237,6 +250,17 @@ func (c *Config) Validate() error {
 	if !c.Features.ErrorPropagationSyntax.IsValid() {
 		return fmt.Errorf("invalid error_propagation_syntax: %q (must be 'question', 'bang', or 'try')",
 			c.Features.ErrorPropagationSyntax)
+	}
+
+	// Validate match syntax
+	if c.Match.Syntax != "" {
+		switch c.Match.Syntax {
+		case "rust", "swift":
+			// Valid
+		default:
+			return fmt.Errorf("invalid match.syntax: %q (must be 'rust' or 'swift')",
+				c.Match.Syntax)
+		}
 	}
 
 	// Validate nil safety mode

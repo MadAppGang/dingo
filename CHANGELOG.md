@@ -4,6 +4,59 @@ All notable changes to the Dingo compiler will be documented in this file.
 
 ## [Unreleased] - 2025-11-18
 
+### Phase 4.2 - Pattern Matching Enhancements (IN PROGRESS)
+
+**Session**: 20251118-173201
+**Status**: Planning phase
+**Objective**: Extend pattern matching with guards, Swift syntax, tuples, and enhanced error messages
+
+**Planned Features:**
+1. **Pattern Guards** - `pattern if condition` syntax for conditional matching
+2. **Swift Pattern Syntax** - `switch/case .Variant(let x)` as alternative to Rust syntax
+3. **Tuple Destructuring** - `(pattern1, pattern2)` with wildcard support
+4. **Enhanced Error Messages** - rustc-style source snippets with suggestions
+
+**Prerequisites:** Phase 4.1 complete (configuration, parent tracking, Rust patterns, exhaustiveness, transformation, None inference)
+
+**Timeline:** 4-6 hours estimated
+
+---
+
+### Phase 4.1 - Pattern Matching + None Inference (COMPLETE ✅)
+
+**Session**: 20251118-150059
+**Date**: 2025-11-18
+**Status**: COMPLETE - All 7 tasks implemented, 9 critical issues fixed, 57/57 tests passing
+
+**Delivered:**
+1. ✅ **Configuration System** - dingo.toml support for pattern matching syntax selection (rust/swift)
+2. ✅ **AST Parent Tracking** - BuildParentMap() for context-aware type inference (<10ms overhead)
+3. ✅ **Rust Pattern Match Syntax** - `match result { Ok(x) => ..., Err(e) => ... }`
+4. ✅ **Exhaustiveness Checking** - Strict compile-time validation of pattern coverage
+5. ✅ **Pattern Transformation** - Tag-based dispatch generation with binding extraction
+6. ✅ **None Context Inference** - Conservative inference from 5 context types (return, assignment, call args, struct fields, annotations)
+
+**Implementation Summary:**
+- 13 files created, 4 modified (~2,000 lines of new code)
+- 57/57 Phase 4-specific unit tests passing (100%)
+- 5 parallel code reviewers (internal + GPT-5 + Gemini + Polaris + MiniMax)
+- All 9 critical issues fixed (generator integration, preprocessor ordering, exhaustiveness enforcement, tag-based switch, plugin state reset, TypeInfo integration)
+
+**Performance:**
+- Parent map construction: 5-7ms per file (target: <10ms) ✅
+- Exhaustiveness checking: <1ms per match (target: <1ms) ✅
+- Total overhead: ~15ms per file
+
+**Architecture Highlights:**
+- Two-stage pipeline: Preprocessor (text) → Plugin (AST)
+- Marker-based communication: `// DINGO_MATCH` comments
+- Tag-based dispatch: Standard Go switch (not boolean)
+- Conservative inference: Error on ambiguity (None type)
+
+**Session artifacts:** `ai-docs/sessions/20251118-150059/` (25+ files, planning → implementation → review → testing)
+
+---
+
 ### Phase 3 - Fix A4/A5 + Complete Result/Option Implementation
 
 **Session**: 20251118-114514

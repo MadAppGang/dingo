@@ -2,17 +2,22 @@
 // VS Code-style code block with macOS window controls
 // Reference: reference/src/components/CodeComparison.tsx
 import { codeToHtml } from 'shiki';
+import { dingoLanguage } from '../lib/dingoLanguage';
 
 interface Props {
   code: string;
   language: string;
+  label?: string;
+  title?: string;
 }
 
 const { code, language } = Astro.props;
 
 // Generate syntax-highlighted HTML using Shiki with VS Code Dark Plus theme
+const langInput = language === 'dingo' ? dingoLanguage : language;
 const highlightedCode = await codeToHtml(code, {
-  lang: language,
+  // Cast required because shiki's bundled types only accept built-in languages.
+  lang: langInput as any,
   theme: 'dark-plus',
 });
 ---

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/MadAppGang/dingo/pkg/config"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -18,7 +19,8 @@ import (
 type Preprocessor struct {
 	source     []byte
 	processors []FeatureProcessor
-	config     *Config // Configuration for preprocessor behavior
+	oldConfig  *Config        // Deprecated: Legacy preprocessor-specific config
+	config     *config.Config // Main Dingo configuration
 }
 
 // FeatureProcessor defines the interface for individual feature preprocessors
@@ -41,35 +43,60 @@ type ImportProvider interface {
 
 // New creates a new preprocessor with all registered features and default config
 func New(source []byte) *Preprocessor {
-	return NewWithConfig(source, nil)
+	return NewWithMainConfig(source, nil)
 }
 
-// NewWithConfig creates a new preprocessor with custom configuration
-func NewWithConfig(source []byte, config *Config) *Preprocessor {
-	if config == nil {
-		config = DefaultConfig()
+// NewWithConfig creates a new preprocessor with legacy config (deprecated)
+// Use NewWithMainConfig instead
+func NewWithConfig(source []byte, legacyConfig *Config) *Preprocessor {
+	// Convert legacy config to main config
+	cfg := config.DefaultConfig()
+	if legacyConfig != nil && legacyConfig.MultiValueReturnMode == "single" {
+		// Map legacy mode to main config (feature not in main config yet)
+	}
+	return NewWithMainConfig(source, cfg)
+}
+
+// NewWithMainConfig creates a new preprocessor with main Dingo configuration
+func NewWithMainConfig(source []byte, cfg *config.Config) *Preprocessor {
+	if cfg == nil {
+		cfg = config.DefaultConfig()
 	}
 
+	processors := []FeatureProcessor{
+		// Order matters! Process in this sequence:
+		// 0. Type annotations (: → space) - must be first
+		NewTypeAnnotProcessor(),
+		// 1. Error propagation (expr?) - always enabled
+		NewErrorPropProcessor(),
+	}
+
+	// 2. Enums (enum Name { ... }) - after error prop, before keywords
+	processors = append(processors, NewEnumProcessor())
+
+	// 3. Pattern matching (match) - CONDITIONAL based on config
+	//    Add RustMatchProcessor or SwiftMatchProcessor based on config
+	switch cfg.Match.Syntax {
+	case "rust":
+		processors = append(processors, NewRustMatchProcessor())
+	case "swift":
+		processors = append(processors, NewSwiftMatchProcessor())
+	default:
+		// Default to Rust syntax if not specified
+		processors = append(processors, NewRustMatchProcessor())
+	}
+
+	// 4. Keywords (let → var) - after error prop, enum, and pattern match so it doesn't interfere
+	processors = append(processors, NewKeywordProcessor())
+
+	// 5. Lambdas (|x| expr) - future
+	// 6. Operators (ternary, ??, ?.) - future
+
 	return &Preprocessor{
-		source: source,
-		config: config,
-		processors: []FeatureProcessor{
-			// Order matters! Process in this sequence:
-			// 0. Type annotations (: → space) - must be first
-			NewTypeAnnotProcessor(),
-			// 1. Error propagation (expr?) - pass config to enable mode control
-			NewErrorPropProcessorWithConfig(config),
-			// 2. Enums (enum Name { ... }) - after error prop, before keywords
-			NewEnumProcessor(),
-			// 3. Keywords (let → var) - after error prop and enum so it doesn't interfere
-			NewKeywordProcessor(),
-			// 4. Lambdas (|x| expr)
-			// NewLambdaProcessor(),
-			// 5. Pattern matching (match)
-			// NewPatternMatchProcessor(),
-			// 6. Operators (ternary, ??, ?.)
-			// NewOperatorProcessor(),
-		},
+		source:     source,
+		config:     cfg,
+		oldConfig:  nil, // No longer used
+		processors: processors,
 	}
 }
 

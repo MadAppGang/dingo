@@ -1,0 +1,120 @@
+package main
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *int
+	err_0 *error
+}
+
+func Result_Ok(arg0 int) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+
+// Simple guard on Result type
+func classifyNumber(result Result) string {
+	__match_0 := result
+	// DINGO_MATCH_START: result
+	switch __match_0.tag {
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x > 0
+		x := *__match_0.ok_0
+		if x > 0 {
+			return "positive"
+		}
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(x) | DINGO_GUARD: x < 0
+		x := *__match_0.ok_0
+		if x < 0 {
+			return "negative"
+		}
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(_)
+		_ = *__match_0.ok_0
+		return "zero"
+	case ResultTag_Err:
+		// DINGO_PATTERN: Err(e)
+		e := *__match_0.err_0
+		return "error"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guard with multiple conditions
+func validateAge(result Result) string {
+	__match_1 := result
+	// DINGO_MATCH_START: result
+	switch __match_1.tag {
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(age) | DINGO_GUARD: age >= 18 && age < 65
+		age := *__match_1.ok_0
+		if age >= 18 && age < 65 {
+			return "adult"
+		}
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(age) | DINGO_GUARD: age >= 65
+		age := *__match_1.ok_0
+		if age >= 65 {
+			return "senior"
+		}
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(_)
+		_ = *__match_1.ok_0
+		return "minor"
+	case ResultTag_Err:
+		// DINGO_PATTERN: Err(_)
+		_ = *__match_1.err_0
+		return "invalid"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guard with function call
+func checkLength(result Result) string {
+	__match_2 := result
+	// DINGO_MATCH_START: result
+	switch __match_2.tag {
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(n) | DINGO_GUARD: isEven(n)
+		n := *__match_2.ok_0
+		if isEven(n) {
+			return "even"
+		}
+	case ResultTag_Ok:
+		// DINGO_PATTERN: Ok(_)
+		_ = *__match_2.ok_0
+		return "odd"
+	case ResultTag_Err:
+		// DINGO_PATTERN: Err(_)
+		_ = *__match_2.err_0
+		return "error"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+func isEven(n int) bool {
+	return n%2 == 0
+}
+func main() {
+	println(classifyNumber(Result_Ok(42)))
+	println(validateAge(Result_Ok(25)))
+	println(checkLength(Result_Ok(10)))
+}

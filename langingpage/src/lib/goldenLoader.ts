@@ -14,8 +14,6 @@ import {
   featureTypes,
 } from './featureMapping';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 export interface GoldenExample {
   // Basic identification
   id: string;

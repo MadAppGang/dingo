@@ -40,17 +40,20 @@ const markerDetector_1 = require("./markerDetector");
 const decoratorManager_1 = require("./decoratorManager");
 const config_1 = require("./config");
 const goldenFileSupport_1 = require("./goldenFileSupport");
+const lspClient_1 = require("./lspClient");
 let decoratorManager = null;
 let markerDetector = null;
 let configManager = null;
 // Debounce map for file change events
 const updateTimeouts = new Map();
-function activate(context) {
+async function activate(context) {
     console.log('Dingo extension activating...');
     // Initialize managers
     configManager = new config_1.ConfigManager();
     markerDetector = new markerDetector_1.MarkerDetector();
     decoratorManager = new decoratorManager_1.DecoratorManager(configManager);
+    // Activate LSP client
+    await (0, lspClient_1.activateLSPClient)(context);
     // Update highlights when document opens
     context.subscriptions.push(vscode.workspace.onDidOpenTextDocument((document) => {
         if (shouldProcess(document)) {
@@ -104,7 +107,9 @@ function activate(context) {
     });
     console.log('Dingo extension activated');
 }
-function deactivate() {
+async function deactivate() {
+    // Deactivate LSP client
+    await (0, lspClient_1.deactivateLSPClient)();
     decoratorManager?.dispose();
     decoratorManager = null;
     markerDetector = null;

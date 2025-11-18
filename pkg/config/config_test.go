@@ -21,6 +21,11 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Expected default format to be 'inline', got %q", cfg.SourceMap.Format)
 	}
 
+	// Test Match defaults
+	if cfg.Match.Syntax != "rust" {
+		t.Errorf("Expected default match syntax to be 'rust', got %q", cfg.Match.Syntax)
+	}
+
 	// Test Result type defaults
 	if !cfg.Features.ResultType.Enabled {
 		t.Error("Expected Result type to be enabled by default")
@@ -273,6 +278,71 @@ func TestConfigValidation(t *testing.T) {
 			},
 			wantError: false,
 		},
+		{
+			name: "valid match syntax rust",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+				},
+				Match: MatchConfig{
+					Syntax: "rust",
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid match syntax swift",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+				},
+				Match: MatchConfig{
+					Syntax: "swift",
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "invalid match syntax",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+				},
+				Match: MatchConfig{
+					Syntax: "invalid",
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: true,
+			errorMsg:  "invalid match.syntax",
+		},
+		{
+			name: "empty match syntax uses default",
+			config: &Config{
+				Features: FeatureConfig{
+					ErrorPropagationSyntax: SyntaxQuestion,
+				},
+				Match: MatchConfig{
+					Syntax: "",
+				},
+				SourceMap: SourceMapConfig{
+					Enabled: true,
+					Format:  FormatInline,
+				},
+			},
+			wantError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -511,6 +581,96 @@ error_propagation_syntax = "invalid_syntax"
 	}
 	if !contains(err.Error(), "invalid configuration") {
 		t.Errorf("Expected 'invalid configuration' error, got %v", err)
+	}
+}
+
+func TestLoadConfigMatchSyntax(t *testing.T) {
+	// Create temp directory with match config
+	tmpDir, err := os.MkdirTemp("", "dingo-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Write project config with match syntax
+	projectConfig := `[match]
+syntax = "swift"
+
+[features]
+error_propagation_syntax = "question"
+`
+	configPath := filepath.Join(tmpDir, "dingo.toml")
+	if err := os.WriteFile(configPath, []byte(projectConfig), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to temp directory
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWd)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Override HOME
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", oldHome)
+
+	// Load config
+	cfg, err := Load(nil)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if cfg.Match.Syntax != "swift" {
+		t.Errorf("Expected match syntax 'swift' from project config, got %q", cfg.Match.Syntax)
+	}
+}
+
+func TestLoadConfigInvalidMatchSyntax(t *testing.T) {
+	// Create temp directory with invalid match syntax
+	tmpDir, err := os.MkdirTemp("", "dingo-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Write config with invalid match syntax
+	invalidConfig := `[match]
+syntax = "scala"
+`
+	configPath := filepath.Join(tmpDir, "dingo.toml")
+	if err := os.WriteFile(configPath, []byte(invalidConfig), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to temp directory
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWd)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Override HOME
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", oldHome)
+
+	// Load should fail validation
+	_, err = Load(nil)
+	if err == nil {
+		t.Error("Expected validation error for invalid match syntax, got nil")
+	}
+	if !contains(err.Error(), "invalid match.syntax") {
+		t.Errorf("Expected 'invalid match.syntax' error, got %v", err)
 	}
 }
 

@@ -1,0 +1,163 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTag_Some OptionTag = iota
+	OptionTag_None
+)
+
+type Option struct {
+	tag    OptionTag
+	some_0 *int
+}
+
+func Option_Some(arg0 int) Option {
+	return Option{tag: OptionTag_Some, some_0: &arg0}
+}
+func Option_None() Option {
+	return Option{tag: OptionTag_None}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTag_Some
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTag_None
+}
+
+type ResultTag uint8
+
+const (
+	ResultTag_Ok ResultTag = iota
+	ResultTag_Err
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *Option
+	err_0 *error
+}
+
+func Result_Ok(arg0 Option) Result {
+	return Result{tag: ResultTag_Ok, ok_0: &arg0}
+}
+func Result_Err(arg0 error) Result {
+	return Result{tag: ResultTag_Err, err_0: &arg0}
+}
+func (e Result) IsOk() bool {
+	return e.tag == ResultTag_Ok
+}
+func (e Result) IsErr() bool {
+	return e.tag == ResultTag_Err
+}
+
+// Using 'where' keyword (Swift-style)
+func analyzeValue(opt Option) string {
+	__match_0 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_0.tag {
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x > 100
+		x := *__match_0.some_0
+		if x > 100 {
+			return "large"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x > 10
+		x := *__match_0.some_0
+		if x > 10 {
+			return "medium"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x > 0
+		x := *__match_0.some_0
+		if x > 0 {
+			return "small"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(_)
+		_ = *__match_0.some_0
+		return "non-positive"
+	case OptionTag_None:
+		// DINGO_PATTERN: None
+		return "none"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Nested pattern with guards
+func processNestedResult(result Result) string {
+	__match_1 := result
+	// DINGO_MATCH_START: result
+	switch __match_1.tag {
+	case ResultTag_Ok:
+		inner := *__match_1.ok_0
+		// DINGO_PATTERN: Ok(Some(val)) | DINGO_GUARD: val > 0
+		if inner.IsSome() {
+			val := *inner.some_0
+			if val > 0 {
+				return "positive value"
+			}
+		}
+	case ResultTag_Ok:
+		inner := *__match_1.ok_0
+		// DINGO_PATTERN: Ok(Some(_))
+		if inner.IsSome() {
+			_ = *inner.some_0
+			return "non-positive value"
+		}
+	case ResultTag_Ok:
+		inner := *__match_1.ok_0
+		// DINGO_PATTERN: Ok(None)
+		if inner.IsNone() {
+			return "no value"
+		}
+	case ResultTag_Err:
+		// DINGO_PATTERN: Err(_)
+		_ = *__match_1.err_0
+		return "error"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guard fallthrough demonstration
+func categorize(opt Option) string {
+	__match_2 := opt
+	// DINGO_MATCH_START: opt
+	switch __match_2.tag {
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x%3 == 0 && x%5 == 0
+		x := *__match_2.some_0
+		if x%3 == 0 && x%5 == 0 {
+			return "fizzbuzz"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x%3 == 0
+		x := *__match_2.some_0
+		if x%3 == 0 {
+			return "fizz"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x) | DINGO_GUARD: x%5 == 0
+		x := *__match_2.some_0
+		if x%5 == 0 {
+			return "buzz"
+		}
+	case OptionTag_Some:
+		// DINGO_PATTERN: Some(x)
+		x := *__match_2.some_0
+		return "number"
+	case OptionTag_None:
+		// DINGO_PATTERN: None
+		return "empty"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+func main() {
+	println(analyzeValue(Option_Some(150)))
+	println(processNestedResult(Result_Ok(Option_Some(42))))
+	println(categorize(Option_Some(15)))
+}

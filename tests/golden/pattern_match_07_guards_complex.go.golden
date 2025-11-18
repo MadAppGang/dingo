@@ -1,0 +1,204 @@
+package main
+
+import "strings"
+
+type RequestTag uint8
+
+const (
+	RequestTag_Get RequestTag = iota
+	RequestTag_Post
+	RequestTag_Delete
+)
+
+type Request struct {
+	tag      RequestTag
+	get_0    *string
+	post_0   *string
+	post_1   *string
+	delete_0 *string
+}
+
+func Request_Get(arg0 string) Request {
+	return Request{tag: RequestTag_Get, get_0: &arg0}
+}
+func Request_Post(arg0 string, arg1 string) Request {
+	return Request{tag: RequestTag_Post, post_0: &arg0, post_1: &arg1}
+}
+func Request_Delete(arg0 string) Request {
+	return Request{tag: RequestTag_Delete, delete_0: &arg0}
+}
+func (e Request) IsGet() bool {
+	return e.tag == RequestTag_Get
+}
+func (e Request) IsPost() bool {
+	return e.tag == RequestTag_Post
+}
+func (e Request) IsDelete() bool {
+	return e.tag == RequestTag_Delete
+}
+
+type StatusTag uint8
+
+const (
+	StatusTag_Active StatusTag = iota
+	StatusTag_Paused
+	StatusTag_Stopped
+)
+
+type Status struct {
+	tag      StatusTag
+	active_0 *int
+	paused_0 *int
+}
+
+func Status_Active(arg0 int) Status {
+	return Status{tag: StatusTag_Active, active_0: &arg0}
+}
+func Status_Paused(arg0 int) Status {
+	return Status{tag: StatusTag_Paused, paused_0: &arg0}
+}
+func Status_Stopped() Status {
+	return Status{tag: StatusTag_Stopped}
+}
+func (e Status) IsActive() bool {
+	return e.tag == StatusTag_Active
+}
+func (e Status) IsPaused() bool {
+	return e.tag == StatusTag_Paused
+}
+func (e Status) IsStopped() bool {
+	return e.tag == StatusTag_Stopped
+}
+
+// Mixed if/where keywords in same match
+func routeRequest(req Request) string {
+	__match_0 := req
+	// DINGO_MATCH_START: req
+	switch __match_0.tag {
+	case RequestTag_Get:
+		// DINGO_PATTERN: Get(path) | DINGO_GUARD: strings.HasPrefix(path, "/api/")
+		path := *__match_0.get_0
+		if strings.HasPrefix(path, "/api/") {
+			return "API endpoint"
+		}
+	case RequestTag_Get:
+		// DINGO_PATTERN: Get(path) | DINGO_GUARD: len(path) > 0
+		path := *__match_0.get_0
+		if len(path) > 0 {
+			return "static resource"
+		}
+	case RequestTag_Post:
+		// DINGO_PATTERN: Post(path, body) | DINGO_GUARD: len(body) > 100 && strings.Contains(path, "upload")
+		path := *__match_0.post_0
+		body := *__match_0.post_1
+		if len(body) > 100 && strings.Contains(path, "upload") {
+			return "large upload"
+		}
+	case RequestTag_Post:
+		// DINGO_PATTERN: Post(_, body) | DINGO_GUARD: len(body) > 0
+		_ = *__match_0.post_0
+		body := *__match_0.post_1
+		if len(body) > 0 {
+			return "post request"
+		}
+	case RequestTag_Delete:
+		// DINGO_PATTERN: Delete(path) | DINGO_GUARD: isProtected(path)
+		path := *__match_0.delete_0
+		if isProtected(path) {
+			return "forbidden"
+		}
+	case RequestTag_Delete:
+		// DINGO_PATTERN: Delete(_)
+		_ = *__match_0.delete_0
+		return "delete request"
+	default:
+		// DINGO_PATTERN: _
+		return "unknown"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guards with logical operators
+func classifyStatus(status Status) string {
+	__match_1 := status
+	// DINGO_MATCH_START: status
+	switch __match_1.tag {
+	case StatusTag_Active:
+		// DINGO_PATTERN: Active(count) | DINGO_GUARD: count > 1000 || count < 0
+		count := *__match_1.active_0
+		if count > 1000 || count < 0 {
+			return "unusual"
+		}
+	case StatusTag_Active:
+		// DINGO_PATTERN: Active(count) | DINGO_GUARD: count >= 100 && count <= 1000
+		count := *__match_1.active_0
+		if count >= 100 && count <= 1000 {
+			return "normal"
+		}
+	case StatusTag_Active:
+		// DINGO_PATTERN: Active(_)
+		_ = *__match_1.active_0
+		return "low activity"
+	case StatusTag_Paused:
+		// DINGO_PATTERN: Paused(duration) | DINGO_GUARD: duration > 3600
+		duration := *__match_1.paused_0
+		if duration > 3600 {
+			return "long pause"
+		}
+	case StatusTag_Paused:
+		// DINGO_PATTERN: Paused(_) | DINGO_GUARD: true
+		_ = *__match_1.paused_0
+		if true {
+			return "short pause"
+		}
+	case StatusTag_Stopped:
+		// DINGO_PATTERN: Stopped
+		return "stopped"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+// Guards on different pattern types
+func processValue(val interface{}) string {
+	__match_2 := val
+	// DINGO_MATCH_START: val.(type)
+	switch __match_2.(type) {
+	case int:
+		// DINGO_PATTERN: int | DINGO_GUARD: val.(int) > 0
+		if val.(int) > 0 {
+			return "positive integer"
+		}
+	case int:
+		// DINGO_PATTERN: int | DINGO_GUARD: val.(int) < 0
+		if val.(int) < 0 {
+			return "negative integer"
+		}
+	case int:
+		// DINGO_PATTERN: int
+		return "zero"
+	case string:
+		// DINGO_PATTERN: string | DINGO_GUARD: len(val.(string)) > 0
+		if len(val.(string)) > 0 {
+			return "non-empty string"
+		}
+	case string:
+		// DINGO_PATTERN: string
+		return "empty string"
+	default:
+		// DINGO_PATTERN: _
+		return "other type"
+	}
+	// DINGO_MATCH_END
+	panic("unreachable: exhaustive match")
+}
+
+func isProtected(path string) bool {
+	return strings.HasPrefix(path, "/admin/")
+}
+func main() {
+	println(routeRequest(Request_Get("/api/users")))
+	println(classifyStatus(Status_Active(500)))
+	println(processValue(42))
+}

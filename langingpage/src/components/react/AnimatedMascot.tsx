@@ -3,6 +3,8 @@ import { useState } from "react";
 
 interface AnimatedMascotProps {
   src: string;
+  srcSet?: string;
+  sizes?: string;
   alt: string;
   leftPosition?: number;
   topPosition?: number;
@@ -14,6 +16,8 @@ interface AnimatedMascotProps {
 
 export function AnimatedMascot({
   src,
+  srcSet,
+  sizes,
   alt,
   leftPosition = 8,
   topPosition = 0,
@@ -106,7 +110,7 @@ export function AnimatedMascot({
 
   return (
     <motion.div
-      className="absolute pointer-events-none -z-10"
+      className="absolute pointer-events-none z-0"
       style={{
         left: `${leftPosition}px`,
         top: `${topPosition}px`,
@@ -126,6 +130,8 @@ export function AnimatedMascot({
     >
       <motion.img
         src={src}
+        srcSet={srcSet}
+        sizes={sizes}
         alt={alt}
         className="w-full h-full object-contain"
         initial={{ rotate: 0, scale: scaleOnHide }}

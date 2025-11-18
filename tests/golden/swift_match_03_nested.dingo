@@ -1,0 +1,75 @@
+package main
+
+// Test: Nested Swift pattern matching
+// Feature: Nested switch expressions and body styles
+// Complexity: advanced
+
+// Example 1: Nested switch expressions
+func processNested(result: Result<Option_int, error>)  int {
+	switch result {
+	case .Ok(let inner):
+		switch inner {
+		case .Some(let val):
+			return val
+		case .None:
+			return 0
+		}
+	case .Err(let e):
+		return -1
+	}
+}
+
+// Example 2: Bare statements (no braces)
+func simpleMatch(opt: Option_int)  int {
+	switch opt {
+	case .Some(let x):
+		x * 2
+	case .None:
+		0
+	}
+}
+
+// Example 3: Braced bodies
+func bracedMatch(opt: Option_int)  int {
+	switch opt {
+	case .Some(let x): {
+		let doubled = x * 2
+		return doubled
+	}
+	case .None: {
+		return 0
+	}
+	}
+}
+
+// Example 4: Mixed body styles
+func mixedBodies(result: Result_int_error)  string {
+	switch result {
+	case .Ok(let x):
+		return "ok"
+	case .Err(let e): {
+		let msg = "error: " + e.Error()
+		return msg
+	}
+	}
+}
+
+// Example 5: Triple-nested switches
+func deepNesting(r: Result<Result<Option_int, error>, error>)  int {
+	switch r {
+	case .Ok(let middle):
+		switch middle {
+		case .Ok(let inner):
+			switch inner {
+			case .Some(let val):
+				return val
+			case .None:
+				return 0
+			}
+		case .Err(let e):
+			return -1
+		}
+	case .Err(let e):
+		return -2
+	}
+}

@@ -1,0 +1,35 @@
+package main
+
+// Test: Basic Swift pattern matching syntax
+// Feature: Swift-style switch/case with .Variant syntax
+// Complexity: basic
+
+// Example 1: Simple Result<T,E> match
+func processResult(result: Result_int_error) int {
+	switch result {
+	case .Ok(let value):
+		return value * 2
+	case .Err(let e):
+		return 0
+	}
+}
+
+// Example 2: Option<T> match
+func getValueOrDefault(opt: Option_string) string {
+	switch opt {
+	case .Some(let s):
+		return s
+	case .None:
+		return "default"
+	}
+}
+
+// Example 3: Match with variable assignment
+func doubleIfSome(opt: Option_int) int {
+	switch opt {
+	case .Some(let x):
+		return x * 2
+	case .None:
+		return 0
+	}
+}

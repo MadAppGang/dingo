@@ -1,0 +1,166 @@
+package main
+
+import "fmt"
+
+// Pattern Matching Test File - Phase 4.1 Features
+// This file tests LSP support for pattern matching features
+
+type User struct {
+	ID:    int
+	Name:  string
+	Email: string
+}
+
+type Error struct {
+	Code:    int
+	Message: string
+}
+
+// Test 1: Basic Result pattern matching
+func testBasicMatch() {
+	result := Ok[int, error](42)
+
+	// Test autocomplete after typing 'result.'
+	// Test go-to-definition on pattern variables
+	match result {
+		Ok(value) => fmt.Printf("Success: %d\n", value)
+		Err(e) => fmt.Printf("Error: %v\n", e)
+	}
+}
+
+// Test 2: Nested patterns with Option and Result
+func testNestedPatterns() {
+	// Hover over 'data' should show: Result[Option[User], Error]
+	data := Ok[Option[User], Error](Some(User{
+		ID:    1,
+		Name:  "Alice",
+		Email: "alice@example.com",
+	}))
+
+	// Test nested pattern destructuring
+	// Hover over 'user' should show: User (not Option[User])
+	match data {
+		Ok(Some(user)) => {
+			// Test autocomplete: type 'user.' to see fields
+			fmt.Printf("User ID: %d, Name: %s\n", user.ID, user.Name)
+		}
+		Ok(None) => fmt.Println("No user data")
+		Err(err) => {
+			// Hover over 'err' should show: Error
+			fmt.Printf("Error %d: %s\n", err.Code, err.Message)
+		}
+	}
+}
+
+// Test 3: Exhaustiveness checking
+func testExhaustiveness() {
+	opt := Some[int](100)
+
+	// Try: Comment out the 'None' pattern to see exhaustiveness error
+	match opt {
+		Some(x) => fmt.Printf("Value: %d\n", x)
+		None => fmt.Println("No value")
+	}
+}
+
+// Test 4: None context inference
+func testNoneInference() {
+	// Test 1: Binary operation context
+	result1 := Ok[int, error](10)
+	// Hover over 'None' - should infer as Option[int]
+	opt1 := if result1.IsOk() { Some(42) } else { None }
+
+	// Test 2: Return statement context
+	func getOptional() Option[string] {
+		// Hover over 'None' - should infer as Option[string]
+		return None
+	}
+
+	// Test 3: Match arm context
+	match result1 {
+		Ok(x) => Some(x * 2)
+		// Hover over 'None' - should infer as Option[int]
+		Err(_) => None
+	}
+}
+
+// Test 5: Enum pattern matching
+enum Status {
+	Pending
+	InProgress { percent: int }
+	Complete { timestamp: int }
+	Failed { reason: string }
+}
+
+func testEnumMatch() {
+	status := Status.InProgress{percent: 75}
+
+	// Test exhaustiveness: Remove one pattern to see error
+	match status {
+		Status.Pending => fmt.Println("Pending")
+		Status.InProgress{percent} => {
+			// Hover over 'percent' should show: int
+			fmt.Printf("Progress: %d%%\n", percent)
+		}
+		Status.Complete{timestamp} => {
+			fmt.Printf("Completed at: %d\n", timestamp)
+		}
+		Status.Failed{reason} => {
+			fmt.Printf("Failed: %s\n", reason)
+		}
+	}
+}
+
+// Test 6: Wildcard pattern
+func testWildcard() {
+	result := Err[int, error](fmt.Errorf("something went wrong"))
+
+	// Wildcard '_' ignores the value
+	match result {
+		Ok(value) => fmt.Printf("Got: %d\n", value)
+		Err(_) => fmt.Println("Error occurred (details ignored)")
+	}
+}
+
+// Test 7: Complex nested enum
+enum Event {
+	UserAction { action: Status }
+	SystemEvent { severity: int }
+}
+
+func testComplexNesting() {
+	event := Event.UserAction{
+		action: Status.InProgress{percent: 50},
+	}
+
+	// Test deeply nested pattern
+	match event {
+		Event.UserAction{action: Status.Pending} => {
+			fmt.Println("User action: pending")
+		}
+		Event.UserAction{action: Status.InProgress{percent}} => {
+			// Hover: 'percent' should be int
+			fmt.Printf("User action in progress: %d%%\n", percent)
+		}
+		Event.UserAction{action: Status.Complete{timestamp}} => {
+			fmt.Printf("User action completed: %d\n", timestamp)
+		}
+		Event.UserAction{action: Status.Failed{reason}} => {
+			fmt.Printf("User action failed: %s\n", reason)
+		}
+		Event.SystemEvent{severity} => {
+			fmt.Printf("System event, severity: %d\n", severity)
+		}
+	}
+}
+
+func main() {
+	fmt.Println("=== Pattern Matching LSP Tests ===")
+	testBasicMatch()
+	testNestedPatterns()
+	testExhaustiveness()
+	testNoneInference()
+	testEnumMatch()
+	testWildcard()
+	testComplexNesting()
+}

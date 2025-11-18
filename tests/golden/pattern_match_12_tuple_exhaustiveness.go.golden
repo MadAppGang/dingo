@@ -1,0 +1,159 @@
+package main
+
+import "errors"
+
+// Test: Exhaustiveness checking with max 6-element tuple
+// Feature: Tuple pattern destructuring - exhaustiveness
+// Complexity: advanced
+
+type ResultTag uint8
+
+const (
+	ResultTagOk ResultTag = iota
+	ResultTagErr
+)
+
+type Result struct {
+	tag   ResultTag
+	ok_0  *int
+	err_0 *error
+}
+
+func Result_Ok(v0 int) Result {
+	return Result{tag: ResultTagOk, ok_0: &v0}
+}
+
+func Result_Err(v0 error) Result {
+	return Result{tag: ResultTagErr, err_0: &v0}
+}
+
+// 6-element tuple (max limit) - demonstrates exhaustiveness with wildcards
+func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
+	// DINGO_MATCH_START: (s1, s2, s3, s4, s5, s6)
+	__match_0_elem0, __match_0_elem1, __match_0_elem2, __match_0_elem3, __match_0_elem4, __match_0_elem5 := s1, s2, s3, s4, s5, s6
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok, Ok, Ok, Ok) | (Err, _, _, _, _, _) | (_, Err, _, _, _, _) | (_, _, Err, _, _, _) | (_, _, _, Err, _, _) | (_, _, _, _, Err, _) | (_, _, _, _, _, Err) | ARITY: 6
+	switch __match_0_elem0.tag {
+	case ResultTagOk:
+		switch __match_0_elem1.tag {
+		case ResultTagOk:
+			switch __match_0_elem2.tag {
+			case ResultTagOk:
+				switch __match_0_elem3.tag {
+				case ResultTagOk:
+					switch __match_0_elem4.tag {
+					case ResultTagOk:
+						switch __match_0_elem5.tag {
+						case ResultTagOk:
+							return "All 6 steps succeeded"
+						case ResultTagErr:
+							e := *__match_0_elem5.err_0
+							return "Step 6 failed: " + e.Error()
+						default:
+							panic("unreachable: exhaustive match")
+						}
+					case ResultTagErr:
+						e := *__match_0_elem4.err_0
+						// Wildcard at position 5: matches all
+						return "Step 5 failed: " + e.Error()
+					default:
+						panic("unreachable: exhaustive match")
+					}
+				case ResultTagErr:
+					e := *__match_0_elem3.err_0
+					// Wildcards at positions 4, 5: match all
+					return "Step 4 failed: " + e.Error()
+				default:
+					panic("unreachable: exhaustive match")
+				}
+			case ResultTagErr:
+				e := *__match_0_elem2.err_0
+				// Wildcards at positions 3, 4, 5: match all
+				return "Step 3 failed: " + e.Error()
+			default:
+				panic("unreachable: exhaustive match")
+			}
+		case ResultTagErr:
+			e := *__match_0_elem1.err_0
+			// Wildcards at positions 2, 3, 4, 5: match all
+			return "Step 2 failed: " + e.Error()
+		default:
+			panic("unreachable: exhaustive match")
+		}
+	case ResultTagErr:
+		e := *__match_0_elem0.err_0
+		// Wildcards at positions 1, 2, 3, 4, 5: match all
+		return "Step 1 failed: " + e.Error()
+	default:
+		panic("unreachable: exhaustive match")
+	}
+	// DINGO_MATCH_END
+}
+
+// Example of exhaustive 4-element tuple
+func processFourResults(r1, r2, r3, r4 Result) string {
+	// DINGO_MATCH_START: (r1, r2, r3, r4)
+	__match_1_elem0, __match_1_elem1, __match_1_elem2, __match_1_elem3 := r1, r2, r3, r4
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok, Ok) | (_, _, _, _) | ARITY: 4
+	switch __match_1_elem0.tag {
+	case ResultTagOk:
+		a := *__match_1_elem0.ok_0
+		switch __match_1_elem1.tag {
+		case ResultTagOk:
+			b := *__match_1_elem1.ok_0
+			switch __match_1_elem2.tag {
+			case ResultTagOk:
+				c := *__match_1_elem2.ok_0
+				switch __match_1_elem3.tag {
+				case ResultTagOk:
+					d := *__match_1_elem3.ok_0
+					return "All ok: " + string(a+b+c+d)
+				case ResultTagErr:
+					// Wildcards catch-all
+					return "At least one error occurred"
+				default:
+					panic("unreachable: exhaustive match")
+				}
+			case ResultTagErr:
+				// Wildcards at positions 3: match all
+				return "At least one error occurred"
+			default:
+				panic("unreachable: exhaustive match")
+			}
+		case ResultTagErr:
+			// Wildcards at positions 2, 3: match all
+			return "At least one error occurred"
+		default:
+			panic("unreachable: exhaustive match")
+		}
+	case ResultTagErr:
+		// Wildcards at positions 1, 2, 3: match all
+		return "At least one error occurred"
+	default:
+		panic("unreachable: exhaustive match")
+	}
+	// DINGO_MATCH_END
+}
+
+func main() {
+	r1 := Result_Ok(1)
+	r2 := Result_Ok(2)
+	r3 := Result_Err(errors.New("step 3 error"))
+	r4 := Result_Ok(4)
+	r5 := Result_Ok(5)
+	r6 := Result_Ok(6)
+
+	result := validateSixSteps(r1, r2, r3, r4, r5, r6)
+	println(result)
+
+	result2 := processFourResults(r1, r2, r3, r4)
+	println(result2)
+}
+
+// Non-exhaustive example (would fail - commented out):
+// func nonExhaustive(r1, r2 Result) string {
+//     return match (r1, r2) {
+//         (Ok(x), Ok(y)) => "both ok",
+//         (Ok(x), Err(e)) => "second error"
+//         // Missing: (Err, Ok) and (Err, Err)
+//     }
+// }
