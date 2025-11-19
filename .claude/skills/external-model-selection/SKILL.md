@@ -33,27 +33,46 @@ description: Choose optimal external AI models for code analysis, bug investigat
 - **Proven**: Proposed granular mapping system for future enhancements
 - **Why it's valuable**: Strong architectural vision, excellent for planning major changes
 
+**4. Sherlock Think Alpha** (`openrouter/sherlock-think-alpha`) 🎁 FREE
+- **Score**: TBD | **Speed**: ~5 min ⚡ | **Cost**: FREE ($0!) 💰
+- **Context**: 1.8M tokens (LARGEST context window available!)
+- **Best for**: Massive codebase analysis, entire project reasoning, long-context planning
+- **Secret**: Big player testing under weird name - don't let the name fool you
+- **Specialties**:
+  - Full codebase analysis (1.8M tokens = ~500k lines of code!)
+  - Research synthesis across dozens of files
+  - Protocol compliance & standards validation
+  - Entire project architectural analysis
+- **Why it's valuable**: FREE + massive context = ideal for comprehensive analysis
+- **Use case**: When you need to analyze entire codebase or massive context (and it's FREE!)
+
+**5. Gemini 3 Pro Preview** (`google/gemini-3-pro-preview`) ⭐ NEW
+- **Score**: TBD | **Speed**: ~5 min ⚡ | **Cost**: $$$
+- **Context**: 1M tokens (11.4B parameter model)
+- **Best for**: Multimodal reasoning, agentic coding, complex architectural analysis, long-context planning
+- **Strengths**: State-of-the-art on LMArena, GPQA Diamond, MathArena, SWE-Bench Verified
+- **Specialties**:
+  - Autonomous agents & coding assistants
+  - Research synthesis & planning
+  - High-context information processing (1M token window!)
+  - Tool-calling & long-horizon planning
+  - Multimodal analysis (text, code, images)
+- **Why it's valuable**: Google's flagship frontier model, excels at inferring intent with minimal prompting
+- **Use case**: When you need deep reasoning across massive context (entire codebase analysis)
+
 ### 🥈 Tier 2 - Specialized Use Cases
 
-**4. Gemini 2.5 Flash** (`google/gemini-2.5-flash`)
+**6. Gemini 2.5 Flash** (`google/gemini-2.5-flash`)
 - **Score**: 73/100 | **Speed**: 6 min ⚡ | **Cost**: $
 - **Best for**: Ambiguous problems requiring exhaustive hypothesis exploration
 - **Caution**: Can go too deep - best when truly uncertain about root cause
 - **Value**: Low cost, thorough analysis when you need multiple angles
 
-**5. GLM-4.6** (`z-ai/glm-4.6`)
+**7. GLM-4.6** (`z-ai/glm-4.6`)
 - **Score**: 70/100 | **Speed**: 7 min 🐢 | **Cost**: $$
 - **Best for**: Adding debug infrastructure, algorithm enhancements
 - **Caution**: Tends to overengineer - verify complexity is warranted
 - **Use case**: When you actually need priority systems or extensive logging
-
-### ⚠️ Tier 3 - Use With Caution
-
-**6. Sherlock Think Alpha** (`openrouter/sherlock-think-alpha`)
-- **Score**: 65/100 | **Speed**: 5 min | **Cost**: $$$
-- **Best for**: Protocol compliance, standards validation
-- **Caution**: May focus on secondary issues, expensive for limited value
-- **Use case**: When you need defensive programming or standards analysis
 
 ### ❌ AVOID - Known Reliability Issues
 
@@ -151,30 +170,74 @@ Task 3: golang-architect (PROXY MODE) → Grok Code Fast
 
 ---
 
-### Strategy 4: Budget-Conscious (Cost-sensitive)
+### Strategy 4: Full Codebase Analysis (Massive Context) 🆕
 
-**Models**: `google/gemini-2.5-flash` + `x-ai/grok-code-fast-1`
+**Models**: `openrouter/sherlock-think-alpha` + `google/gemini-3-pro-preview`
 
 ```bash
 # Launch 2 models in parallel
-Task 1: golang-architect (PROXY MODE) → Gemini 2.5 Flash
+Task 1: golang-architect (PROXY MODE) → Sherlock Think Alpha
+Task 2: golang-architect (PROXY MODE) → Gemini 3 Pro Preview
+```
+
+**Time**: ~5 minutes total
+**Success Rate**: TBD (new strategy)
+**Cost**: $$$ (one free, one paid = moderate overall)
+
+**Use for**:
+- Entire codebase architectural analysis
+- Cross-file dependency analysis
+- Large refactoring planning (50+ files)
+- System-wide pattern detection
+- Multi-module projects
+
+**Benefits**:
+- Sherlock: 1.8M token context (FREE!) - can analyze entire codebase
+- Gemini 3 Pro: 1M token context + multimodal + SOTA reasoning
+- Both have massive context windows for holistic analysis
+- One free model reduces cost significantly
+
+**Prompt Strategy**:
+```markdown
+Analyze the entire Dingo codebase focusing on [specific aspect].
+
+Context provided:
+- All files in pkg/ (50+ files)
+- All tests in tests/ (60+ files)
+- Documentation in ai-docs/
+- Total: ~200k lines of code
+
+Your task: [specific analysis goal]
+```
+
+---
+
+### Strategy 5: Budget-Conscious (Cost-sensitive) 🎁
+
+**Models**: `openrouter/sherlock-think-alpha` + `x-ai/grok-code-fast-1`
+
+```bash
+# Launch 2 models in parallel
+Task 1: golang-architect (PROXY MODE) → Sherlock Think Alpha (FREE!)
 Task 2: golang-architect (PROXY MODE) → Grok Code Fast
 ```
 
-**Time**: ~6 minutes total
+**Time**: ~5 minutes total
 **Success Rate**: 85%+
-**Cost**: $ (low)
+**Cost**: $$ (Sherlock is FREE, only pay for Grok!)
 
 **Use for**:
-- Cost-sensitive projects
+- **Cost-sensitive projects**
+- **Large context needs on a budget**
 - Non-critical investigations
 - Exploratory analysis
 - Learning and experimentation
 
 **Benefits**:
-- Lowest cost option
-- Still provides dual perspectives
-- Good value for non-critical tasks
+- **Sherlock is completely FREE** with 1.8M context!
+- **Massive context window** for comprehensive analysis
+- Grok provides debugging methodology
+- **Lowest cost option** with high value
 
 ---
 
