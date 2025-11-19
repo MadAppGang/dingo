@@ -36,186 +36,177 @@ func (e Value) IsLarge() bool {
 
 // All patterns have guards (requires fallback wildcard)
 func classify(val Value) string {
+	var __match_result_0 interface{}
 
 	__match_0 := val
 	switch __match_0.tag {
 	case ValueTag_Small:
+		x := *__match_0.small_0
 
-		x := __match_0.value_small_0
 		if x > 10 {
-			"actually medium"
+			__match_result_0 = "actually medium"
 		}
 	case ValueTag_Medium:
+		x := *__match_0.medium_0
 
-		x := __match_0.value_medium_0
 		if x > 100 {
-			"actually large"
+			__match_result_0 = "actually large"
 		}
 	case ValueTag_Large:
+		x := *__match_0.large_0
 
-		x := __match_0.value_large_0
 		if x > 1000 {
-			"actually huge"
+			__match_result_0 = "actually huge"
 		}
 	default:
 
-		"normal range"
+		__match_result_0 = "normal range"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_0
 
 }
 
 // Wildcard pattern with guard
 func filterPositive(val Value) string {
+	var __match_result_1 interface{}
 
 	__match_1 := val
 	switch __match_1.tag {
 	case ValueTag_Small:
+		x := *__match_1.small_0
 
-		x := __match_1.value_small_0
 		if x > 0 {
-			"positive small"
+			__match_result_1 = "positive small"
 		}
 	case ValueTag_Medium:
+		x := *__match_1.medium_0
 
-		x := __match_1.value_medium_0
 		if x > 0 {
-			"positive medium"
+			__match_result_1 = "positive medium"
 		}
 	case ValueTag_Large:
+		x := *__match_1.large_0
 
-		x := __match_1.value_large_0
 		if x > 0 {
-			"positive large"
+			__match_result_1 = "positive large"
 		}
 	default:
 
-		"non-positive or zero"
+		__match_result_1 = "non-positive or zero"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_1
 
 }
 
 // Many guarded arms (performance test)
 func granularClassify(val Value) string {
+	var __match_result_2 interface{}
 
 	__match_2 := val
 	switch __match_2.tag {
 	case ValueTag_Small:
+		x := *__match_2.small_0
 
-		x := __match_2.value_small_0
 		if x == 1 {
-			"one"
-		}
-	case ValueTag_Small:
+			__match_result_2 = "one"
 
-		x := __match_2.value_small_0
-		if x == 2 {
-			"two"
-		}
-	case ValueTag_Small:
+		} else if x == 2 {
+			__match_result_2 = "two"
 
-		x := __match_2.value_small_0
-		if x == 3 {
-			"three"
-		}
-	case ValueTag_Small:
+		} else if x == 3 {
+			__match_result_2 = "three"
 
-		x := __match_2.value_small_0
-		if x == 4 {
-			"four"
-		}
-	case ValueTag_Small:
+		} else if x == 4 {
+			__match_result_2 = "four"
 
-		x := __match_2.value_small_0
-		if x == 5 {
-			"five"
-		}
-	case ValueTag_Small:
+		} else if x == 5 {
+			__match_result_2 = "five"
 
-		x := __match_2.value_small_0
-		if x > 5 && x < 10 {
-			"five to ten"
-		}
-	case ValueTag_Small:
+		} else if x > 5 && x < 10 {
+			__match_result_2 = "five to ten"
 
-		_ := __match_2.value_small_0
-		"small other"
+		} else {
+			__match_result_2 = "small other"
+		}
 	case ValueTag_Medium:
+		x := *__match_2.medium_0
 
-		x := __match_2.value_medium_0
 		if x < 50 {
-			"lower medium"
-		}
-	case ValueTag_Medium:
+			__match_result_2 = "lower medium"
 
-		x := __match_2.value_medium_0
-		if x >= 50 && x < 100 {
-			"mid medium"
-		}
-	case ValueTag_Medium:
+		} else if x >= 50 && x < 100 {
+			__match_result_2 = "mid medium"
 
-		_ := __match_2.value_medium_0
-		"upper medium"
+		} else {
+			__match_result_2 = "upper medium"
+		}
 	case ValueTag_Large:
 
-		_ := __match_2.value_large_0
-		"large"
+		__match_result_2 = "large"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_2
 
 }
 
 // Guard with constant condition (optimization test)
 func alwaysMatch(val Value) string {
+	var __match_result_3 interface{}
 
 	__match_3 := val
 	switch __match_3.tag {
 	case ValueTag_Small:
 
-		_ := __match_3.value_small_0
 		if true {
-			"small"
+			__match_result_3 = "small"
 		}
 	case ValueTag_Medium:
 
-		_ := __match_3.value_medium_0
 		if 1 > 0 {
-			"medium"
+			__match_result_3 = "medium"
 		}
 	case ValueTag_Large:
 
-		_ := __match_3.value_large_0
-		"large"
+		__match_result_3 = "large"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_3
 
 }
 
 // Guard with side effects (not recommended but valid)
 func countMatches(val Value) string {
 	var count int = 0
+	var __match_result_4 interface{}
 
 	__match_4 := val
 	switch __match_4.tag {
 	case ValueTag_Small:
+		x := *__match_4.small_0
 
-		x := __match_4.value_small_0
 		if increment(&count) && x > 0 {
-			"small positive"
+			__match_result_4 = "small positive"
 		}
 	case ValueTag_Medium:
+		x := *__match_4.medium_0
 
-		x := __match_4.value_medium_0
 		if increment(&count) && x > 0 {
-			"medium positive"
+			__match_result_4 = "medium positive"
 		}
 	case ValueTag_Large:
+		x := *__match_4.large_0
 
-		x := __match_4.value_large_0
 		if increment(&count) && x > 0 {
-			"large positive"
+			__match_result_4 = "large positive"
 		}
 	default:
 
-		"other"
+		__match_result_4 = "other"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_4
 
 }
 func increment(p *int) bool {

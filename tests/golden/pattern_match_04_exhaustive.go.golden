@@ -45,19 +45,20 @@ func colorToHex(c Color) string {
 
 	__match_0 := c
 	switch __match_0.tag {
-	case ColorTagRed:
+	case ColorTag_Red:
 
 		__match_result_0 = "#FF0000"
-	case ColorTagGreen:
+	case ColorTag_Green:
 
 		__match_result_0 = "#00FF00"
-	case ColorTagBlue:
+	case ColorTag_Blue:
 
 		__match_result_0 = "#0000FF"
-	case ColorTagRGB{r, g, b}:
+	case ColorTag_RGB{r, g, b}:
 
 		__match_result_0 = "#" + toHex(r) + toHex(g) + toHex(b)
 	}
+	panic("unreachable: match is exhaustive")
 	return __match_result_0
 
 }

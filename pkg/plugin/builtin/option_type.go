@@ -128,7 +128,7 @@ func (p *OptionTypePlugin) handleGenericOption(expr *ast.IndexExpr) {
 		} else {
 			typeName = p.typeInference.TypeToString(telemType)
 		}
-		optionType := fmt.Sprintf("Option%s", p.sanitizeTypeName(typeName))
+		optionType := fmt.Sprintf("Option_%s", p.sanitizeTypeName(typeName))
 
 		if !p.emittedTypes[optionType] {
 			p.emitOptionDeclaration(typeName, optionType)
@@ -183,7 +183,7 @@ func (p *OptionTypePlugin) handleNoneExpression(ident *ast.Ident) {
 	p.ctx.Logger.Debug("None constant: inferred Option type %s from context", targetType)
 
 	// Ensure the Option type is declared
-	optionTypeName := fmt.Sprintf("Option%s", p.sanitizeTypeName(targetType))
+	optionTypeName := fmt.Sprintf("Option_%s", p.sanitizeTypeName(targetType))
 	if !p.emittedTypes[optionTypeName] {
 		p.emitOptionDeclaration(targetType, optionTypeName)
 		p.emittedTypes[optionTypeName] = true
@@ -196,7 +196,7 @@ func (p *OptionTypePlugin) handleNoneExpression(ident *ast.Ident) {
 		Elts: []ast.Expr{
 			&ast.KeyValueExpr{
 				Key:   ast.NewIdent("tag"),
-				Value: ast.NewIdent("OptionTagNone"),
+				Value: ast.NewIdent("OptionTag_None"),
 			},
 			// No some_0 field for None variant
 		},
@@ -233,7 +233,7 @@ func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 	}
 
 	// Generate unique Option type name
-	optionTypeName := fmt.Sprintf("Option%s", p.sanitizeTypeName(valueType))
+	optionTypeName := fmt.Sprintf("Option_%s", p.sanitizeTypeName(valueType))
 
 	// Ensure the Option type is declared
 	if !p.emittedTypes[optionTypeName] {
@@ -274,10 +274,10 @@ func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 		Elts: []ast.Expr{
 			&ast.KeyValueExpr{
 				Key:   ast.NewIdent("tag"),
-				Value: ast.NewIdent("OptionTagSome"),
+				Value: ast.NewIdent("OptionTag_Some"),
 			},
 			&ast.KeyValueExpr{
-				Key:   ast.NewIdent("some0"),
+				Key:   ast.NewIdent("some_0"),
 				Value: valueExpr,
 			},
 		},
@@ -333,7 +333,7 @@ func (p *OptionTypePlugin) emitOptionDeclaration(valueType, optionTypeName strin
 								Names: []*ast.Ident{
 									{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "some0",
+										Name:    "some_0",
 									},
 								},
 								Type: p.typeToAST(valueType, true), // Pointer
@@ -383,7 +383,7 @@ func (p *OptionTypePlugin) emitOptionTagEnum() {
 				Names: []*ast.Ident{
 					{
 						NamePos: token.NoPos, // Prevent comment grabbing
-						Name:    "OptionTagSome",
+						Name:    "OptionTag_Some",
 					},
 				},
 				Type: &ast.Ident{
@@ -401,7 +401,7 @@ func (p *OptionTypePlugin) emitOptionTagEnum() {
 				Names: []*ast.Ident{
 					{
 						NamePos: token.NoPos, // Prevent comment grabbing
-						Name:    "OptionTagNone",
+						Name:    "OptionTag_None",
 					},
 				},
 			},
@@ -412,7 +412,7 @@ func (p *OptionTypePlugin) emitOptionTagEnum() {
 
 // emitSomeConstructor generates Some constructor
 func (p *OptionTypePlugin) emitSomeConstructor(optionTypeName, valueType string) {
-	funcName := fmt.Sprintf("%sSome", optionTypeName)
+	funcName := fmt.Sprintf("%s_Some", optionTypeName)
 	valueTypeAST := p.typeToAST(valueType, false)
 
 	// func Option_T_Some(arg0 T) Option_T {
@@ -476,14 +476,14 @@ func (p *OptionTypePlugin) emitSomeConstructor(optionTypeName, valueType string)
 									},
 									Value: &ast.Ident{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "OptionTagSome",
+										Name:    "OptionTag_Some",
 									},
 								},
 								&ast.KeyValueExpr{
 									Colon: token.NoPos, // Prevent comment grabbing
 									Key: &ast.Ident{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "some0",
+										Name:    "some_0",
 									},
 									Value: &ast.UnaryExpr{
 										OpPos: token.NoPos, // Prevent comment grabbing
@@ -507,7 +507,7 @@ func (p *OptionTypePlugin) emitSomeConstructor(optionTypeName, valueType string)
 
 // emitNoneConstructor generates None constructor
 func (p *OptionTypePlugin) emitNoneConstructor(optionTypeName, valueType string) {
-	funcName := fmt.Sprintf("%sNone", optionTypeName)
+	funcName := fmt.Sprintf("%s_None", optionTypeName)
 
 	// func Option_T_None() Option_T {
 	//     return Option_T{tag: OptionTag_None}
@@ -559,7 +559,7 @@ func (p *OptionTypePlugin) emitNoneConstructor(optionTypeName, valueType string)
 									},
 									Value: &ast.Ident{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "OptionTagNone",
+										Name:    "OptionTag_None",
 									},
 								},
 							},
@@ -600,7 +600,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 						&ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("OptionTagSome"),
+							Y:  ast.NewIdent("OptionTag_Some"),
 						},
 					},
 				},
@@ -634,7 +634,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 						&ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("OptionTagNone"),
+							Y:  ast.NewIdent("OptionTag_None"),
 						},
 					},
 				},
@@ -667,7 +667,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.NEQ,
-						Y:  ast.NewIdent("OptionTagSome"),
+						Y:  ast.NewIdent("OptionTag_Some"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -688,7 +688,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.StarExpr{
-							X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+							X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 						},
 					},
 				},
@@ -729,14 +729,14 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("OptionTagSome"),
+						Y:  ast.NewIdent("OptionTag_Some"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
 							&ast.ReturnStmt{
 								Results: []ast.Expr{
 									&ast.StarExpr{
-										X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+										X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 									},
 								},
 							},
@@ -790,14 +790,14 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("OptionTagSome"),
+						Y:  ast.NewIdent("OptionTag_Some"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
 							&ast.ReturnStmt{
 								Results: []ast.Expr{
 									&ast.StarExpr{
-										X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+										X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 									},
 								},
 							},
@@ -861,7 +861,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("OptionTagNone"),
+						Y:  ast.NewIdent("OptionTag_None"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -879,7 +879,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 							Fun: ast.NewIdent("fn"),
 							Args: []ast.Expr{
 								&ast.StarExpr{
-									X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+									X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 								},
 							},
 						},
@@ -902,10 +902,10 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{
 									Key:   ast.NewIdent("tag"),
-									Value: ast.NewIdent("OptionTagSome"),
+									Value: ast.NewIdent("OptionTag_Some"),
 								},
 								&ast.KeyValueExpr{
-									Key: ast.NewIdent("some0"),
+									Key: ast.NewIdent("some_0"),
 									Value: &ast.UnaryExpr{
 										Op: token.AND,
 										X:  ast.NewIdent("result"),
@@ -963,7 +963,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("OptionTagNone"),
+						Y:  ast.NewIdent("OptionTag_None"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -979,7 +979,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 							Fun: ast.NewIdent("fn"),
 							Args: []ast.Expr{
 								&ast.StarExpr{
-									X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+									X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 								},
 							},
 						},
@@ -1033,7 +1033,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("OptionTagNone"),
+						Y:  ast.NewIdent("OptionTag_None"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -1048,7 +1048,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 						Fun: ast.NewIdent("predicate"),
 						Args: []ast.Expr{
 							&ast.StarExpr{
-								X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some0")},
+								X: &ast.SelectorExpr{X: ast.NewIdent("o"), Sel: ast.NewIdent("some_0")},
 							},
 						},
 					},
@@ -1067,7 +1067,7 @@ func (p *OptionTypePlugin) emitOptionHelperMethods(optionTypeName, valueType str
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{
 									Key:   ast.NewIdent("tag"),
-									Value: ast.NewIdent("OptionTagNone"),
+									Value: ast.NewIdent("OptionTag_None"),
 								},
 							},
 						},

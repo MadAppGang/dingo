@@ -28,82 +28,80 @@ func (e Result) IsErr() bool {
 
 // Simple guard on Result type
 func classifyNumber(result Result) string {
+	var __match_result_0 interface{}
 
 	__match_0 := result
 	switch __match_0.tag {
 	case ResultTag_Ok:
+		x := *__match_0.ok_0
 
-		x := __match_0.result_ok_0
 		if x > 0 {
-			"positive"
-		}
-	case ResultTag_Ok:
+			__match_result_0 = "positive"
 
-		x := __match_0.result_ok_0
-		if x < 0 {
-			"negative"
-		}
-	case ResultTag_Ok:
+		} else if x < 0 {
+			__match_result_0 = "negative"
 
-		_ := __match_0.result_ok_0
-		"zero"
+		} else {
+			__match_result_0 = "zero"
+		}
 	case ResultTag_Err:
+		e := *__match_0.err_0
 
-		e := __match_0.result_err_0
-		"error"
+		__match_result_0 = "error"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_0
 
 }
 
 // Guard with multiple conditions
 func validateAge(result Result) string {
+	var __match_result_1 interface{}
 
 	__match_1 := result
 	switch __match_1.tag {
 	case ResultTag_Ok:
+		age := *__match_1.ok_0
 
-		age := __match_1.result_ok_0
 		if age >= 18 && age < 65 {
-			"adult"
-		}
-	case ResultTag_Ok:
+			__match_result_1 = "adult"
 
-		age := __match_1.result_ok_0
-		if age >= 65 {
-			"senior"
-		}
-	case ResultTag_Ok:
+		} else if age >= 65 {
+			__match_result_1 = "senior"
 
-		_ := __match_1.result_ok_0
-		"minor"
+		} else {
+			__match_result_1 = "minor"
+		}
 	case ResultTag_Err:
 
-		_ := __match_1.result_err_0
-		"invalid"
+		__match_result_1 = "invalid"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_1
 
 }
 
 // Guard with function call
 func checkLength(result Result) string {
+	var __match_result_2 interface{}
 
 	__match_2 := result
 	switch __match_2.tag {
 	case ResultTag_Ok:
+		n := *__match_2.ok_0
 
-		n := __match_2.result_ok_0
 		if isEven(n) {
-			"even"
-		}
-	case ResultTag_Ok:
+			__match_result_2 = "even"
 
-		_ := __match_2.result_ok_0
-		"odd"
+		} else {
+			__match_result_2 = "odd"
+		}
 	case ResultTag_Err:
 
-		_ := __match_2.result_err_0
-		"error"
+		__match_result_2 = "error"
 	}
+	panic("unreachable: match is exhaustive")
+	return __match_result_2
 
 }
 func isEven(n int) bool {

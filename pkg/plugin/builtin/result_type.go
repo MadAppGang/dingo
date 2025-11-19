@@ -118,10 +118,10 @@ func (p *ResultTypePlugin) handleGenericResult(expr *ast.IndexExpr) {
 			p.ctx.Logger.Warn("ResultTypePlugin: Could not infer type for Result<T> element. Falling back to heuristic.")
 			// Fallback to old heuristic if type inference fails
 			typeName = p.getTypeName(expr.Index)
-			resultType = fmt.Sprintf("Result%sError", p.sanitizeTypeName(typeName))
+			resultType = fmt.Sprintf("Result_%s_error", p.sanitizeTypeName(typeName))
 		} else {
 			typeName = p.typeInference.TypeToString(telemType)
-			resultType = fmt.Sprintf("Result%sError", p.sanitizeTypeName(typeName))
+			resultType = fmt.Sprintf("Result_%s_error", p.sanitizeTypeName(typeName))
 		}
 
 		if !p.emittedTypes[resultType] {
@@ -154,7 +154,7 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 				errType = p.typeInference.TypeToString(errElemType)
 			}
 
-			resultType := fmt.Sprintf("Result%s%s",
+			resultType := fmt.Sprintf("Result_%s_%s",
 				p.sanitizeTypeName(okType),
 				p.sanitizeTypeName(errType))
 
@@ -272,10 +272,10 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 		Elts: []ast.Expr{
 			&ast.KeyValueExpr{
 				Key:   ast.NewIdent("tag"),
-				Value: ast.NewIdent("ResultTagOk"),
+				Value: ast.NewIdent("ResultTag_Ok"),
 			},
 			&ast.KeyValueExpr{
-				Key:   ast.NewIdent("ok0"),
+				Key:   ast.NewIdent("ok_0"),
 				Value: okValue,
 			},
 		},
@@ -354,10 +354,10 @@ func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr 
 		Elts: []ast.Expr{
 			&ast.KeyValueExpr{
 				Key:   ast.NewIdent("tag"),
-				Value: ast.NewIdent("ResultTagErr"),
+				Value: ast.NewIdent("ResultTag_Err"),
 			},
 			&ast.KeyValueExpr{
-				Key:   ast.NewIdent("err0"),
+				Key:   ast.NewIdent("err_0"),
 				Value: errValue,
 			},
 		},
@@ -572,7 +572,7 @@ func (p *ResultTypePlugin) emitResultDeclaration(okType, errType, resultTypeName
 								Names: []*ast.Ident{
 									{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "ok0",
+										Name:    "ok_0",
 									},
 								},
 								Type: p.typeToAST(okType, true), // Pointer for zero-value safety
@@ -581,7 +581,7 @@ func (p *ResultTypePlugin) emitResultDeclaration(okType, errType, resultTypeName
 								Names: []*ast.Ident{
 									{
 										NamePos: token.NoPos, // Prevent comment grabbing
-										Name:    "err0",
+										Name:    "err_0",
 									},
 								},
 								Type: p.typeToAST(errType, true), // Pointer
@@ -639,7 +639,7 @@ func (p *ResultTypePlugin) emitResultTagEnum() {
 				Names: []*ast.Ident{
 					{
 						NamePos: token.NoPos, // Prevent comment grabbing
-						Name:    "ResultTagOk",
+						Name:    "ResultTag_Ok",
 					},
 				},
 				Type: &ast.Ident{
@@ -657,7 +657,7 @@ func (p *ResultTypePlugin) emitResultTagEnum() {
 				Names: []*ast.Ident{
 					{
 						NamePos: token.NoPos, // Prevent comment grabbing
-						Name:    "ResultTagErr",
+						Name:    "ResultTag_Err",
 					},
 				},
 			},
@@ -669,14 +669,14 @@ func (p *ResultTypePlugin) emitResultTagEnum() {
 
 // emitConstructorFunction generates Ok or Err constructor
 func (p *ResultTypePlugin) emitConstructorFunction(resultTypeName, argType string, isOk bool, funcSuffix string) {
-	variantTag := "ResultTagOk"
-	fieldName := "ok0"
+	variantTag := "ResultTag_Ok"
+	fieldName := "ok_0"
 	if !isOk {
-		variantTag = "ResultTagErr"
-		fieldName = "err0"
+		variantTag = "ResultTag_Err"
+		fieldName = "err_0"
 	}
 
-	funcName := fmt.Sprintf("%s%s", resultTypeName, funcSuffix)
+	funcName := fmt.Sprintf("%s_%s", resultTypeName, funcSuffix)
 	argTypeAST := p.typeToAST(argType, false) // Non-pointer parameter
 
 	// func Result_T_E_Ok(arg0 T) Result_T_E {
@@ -796,7 +796,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 						&ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagOk"),
+							Y:  ast.NewIdent("ResultTag_Ok"),
 						},
 					},
 				},
@@ -830,7 +830,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 						&ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagErr"),
+							Y:  ast.NewIdent("ResultTag_Err"),
 						},
 					},
 				},
@@ -865,7 +865,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 						Op: token.NEQ,
-						Y:  ast.NewIdent("ResultTagOk"),
+						Y:  ast.NewIdent("ResultTag_Ok"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -886,7 +886,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 				// if r.ok_0 == nil { panic("Result contains nil Ok value") }
 				&ast.IfStmt{
 					Cond: &ast.BinaryExpr{
-						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 						Op: token.EQL,
 						Y:  ast.NewIdent("nil"),
 					},
@@ -910,7 +910,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.StarExpr{
-							X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+							X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 						},
 					},
 				},
@@ -952,14 +952,14 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("ResultTagOk"),
+						Y:  ast.NewIdent("ResultTag_Ok"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
 							&ast.ReturnStmt{
 								Results: []ast.Expr{
 									&ast.StarExpr{
-										X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+										X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 									},
 								},
 							},
@@ -1000,7 +1000,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 						Op: token.NEQ,
-						Y:  ast.NewIdent("ResultTagErr"),
+						Y:  ast.NewIdent("ResultTag_Err"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -1021,7 +1021,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 				// if r.err_0 == nil { panic("Result contains nil Err value") }
 				&ast.IfStmt{
 					Cond: &ast.BinaryExpr{
-						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 						Op: token.EQL,
 						Y:  ast.NewIdent("nil"),
 					},
@@ -1045,7 +1045,7 @@ func (p *ResultTypePlugin) emitHelperMethods(resultTypeName, okType, errType str
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.StarExpr{
-							X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+							X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 						},
 					},
 				},
@@ -1107,11 +1107,11 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagOk"),
+							Y:  ast.NewIdent("ResultTag_Ok"),
 						},
 						Op: token.LAND,
 						Y: &ast.BinaryExpr{
-							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 							Op: token.NEQ,
 							Y:  ast.NewIdent("nil"),
 						},
@@ -1121,7 +1121,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 							&ast.ReturnStmt{
 								Results: []ast.Expr{
 									&ast.StarExpr{
-										X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+										X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 									},
 								},
 							},
@@ -1131,7 +1131,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 				// if r.err_0 != nil { return fn(*r.err_0) }
 				&ast.IfStmt{
 					Cond: &ast.BinaryExpr{
-						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 						Op: token.NEQ,
 						Y:  ast.NewIdent("nil"),
 					},
@@ -1143,7 +1143,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 										Fun: ast.NewIdent("fn"),
 										Args: []ast.Expr{
 											&ast.StarExpr{
-												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 											},
 										},
 									},
@@ -1219,11 +1219,11 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagOk"),
+							Y:  ast.NewIdent("ResultTag_Ok"),
 						},
 						Op: token.LAND,
 						Y: &ast.BinaryExpr{
-							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 							Op: token.NEQ,
 							Y:  ast.NewIdent("nil"),
 						},
@@ -1239,7 +1239,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 										Fun: ast.NewIdent("fn"),
 										Args: []ast.Expr{
 											&ast.StarExpr{
-												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 											},
 										},
 									},
@@ -1253,15 +1253,15 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 											Fields: &ast.FieldList{
 												List: []*ast.Field{
 													{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-													{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
-													{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: p.typeToAST(errType, true)},
+													{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+													{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: p.typeToAST(errType, true)},
 												},
 											},
 										},
 										Elts: []ast.Expr{
 											&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: ast.NewIdent("ResultTagOk")},
 											&ast.KeyValueExpr{
-												Key: ast.NewIdent("ok0"),
+												Key: ast.NewIdent("ok_0"),
 												Value: &ast.UnaryExpr{
 													Op: token.AND,
 													X:  ast.NewIdent("u"),
@@ -1282,15 +1282,15 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 								Fields: &ast.FieldList{
 									List: []*ast.Field{
 										{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-										{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
-										{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: p.typeToAST(errType, true)},
+										{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+										{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: p.typeToAST(errType, true)},
 									},
 								},
 							},
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("ok0"), Value: ast.NewIdent("nil")},
-								&ast.KeyValueExpr{Key: ast.NewIdent("err0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")}},
+								&ast.KeyValueExpr{Key: ast.NewIdent("ok_0"), Value: ast.NewIdent("nil")},
+								&ast.KeyValueExpr{Key: ast.NewIdent("err_0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")}},
 							},
 						},
 					},
@@ -1349,11 +1349,11 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagErr"),
+							Y:  ast.NewIdent("ResultTag_Err"),
 						},
 						Op: token.LAND,
 						Y: &ast.BinaryExpr{
-							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 							Op: token.NEQ,
 							Y:  ast.NewIdent("nil"),
 						},
@@ -1369,7 +1369,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 										Fun: ast.NewIdent("fn"),
 										Args: []ast.Expr{
 											&ast.StarExpr{
-												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 											},
 										},
 									},
@@ -1383,16 +1383,16 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 											Fields: &ast.FieldList{
 												List: []*ast.Field{
 													{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-													{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: p.typeToAST(okType, true)},
-													{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+													{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: p.typeToAST(okType, true)},
+													{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
 												},
 											},
 										},
 										Elts: []ast.Expr{
 											&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: ast.NewIdent("ResultTagErr")},
-											&ast.KeyValueExpr{Key: ast.NewIdent("ok0"), Value: ast.NewIdent("nil")},
+											&ast.KeyValueExpr{Key: ast.NewIdent("ok_0"), Value: ast.NewIdent("nil")},
 											&ast.KeyValueExpr{
-												Key: ast.NewIdent("err0"),
+												Key: ast.NewIdent("err_0"),
 												Value: &ast.UnaryExpr{
 													Op: token.AND,
 													X:  ast.NewIdent("f"),
@@ -1413,15 +1413,15 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 								Fields: &ast.FieldList{
 									List: []*ast.Field{
 										{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-										{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: p.typeToAST(okType, true)},
-										{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+										{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: p.typeToAST(okType, true)},
+										{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
 									},
 								},
 							},
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("ok0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("err0"), Value: ast.NewIdent("nil")},
+								&ast.KeyValueExpr{Key: ast.NewIdent("ok_0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")}},
+								&ast.KeyValueExpr{Key: ast.NewIdent("err_0"), Value: ast.NewIdent("nil")},
 							},
 						},
 					},
@@ -1478,14 +1478,14 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagOk"),
+							Y:  ast.NewIdent("ResultTag_Ok"),
 						},
 						Op: token.LAND,
 						Y: &ast.CallExpr{
 							Fun: ast.NewIdent("predicate"),
 							Args: []ast.Expr{
 								&ast.StarExpr{
-									X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+									X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 								},
 							},
 						},
@@ -1553,11 +1553,11 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagOk"),
+							Y:  ast.NewIdent("ResultTag_Ok"),
 						},
 						Op: token.LAND,
 						Y: &ast.BinaryExpr{
-							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 							Op: token.NEQ,
 							Y:  ast.NewIdent("nil"),
 						},
@@ -1570,7 +1570,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 										Fun: ast.NewIdent("fn"),
 										Args: []ast.Expr{
 											&ast.StarExpr{
-												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")},
+												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")},
 											},
 										},
 									},
@@ -1587,15 +1587,15 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 								Fields: &ast.FieldList{
 									List: []*ast.Field{
 										{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-										{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
-										{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: p.typeToAST(errType, true)},
+										{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+										{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: p.typeToAST(errType, true)},
 									},
 								},
 							},
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("ok0"), Value: ast.NewIdent("nil")},
-								&ast.KeyValueExpr{Key: ast.NewIdent("err0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")}},
+								&ast.KeyValueExpr{Key: ast.NewIdent("ok_0"), Value: ast.NewIdent("nil")},
+								&ast.KeyValueExpr{Key: ast.NewIdent("err_0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")}},
 							},
 						},
 					},
@@ -1651,11 +1651,11 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 						X: &ast.BinaryExpr{
 							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 							Op: token.EQL,
-							Y:  ast.NewIdent("ResultTagErr"),
+							Y:  ast.NewIdent("ResultTag_Err"),
 						},
 						Op: token.LAND,
 						Y: &ast.BinaryExpr{
-							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+							X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 							Op: token.NEQ,
 							Y:  ast.NewIdent("nil"),
 						},
@@ -1668,7 +1668,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 										Fun: ast.NewIdent("fn"),
 										Args: []ast.Expr{
 											&ast.StarExpr{
-												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err0")},
+												X: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("err_0")},
 											},
 										},
 									},
@@ -1685,15 +1685,15 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 								Fields: &ast.FieldList{
 									List: []*ast.Field{
 										{Names: []*ast.Ident{ast.NewIdent("tag")}, Type: ast.NewIdent("ResultTag")},
-										{Names: []*ast.Ident{ast.NewIdent("ok0")}, Type: p.typeToAST(okType, true)},
-										{Names: []*ast.Ident{ast.NewIdent("err0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
+										{Names: []*ast.Ident{ast.NewIdent("ok_0")}, Type: p.typeToAST(okType, true)},
+										{Names: []*ast.Ident{ast.NewIdent("err_0")}, Type: &ast.StarExpr{X: ast.NewIdent("interface{}")}},
 									},
 								},
 							},
 							Elts: []ast.Expr{
 								&ast.KeyValueExpr{Key: ast.NewIdent("tag"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("ok0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok0")}},
-								&ast.KeyValueExpr{Key: ast.NewIdent("err0"), Value: ast.NewIdent("nil")},
+								&ast.KeyValueExpr{Key: ast.NewIdent("ok_0"), Value: &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("ok_0")}},
+								&ast.KeyValueExpr{Key: ast.NewIdent("err_0"), Value: ast.NewIdent("nil")},
 							},
 						},
 					},
@@ -1737,7 +1737,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("ResultTagOk"),
+						Y:  ast.NewIdent("ResultTag_Ok"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
@@ -1790,7 +1790,7 @@ func (p *ResultTypePlugin) emitAdvancedHelperMethods(resultTypeName, okType, err
 					Cond: &ast.BinaryExpr{
 						X:  &ast.SelectorExpr{X: ast.NewIdent("r"), Sel: ast.NewIdent("tag")},
 						Op: token.EQL,
-						Y:  ast.NewIdent("ResultTagOk"),
+						Y:  ast.NewIdent("ResultTag_Ok"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{

@@ -36,28 +36,116 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 	__match_0_elem0, __match_0_elem1, __match_0_elem2, __match_0_elem3, __match_0_elem4, __match_0_elem5 := s1, s2, s3, s4, s5, s6
 
 	switch __match_0_elem0.tag {
-	case ResultTagOk:
+	case ResultTag_Err:
+		switch __match_0_elem1.tag {
+		default:
+			switch __match_0_elem2.tag {
+			default:
+				switch __match_0_elem3.tag {
+				default:
+					switch __match_0_elem4.tag {
+					default:
+						switch __match_0_elem5.tag {
+						default:
 
-		"All 6 steps succeeded"
-	case ResultTagErr:
+							e := *__match_0_elem0.err0
+							return "Step 1 failed: " + e.Error()
+						}
+					}
+				}
+			}
+		}
+	case ResultTag_Ok:
+		switch __match_0_elem1.tag {
+		case ResultTag_Ok:
+			switch __match_0_elem2.tag {
+			case ResultTag_Ok:
+				switch __match_0_elem3.tag {
+				case ResultTag_Ok:
+					switch __match_0_elem4.tag {
+					case ResultTag_Ok:
+						switch __match_0_elem5.tag {
+						case ResultTag_Ok:
 
-		"Step 1 failed: " + e.Error()
+							_ := *__match_0_elem0.ok0
+							_ := *__match_0_elem1.ok0
+							_ := *__match_0_elem2.ok0
+							_ := *__match_0_elem3.ok0
+							_ := *__match_0_elem4.ok0
+							_ := *__match_0_elem5.ok0
+							return "All 6 steps succeeded"
+						}
+					}
+				}
+			}
+		}
 	default:
+		switch __match_0_elem1.tag {
+		case ResultTag_Err:
+			switch __match_0_elem2.tag {
+			default:
+				switch __match_0_elem3.tag {
+				default:
+					switch __match_0_elem4.tag {
+					default:
+						switch __match_0_elem5.tag {
+						default:
 
-		"Step 2 failed: " + e.Error()
-	default:
+							e := *__match_0_elem1.err0
+							return "Step 2 failed: " + e.Error()
+						}
+					}
+				}
+			}
+		default:
+			switch __match_0_elem2.tag {
+			case ResultTag_Err:
+				switch __match_0_elem3.tag {
+				default:
+					switch __match_0_elem4.tag {
+					default:
+						switch __match_0_elem5.tag {
+						default:
 
-		"Step 3 failed: " + e.Error()
-	default:
+							e := *__match_0_elem2.err0
+							return "Step 3 failed: " + e.Error()
+						}
+					}
+				}
+			default:
+				switch __match_0_elem3.tag {
+				case ResultTag_Err:
+					switch __match_0_elem4.tag {
+					default:
+						switch __match_0_elem5.tag {
+						default:
 
-		"Step 4 failed: " + e.Error()
-	default:
+							e := *__match_0_elem3.err0
+							return "Step 4 failed: " + e.Error()
+						}
+					}
+				default:
+					switch __match_0_elem4.tag {
+					case ResultTag_Err:
+						switch __match_0_elem5.tag {
+						default:
 
-		"Step 5 failed: " + e.Error()
-	default:
+							e := *__match_0_elem4.err0
+							return "Step 5 failed: " + e.Error()
+						}
+					default:
+						switch __match_0_elem5.tag {
+						case ResultTag_Err:
 
-		"Step 6 failed: " + e.Error()
+							e := *__match_0_elem5.err0
+							return "Step 6 failed: " + e.Error()
+						}
+					}
+				}
+			}
+		}
 	}
+	panic("unreachable: match is exhaustive")
 
 }
 
@@ -67,13 +155,36 @@ func processFourResults(r1, r2, r3, r4 Result) string {
 	__match_1_elem0, __match_1_elem1, __match_1_elem2, __match_1_elem3 := r1, r2, r3, r4
 
 	switch __match_1_elem0.tag {
-	case ResultTagOk:
+	case ResultTag_Ok:
+		switch __match_1_elem1.tag {
+		case ResultTag_Ok:
+			switch __match_1_elem2.tag {
+			case ResultTag_Ok:
+				switch __match_1_elem3.tag {
+				case ResultTag_Ok:
 
-		"All ok: " + string(a+b+c+d)
+					a := *__match_1_elem0.ok0
+					b := *__match_1_elem1.ok0
+					c := *__match_1_elem2.ok0
+					d := *__match_1_elem3.ok0
+					return "All ok: " + string(a+b+c+d)
+				}
+			}
+		}
 	default:
+		switch __match_1_elem1.tag {
+		default:
+			switch __match_1_elem2.tag {
+			default:
+				switch __match_1_elem3.tag {
+				default:
 
-		"At least one error occurred"
+					return "At least one error occurred"
+				}
+			}
+		}
 	}
+	panic("unreachable: match is exhaustive")
 
 }
 func main() {
