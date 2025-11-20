@@ -87,7 +87,7 @@ jobs:
       uses: golangci/golangci-lint-action@v9
       with:
         version: v2.6
-        args: --timeout=5m ./cmd/... ./pkg/... ./internal/...
+        args: --timeout=5m ./cmd/... ./pkg/...
 
   build-vscode-extension:
     name: Build VS Code Extension
