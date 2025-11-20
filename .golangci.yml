@@ -51,6 +51,7 @@ linters:
   exclusions:
     paths:
       - "tests/"
+      - "scripts/"
       - "_test\\.go"
 
 formatters:
