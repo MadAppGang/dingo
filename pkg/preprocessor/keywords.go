@@ -14,6 +14,12 @@ var (
 	//   - With complex type: let opt: Option<int> = Some(42)
 	// Captures identifiers and optional type annotation
 	letPattern = regexp.MustCompile(`\blet\s+([\w\s,]+?)(?:\s*:\s*[^=]+?)?\s*=`)
+
+	// Match: let identifier Type (declaration without initialization)
+	// Handles: let action Action
+	// Transform to: var action Action
+	// Captures trailing whitespace to preserve formatting
+	letDeclPattern = regexp.MustCompile(`\blet\s+([\w]+)\s+([\w\[\]*<>]+)(\s|$)`)
 )
 
 // KeywordProcessor converts Dingo keywords to Go keywords
@@ -31,9 +37,14 @@ func (k *KeywordProcessor) Name() string {
 
 // Process transforms Dingo keywords to Go keywords
 // Converts: let x = value → x := value
+// Converts: let identifier Type → var identifier Type
 func (k *KeywordProcessor) Process(source []byte) ([]byte, []Mapping, error) {
-	// Replace `let x = ` with `x := `
-	result := letPattern.ReplaceAll(source, []byte("$1 :="))
+	// First, transform declarations without initialization: let identifier Type → var identifier Type
+	// Preserve trailing whitespace with $3
+	result := letDeclPattern.ReplaceAll(source, []byte("var $1 $2$3"))
+
+	// Then, transform assignments: let x = value → x := value
+	result = letPattern.ReplaceAll(result, []byte("$1 :="))
 
 	return result, nil, nil
 }
