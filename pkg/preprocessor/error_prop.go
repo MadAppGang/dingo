@@ -268,6 +268,13 @@ func (e *ErrorPropProcessor) processLine(line string, originalLineNum int, outpu
 		return line, mapping, nil
 	}
 
+	// Skip if line contains ?? null coalesce operator
+	// Null coalesce should be handled by NullCoalesceProcessor, not error propagation
+	if strings.Contains(line, "??") {
+		mapping := e.createIdentityMapping(line, originalLineNum, outputLineNum)
+		return line, mapping, nil
+	}
+
 	// Check if it's a ternary (has : after ?)
 	if e.isTernaryLine(line) {
 		// CRITICAL FIX: Create identity mapping for ternary lines (not error propagation)

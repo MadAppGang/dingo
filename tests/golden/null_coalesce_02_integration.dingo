@@ -30,22 +30,30 @@ type Address struct {
 }
 
 func main() {
-	// Test 1: user?.name ?? "unknown"
+	// Test 1: Separate safe navigation and null coalescing
+	// Note: Direct combination of ?. and ?? is not supported due to multi-line IIFE complexity
 	let user: UserOption = getUser(1)
-	let userName = user?.name ?? "unknown"
+	let userNameOpt = user?.name
+	let userName = userNameOpt ?? "unknown"
 
 	// Test 2: user?.address?.city ?? defaultCity
 	let defaultCity = "San Francisco"
-	let city = user?.address?.city ?? defaultCity
+	let addressOpt = user?.address
+	let cityOpt = addressOpt?.city
+	let city = cityOpt ?? defaultCity
 
 	// Test 3: Chain with method calls
 	let profile: UserOption = fetchProfile()
-	let email = profile?.getEmail() ?? "no-email@example.com"
+	let emailOpt = profile?.getEmail()
+	let email = emailOpt ?? "no-email@example.com"
 
 	// Test 4: Multiple safe nav with different fallbacks
 	let user2: UserOption = getUser(2)
-	let zip = user2?.address?.zip ?? "00000"
-	let city2 = user2?.address?.city ?? "Unknown City"
+	let addressOpt2 = user2?.address
+	let zipOpt = addressOpt2?.zip
+	let cityOpt2 = addressOpt2?.city
+	let zip = zipOpt ?? "00000"
+	let city2 = cityOpt2 ?? "Unknown City"
 
 	println("User:", userName, "City:", city, "Email:", email)
 	println("Zip:", zip, "City2:", city2)

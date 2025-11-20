@@ -1,216 +1,219 @@
 package main
 
-// Test: Null coalescing integration with safe navigation
-// Feature: ?? operator combined with ?.
-// Complexity: intermediate
-
-type UserOption_Tag int
+type UserOptionTag uint8
 
 const (
-	UserOption_Tag_Some UserOption_Tag = iota
-	UserOption_Tag_None
+	UserOptionTagSome UserOptionTag = iota
+	UserOptionTagNone
 )
 
 type UserOption struct {
-	tag  UserOption_Tag
+	tag  UserOptionTag
 	some *User
 }
 
-func UserOption_Some(value User) UserOption {
-	return UserOption{tag: UserOption_Tag_Some, some: &value}
+func UserOptionSome(arg0 User) UserOption {
+	return UserOption{tag: UserOptionTagSome, some: &arg0}
 }
-
-func UserOption_None() UserOption {
-	return UserOption{tag: UserOption_Tag_None, some: nil}
+func UserOptionNone() UserOption {
+	return UserOption{tag: UserOptionTagNone}
 }
-
-func (o UserOption) IsSome() bool {
-	return o.tag == UserOption_Tag_Some
+func (e UserOption) IsSome() bool {
+	return e.tag == UserOptionTagSome
 }
-
-func (o UserOption) IsNone() bool {
-	return o.tag == UserOption_Tag_None
+func (e UserOption) IsNone() bool {
+	return e.tag == UserOptionTagNone
 }
-
-func (o UserOption) Unwrap() User {
-	if o.IsNone() {
-		panic("called Unwrap on None")
+func (o UserOption) Map(fn func(User) User) UserOption {
+	switch o.tag {
+	case UserOptionTagSome:
+		if o.some != nil {
+			return UserOptionSome(fn(*o.some))
+		}
+	case UserOptionTagNone:
+		return o
 	}
-	return *o.some
+	panic("invalid UserOption state")
+}
+func (o UserOption) AndThen(fn func(User) UserOption) UserOption {
+	switch o.tag {
+	case UserOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case UserOptionTagNone:
+		return o
+	}
+	panic("invalid UserOption state")
 }
 
-type AddressOption_Tag int
+type AddressOptionTag uint8
 
 const (
-	AddressOption_Tag_Some AddressOption_Tag = iota
-	AddressOption_Tag_None
+	AddressOptionTagSome AddressOptionTag = iota
+	AddressOptionTagNone
 )
 
 type AddressOption struct {
-	tag  AddressOption_Tag
+	tag  AddressOptionTag
 	some *Address
 }
-
-func AddressOption_Some(value Address) AddressOption {
-	return AddressOption{tag: AddressOption_Tag_Some, some: &value}
+func AddressOptionSome(arg0 Address) AddressOption {
+	return AddressOption{tag: AddressOptionTagSome, some: &arg0}
 }
-
-func AddressOption_None() AddressOption {
-	return AddressOption{tag: AddressOption_Tag_None, some: nil}
+func AddressOptionNone() AddressOption {
+	return AddressOption{tag: AddressOptionTagNone}
 }
-
-func (o AddressOption) IsSome() bool {
-	return o.tag == AddressOption_Tag_Some
+func (e AddressOption) IsSome() bool {
+	return e.tag == AddressOptionTagSome
 }
-
-func (o AddressOption) IsNone() bool {
-	return o.tag == AddressOption_Tag_None
+func (e AddressOption) IsNone() bool {
+	return e.tag == AddressOptionTagNone
 }
-
-func (o AddressOption) Unwrap() Address {
-	if o.IsNone() {
-		panic("called Unwrap on None")
+func (o AddressOption) Map(fn func(Address) Address) AddressOption {
+	switch o.tag {
+	case AddressOptionTagSome:
+		if o.some != nil {
+			return AddressOptionSome(fn(*o.some))
+		}
+	case AddressOptionTagNone:
+		return o
 	}
-	return *o.some
+	panic("invalid AddressOption state")
+}
+func (o AddressOption) AndThen(fn func(Address) AddressOption) AddressOption {
+	switch o.tag {
+	case AddressOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case AddressOptionTagNone:
+		return o
+	}
+	panic("invalid AddressOption state")
 }
 
-type StringOption_Tag int
+type StringOptionTag uint8
 
 const (
-	StringOption_Tag_Some StringOption_Tag = iota
-	StringOption_Tag_None
+	StringOptionTagSome StringOptionTag = iota
+	StringOptionTagNone
 )
 
 type StringOption struct {
-	tag  StringOption_Tag
+	tag  StringOptionTag
 	some *string
 }
-
-func StringOption_Some(value string) StringOption {
-	return StringOption{tag: StringOption_Tag_Some, some: &value}
+func StringOptionSome(arg0 string) StringOption {
+	return StringOption{tag: StringOptionTagSome, some: &arg0}
 }
-
-func StringOption_None() StringOption {
-	return StringOption{tag: StringOption_Tag_None, some: nil}
+func StringOptionNone() StringOption {
+	return StringOption{tag: StringOptionTagNone}
 }
-
-func (o StringOption) IsSome() bool {
-	return o.tag == StringOption_Tag_Some
+func (e StringOption) IsSome() bool {
+	return e.tag == StringOptionTagSome
 }
-
-func (o StringOption) IsNone() bool {
-	return o.tag == StringOption_Tag_None
+func (e StringOption) IsNone() bool {
+	return e.tag == StringOptionTagNone
 }
-
-func (o StringOption) Unwrap() string {
-	if o.IsNone() {
-		panic("called Unwrap on None")
+func (o StringOption) Map(fn func(string) string) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return StringOptionSome(fn(*o.some))
+		}
+	case StringOptionTagNone:
+		return o
 	}
-	return *o.some
+	panic("invalid StringOption state")
+}
+func (o StringOption) AndThen(fn func(string) StringOption) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case StringOptionTagNone:
+		return o
+	}
+	panic("invalid StringOption state")
 }
 
 type User struct {
 	name    string
 	address AddressOption
 }
-
 type Address struct {
 	city StringOption
 	zip  string
 }
-
 func main() {
-	// Test 1: user?.name ?? "unknown"
-	var user UserOption = getUser(1)
-	var userName = func() string {
-		__safeNav := func() string {
-			if user.IsNone() {
-				return ""
-			}
-			_user := user.Unwrap()
-			return _user.name
-		}()
-		if __safeNav != "" {
-			return __safeNav
+
+	user := getUser(1)
+	userNameOpt := func() __INFER__ {
+		if user.IsNone() {
+			return __INFER___None()
+		}
+		user1 := user.Unwrap()
+		return user1.name
+	}()
+	userName := func() __INFER__ {
+		if userNameOpt.IsSome() {
+			return __UNWRAP__(userNameOpt)
 		}
 		return "unknown"
 	}()
 
-	// Test 2: user?.address?.city ?? defaultCity
-	var defaultCity = "San Francisco"
-	var city = func() string {
-		__safeNav := func() StringOption {
-			if user.IsNone() {
-				return StringOption_None()
-			}
-			_user := user.Unwrap()
-
-			if _user.address.IsNone() {
-				return StringOption_None()
-			}
-			_address := _user.address.Unwrap()
-
-			return _address.city
-		}()
-		if __safeNav.IsSome() {
-			return __safeNav.Unwrap()
+	defaultCity := "San Francisco"
+	addressOpt := func() __INFER__ {
+		if user.IsNone() {
+			return __INFER___None()
+		}
+		user2 := user.Unwrap()
+		return user2.address
+	}()
+	cityOpt := __SAFE_NAV_INFER__(addressOpt, "city")
+	city := func() __INFER__ {
+		if cityOpt.IsSome() {
+			return __UNWRAP__(cityOpt)
 		}
 		return defaultCity
 	}()
 
-	// Test 3: Chain with method calls
-	var profile UserOption = fetchProfile()
-	var email = func() string {
-		__safeNav := func() StringOption {
-			if profile.IsNone() {
-				return StringOption_None()
-			}
-			_profile := profile.Unwrap()
-			return _profile.getEmail()
-		}()
-		if __safeNav.IsSome() {
-			return __safeNav.Unwrap()
+	profile := fetchProfile()
+	emailOpt := func() __INFER__ {
+		if profile.IsNone() {
+			return __INFER___None()
+		}
+		profile3 := profile.Unwrap()
+		return profile3.getEmail()
+	}()
+	email := func() __INFER__ {
+		if emailOpt.IsSome() {
+			return __UNWRAP__(emailOpt)
 		}
 		return "no-email@example.com"
 	}()
 
-	// Test 4: Multiple safe nav with different fallbacks
-	var user2 UserOption = getUser(2)
-	var zip = func() string {
-		__safeNav := func() string {
-			if user2.IsNone() {
-				return ""
-			}
-			_user := user2.Unwrap()
-
-			if _user.address.IsNone() {
-				return ""
-			}
-			_address := _user.address.Unwrap()
-
-			return _address.zip
-		}()
-		if __safeNav != "" {
-			return __safeNav
+	user2 := getUser(2)
+	addressOpt2 := func() __INFER__ {
+		if user2.IsNone() {
+			return __INFER___None()
+		}
+		user24 := user2.Unwrap()
+		return user24.address
+	}()
+	zipOpt := __SAFE_NAV_INFER__(addressOpt2, "zip")
+	cityOpt2 := __SAFE_NAV_INFER__(addressOpt2, "city")
+	zip := func() __INFER__ {
+		if zipOpt.IsSome() {
+			return __UNWRAP__(zipOpt)
 		}
 		return "00000"
 	}()
-	var city2 = func() string {
-		__safeNav := func() StringOption {
-			if user2.IsNone() {
-				return StringOption_None()
-			}
-			_user := user2.Unwrap()
-
-			if _user.address.IsNone() {
-				return StringOption_None()
-			}
-			_address := _user.address.Unwrap()
-
-			return _address.city
-		}()
-		if __safeNav.IsSome() {
-			return __safeNav.Unwrap()
+	city2 := func() __INFER__ {
+		if cityOpt2.IsSome() {
+			return __UNWRAP__(cityOpt2)
 		}
 		return "Unknown City"
 	}()
@@ -218,22 +221,19 @@ func main() {
 	println("User:", userName, "City:", city, "Email:", email)
 	println("Zip:", zip, "City2:", city2)
 }
-
 func getUser(id int) UserOption {
 	if id == 1 {
-		addr := AddressOption_Some(Address{
-			city: StringOption_Some("New York"),
+		addr := AddressOptionSome(Address{
+			city: StringOptionSome("New York"),
 			zip:  "10001",
 		})
-		return UserOption_Some(User{name: "Alice", address: addr})
+		return UserOptionSome(User{name: "Alice", address: addr})
 	}
-	return UserOption_None()
+	return UserOptionNone()
 }
-
 func fetchProfile() UserOption {
-	return UserOption_None()
+	return UserOptionNone()
 }
-
 func (u User) getEmail() StringOption {
-	return StringOption_Some(u.name + "@example.com")
+	return StringOptionSome(u.name + "@example.com")
 }

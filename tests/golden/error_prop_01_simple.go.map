@@ -2,6 +2,22 @@
   "version": 1,
   "mappings": [
     {
+      "generated_line": 1,
+      "generated_column": 1,
+      "original_line": 1,
+      "original_column": 1,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 7,
+      "generated_column": 1,
+      "original_line": 3,
+      "original_column": 1,
+      "length": 46,
+      "name": "identity"
+    },
+    {
       "generated_line": 8,
       "generated_column": 16,
       "original_line": 4,
@@ -72,6 +88,22 @@
       "original_column": 27,
       "length": 1,
       "name": "error_prop"
+    },
+    {
+      "generated_line": 15,
+      "generated_column": 2,
+      "original_line": 5,
+      "original_column": 2,
+      "length": 16,
+      "name": "identity"
+    },
+    {
+      "generated_line": 17,
+      "generated_column": 1,
+      "original_line": 7,
+      "original_column": 1,
+      "length": 1,
+      "name": "identity"
     },
     {
       "generated_line": 8,

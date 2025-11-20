@@ -8,14 +8,14 @@ const (
 )
 
 type Option struct {
-	tag    OptionTag
+	tag  OptionTag
 	some *int
 }
 
-func Option_Some(arg0 int) Option {
+func OptionSome(arg0 int) Option {
 	return Option{tag: OptionTagSome, some: &arg0}
 }
-func Option_None() Option {
+func OptionNone() Option {
 	return Option{tag: OptionTagNone}
 }
 func (e Option) IsSome() bool {
@@ -24,44 +24,65 @@ func (e Option) IsSome() bool {
 func (e Option) IsNone() bool {
 	return e.tag == OptionTagNone
 }
+func (o Option) Map(fn func(int) int) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func (o Option) AndThen(fn func(int) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
 func find(arr []int, target int) Option {
 	for i, val := range arr {
 		if val == target {
-			return Option_Some(i)
+			return OptionSome(i)
 		}
 	}
-	return Option_None()
+	return OptionNone()
 }
 func main() {
-	var numbers = []int{10, 20, 30, 40}
-	// Null coalescing with Option
-	var index int
-	__opt0 := find(numbers, 25)
-	if __opt0.IsSome() {
-		index = *__opt0.some
-	} else {
-		index = -1
-	}
-	var value int
-	__opt1 := find(numbers, 30)
-	if __opt1.IsSome() {
-		value = *__opt1.some
-	} else {
-		value = 0
-	}
-	// Combined with ternary
-	var msg string
-	var __coalesce0 int
-	__opt2 := find(numbers, 20)
-	if __opt2.IsSome() {
-		__coalesce0 = *__opt2.some
-	} else {
-		__coalesce0 = -1
-	}
-	if __coalesce0 >= 0 {
+	numbers := []int{10, 20, 30, 40}
+
+	index := func() __INFER__ {
+		coalesce1 := find(numbers, 25)
+		if __IS_SOME__(coalesce1) {
+			return __UNWRAP__(coalesce1)
+		}
+		return -1
+	}()
+	value := func() __INFER__ {
+		coalesce2 := find(numbers, 30)
+		if __IS_SOME__(coalesce2) {
+			return __UNWRAP__(coalesce2)
+		}
+		return 0
+	}()
+
+	result := func() __INFER__ {
+		coalesce3 := find(numbers, 20)
+		if __IS_SOME__(coalesce3) {
+			return __UNWRAP__(coalesce3)
+		}
+		return -1
+	}()
+	msg := "not found"
+	if result >= 0 {
 		msg = "found"
-	} else {
-		msg = "not found"
 	}
+
 	println("Index:", index, "Value:", value, "Status:", msg)
 }

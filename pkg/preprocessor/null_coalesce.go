@@ -108,6 +108,7 @@ func (n *NullCoalesceProcessor) processLine(line string, originalLineNum int, ou
 		fullStart := pos.leftStart
 		fullEnd := pos.rightEnd
 
+
 		// Handle chained ?? (a ?? b ?? c)
 		// Collect all chained expressions
 		chain := []string{left, right}
@@ -430,9 +431,14 @@ func extractOperandAfter(line string, start int) int {
 		return -1 // Unclosed string
 	}
 
-	// Case 2: Number literal (positive only - don't parse - as operator)
-	if ch >= '0' && ch <= '9' {
-		end := start + 1
+	// Case 2: Number literal (including negative numbers)
+	if ch >= '0' && ch <= '9' || (ch == '-' && start+1 < len(line) && line[start+1] >= '0' && line[start+1] <= '9') {
+		end := start
+		// Handle optional negative sign
+		if ch == '-' {
+			end++
+		}
+		end++ // Move past first digit
 		hasDecimal := false
 		for end < len(line) {
 			ch := line[end]

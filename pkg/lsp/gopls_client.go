@@ -114,10 +114,23 @@ func (c *GoplsClient) start() error {
 			return reply(ctx, nil, nil)
 		case "textDocument/publishDiagnostics":
 			// Forward diagnostics to handler (for translation to .dingo positions)
+			c.logger.Debugf("[gopls → dingo-lsp] Received publishDiagnostics notification")
+
 			var params protocol.PublishDiagnosticsParams
 			if err := json.Unmarshal(req.Params(), &params); err != nil {
-				c.logger.Warnf("Failed to unmarshal diagnostics: %v", err)
+				c.logger.Warnf("[gopls → dingo-lsp] Failed to unmarshal diagnostics: %v", err)
 				return reply(ctx, nil, nil)
+			}
+
+			c.logger.Debugf("[gopls → dingo-lsp] Diagnostics for URI=%s, count=%d",
+				params.URI.Filename(), len(params.Diagnostics))
+
+			// Log each diagnostic from gopls
+			for i, diag := range params.Diagnostics {
+				c.logger.Debugf("[gopls → dingo-lsp]   [%d] Severity=%d, Message=%q, Range=L%d:C%d-L%d:C%d",
+					i, diag.Severity, diag.Message,
+					diag.Range.Start.Line, diag.Range.Start.Character,
+					diag.Range.End.Line, diag.Range.End.Character)
 			}
 
 			// Call diagnostics handler if set
@@ -126,11 +139,14 @@ func (c *GoplsClient) start() error {
 			c.mu.Unlock()
 
 			if handler != nil {
+				c.logger.Debugf("[gopls → dingo-lsp] Calling diagnostics handler")
 				if err := handler(ctx, params); err != nil {
-					c.logger.Warnf("Diagnostics handler error: %v", err)
+					c.logger.Warnf("[gopls → dingo-lsp] Diagnostics handler error: %v", err)
+				} else {
+					c.logger.Debugf("[gopls → dingo-lsp] Diagnostics handler completed successfully")
 				}
 			} else {
-				c.logger.Debugf("No diagnostics handler set, discarding %d diagnostics for %s",
+				c.logger.Debugf("[gopls → dingo-lsp] No diagnostics handler set, discarding %d diagnostics for %s",
 					len(params.Diagnostics), params.URI)
 			}
 

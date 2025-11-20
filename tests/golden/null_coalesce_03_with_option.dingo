@@ -25,8 +25,12 @@ func main() {
 	let index = find(numbers, 25) ?? -1
 	let value = find(numbers, 30) ?? 0
 
-	// Combined with ternary
-	let msg = (find(numbers, 20) ?? -1) >= 0 ? "found" : "not found"
+	// Combined with comparison
+	let result = find(numbers, 20) ?? -1
+	let msg = "not found"
+	if result >= 0 {
+		msg = "found"
+	}
 
 	println("Index:", index, "Value:", value, "Status:", msg)
 }

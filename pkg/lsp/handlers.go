@@ -303,21 +303,29 @@ func (s *Server) handlePublishDiagnostics(
 	ctx context.Context,
 	params protocol.PublishDiagnosticsParams,
 ) error {
+	s.config.Logger.Debugf("[Diagnostic Handler] START: Received %d diagnostics from gopls for URI=%s",
+		len(params.Diagnostics), params.URI.Filename())
+
 	// Check if this is for a .go file that has a corresponding .dingo file
 	goPath := params.URI.Filename()
 	dingoPath := goToDingoPath(goPath)
 
+	s.config.Logger.Debugf("[Diagnostic Handler] Path conversion: .go=%s → .dingo=%s", goPath, dingoPath)
+
 	// If no .dingo file, ignore (this is a pure Go file)
 	if dingoPath == goPath {
+		s.config.Logger.Debugf("[Diagnostic Handler] SKIP: No .dingo file (pure Go file)")
 		return nil
 	}
 
 	// Translate diagnostics: Go positions → Dingo positions
+	s.config.Logger.Debugf("[Diagnostic Handler] Translating %d diagnostics from Go → Dingo", len(params.Diagnostics))
 	translatedDiagnostics, err := s.translator.TranslateDiagnostics(params.Diagnostics, params.URI, GoToDingo)
 	if err != nil {
-		s.config.Logger.Warnf("Diagnostic translation failed: %v", err)
+		s.config.Logger.Warnf("[Diagnostic Handler] ERROR: Diagnostic translation failed: %v", err)
 		return nil
 	}
+	s.config.Logger.Debugf("[Diagnostic Handler] Successfully translated to %d diagnostics", len(translatedDiagnostics))
 
 	// Publish diagnostics for the .dingo file
 	dingoURI := uri.File(dingoPath)
@@ -327,19 +335,37 @@ func (s *Server) handlePublishDiagnostics(
 		Version:     params.Version,
 	}
 
-	s.config.Logger.Debugf("Publishing %d diagnostics for %s", len(translatedDiagnostics), dingoPath)
+	s.config.Logger.Debugf("[Diagnostic Handler] Publishing %d diagnostics for %s", len(translatedDiagnostics), dingoPath)
+
+	// Log details of each diagnostic being published
+	for i, diag := range translatedDiagnostics {
+		s.config.Logger.Debugf("[Diagnostic Handler]   [%d] Severity=%d, Message=%q, Range=L%d:C%d-L%d:C%d",
+			i, diag.Severity, diag.Message,
+			diag.Range.Start.Line, diag.Range.Start.Character,
+			diag.Range.End.Line, diag.Range.End.Character)
+	}
 
 	// CRITICAL FIX C1: Actually publish to IDE connection (thread-safe)
 	ideConn, serverCtx := s.GetConn()
-	if ideConn != nil {
-		// Use server context if available, otherwise use provided context
-		publishCtx := serverCtx
-		if publishCtx == nil {
-			publishCtx = ctx
-		}
-		return ideConn.Notify(publishCtx, "textDocument/publishDiagnostics", translatedParams)
+	if ideConn == nil {
+		s.config.Logger.Warnf("[Diagnostic Handler] ERROR: No IDE connection available, cannot publish diagnostics")
+		return nil
 	}
 
-	s.config.Logger.Warnf("No IDE connection available, cannot publish diagnostics")
+	s.config.Logger.Debugf("[Diagnostic Handler] IDE connection available, publishing now...")
+
+	// Use server context if available, otherwise use provided context
+	publishCtx := serverCtx
+	if publishCtx == nil {
+		publishCtx = ctx
+	}
+
+	err = ideConn.Notify(publishCtx, "textDocument/publishDiagnostics", translatedParams)
+	if err != nil {
+		s.config.Logger.Warnf("[Diagnostic Handler] ERROR: Failed to publish diagnostics: %v", err)
+		return err
+	}
+
+	s.config.Logger.Debugf("[Diagnostic Handler] SUCCESS: Published %d diagnostics to IDE", len(translatedDiagnostics))
 	return nil
 }
