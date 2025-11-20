@@ -1,33 +1,7 @@
 version: "2"
 
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - shadow
-  gocyclo:
-    min-complexity: 15
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  goimports:
-    local-prefixes: github.com/MadAppGang/dingo
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
     - dogsled
@@ -38,9 +12,6 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    - revive
     - goprintffuncname
     - gosec
     - gosimple
@@ -49,41 +20,67 @@ linters:
     - lll
     - misspell
     - nakedret
-    - staticcheck
-    - stylecheck
+    - staticcheck  # Includes stylecheck and gosimple in v2
     - unconvert
     - unparam
     - unused
     - whitespace
 
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - lll
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+    gocyclo:
+      min-complexity: 15
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    misspell:
+      locale: US
+    lll:
+      line-length: 140
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
 
-    - path: tests/
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
+  exclusions:
+    paths:
+      - path: "_test\\.go"
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec
+          - lll
+      - path: "tests/"
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec
+      - path: "pkg/generator/preprocessor/"
+        linters:
+          - gocyclo  # Preprocessors have complex regex logic
+      - path: "pkg/generator/"
+        linters:
+          - lll  # Generated code can have long lines
 
-    - path: pkg/generator/preprocessor/
-      linters:
-        - gocyclo  # Preprocessors have complex regex logic
+formatters:
+  default: none
+  enable:
+    - gofmt
+    - goimports
 
-    - path: pkg/generator/
-      linters:
-        - lll  # Generated code can have long lines
-
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  settings:
+    goimports:
+      local-prefixes: github.com/MadAppGang/dingo
 
 run:
   timeout: 5m
