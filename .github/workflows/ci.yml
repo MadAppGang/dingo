@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go-version: ['1.21', '1.22']
+        go-version: ['1.25.4']
 
     steps:
     - name: Checkout code
@@ -81,7 +81,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4
@@ -100,7 +100,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: editors/vscode/package-lock.json
 
@@ -136,7 +136,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Build binaries
       run: |

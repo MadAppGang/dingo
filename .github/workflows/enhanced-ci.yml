@@ -19,7 +19,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Build dingo
       run: go build -v -o dingo ./cmd/dingo
@@ -86,7 +86,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Build performance tracker
       run: go build -v -o performance-tracker ./scripts/performance-tracker.go
@@ -161,7 +161,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Run source map validation tests
       id: sourcemap_validation
@@ -193,7 +193,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Test build system with race detector
       run: |
@@ -220,7 +220,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.4'
 
     - name: Generate feature status matrix
       run: |
