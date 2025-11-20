@@ -319,16 +319,16 @@ func processNestedMatch(result Result) int {
 }
 func main() {
 	r1 := Result_interface_error{tag: ResultTagOk, ok: func() *interface{} {
-		tmp5 := Some(42)
-		return &tmp5
+		tmp4 := Some(42)
+		return &tmp4
 	}()}
 	r2 := Result_interface_error{tag: ResultTagOk, ok: func() *interface{} {
-		tmp6 := Option_int_None()
-		return &tmp6
+		tmp5 := Option_int_None()
+		return &tmp5
 	}()}
 	r3 := Result_interface_error{tag: ResultTagErr, err: func() *error {
-		tmp7 := errors.New("failed")
-		return &tmp7
+		tmp6 := errors.New("failed")
+		return &tmp6
 	}()}
 
 	println(processNestedMatch(r1))

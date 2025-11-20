@@ -29,7 +29,7 @@ const (
 func NewNullCoalesceProcessor() *NullCoalesceProcessor {
 	return &NullCoalesceProcessor{
 		typeDetector: NewTypeDetector(),
-		tmpCounter:   0,
+		tmpCounter:   1,
 		mappings:     []Mapping{},
 	}
 }
@@ -660,7 +660,13 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 
 		if i == 0 {
 			// First operand: evaluate once and check
-			tmpVar := fmt.Sprintf("coalesce%d", n.tmpCounter)
+			// No-number-first pattern
+			tmpVar := ""
+			if n.tmpCounter == 1 {
+				tmpVar = "coalesce"
+			} else {
+				tmpVar = fmt.Sprintf("coalesce%d", n.tmpCounter-1)
+			}
 			n.tmpCounter++
 
 			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))
@@ -679,7 +685,13 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 			}
 		} else {
 			// Subsequent operands in chain: evaluate and check
-			tmpVar := fmt.Sprintf("coalesce%d", n.tmpCounter)
+			// No-number-first pattern
+			tmpVar := ""
+			if n.tmpCounter == 1 {
+				tmpVar = "coalesce"
+			} else {
+				tmpVar = fmt.Sprintf("coalesce%d", n.tmpCounter-1)
+			}
 			n.tmpCounter++
 
 			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))

@@ -70,20 +70,20 @@ func authenticateUser(token string) (User, error) {
 		return User{}, fmt.Errorf("missing token")
 	}
 
-	tmp1, err1 := parseJWT(token)
+	tmp, err := parseJWT(token)
+
+	if err != nil {
+		return User{}, err
+	}
+	// dingo:e:1
+	var claims = tmp
+	tmp1, err1 := fetchUserFromDB(claims.UserID)
 
 	if err1 != nil {
 		return User{}, err1
 	}
 	// dingo:e:1
-	var claims = tmp1
-	tmp2, err2 := fetchUserFromDB(claims.UserID)
-
-	if err2 != nil {
-		return User{}, err2
-	}
-	// dingo:e:1
-	var user = tmp2
+	var user = tmp1
 
 	return user, nil
 }
@@ -163,35 +163,35 @@ func getUserRoleString(role UserRole) string {
 }
 func getUserBio(user User) string {
 	return func() __INFER__ {
-		coalesce1 := user.Bio
-		if __IS_SOME__(coalesce1) {
-			return __UNWRAP__(coalesce1)
+		coalesce := user.Bio
+		if __IS_SOME__(coalesce) {
+			return __UNWRAP__(coalesce)
 		}
 		return "No bio provided"
 	}()
 }
 func createUserPipeline(email string, password string) (User, error) {
-	tmp1, err1 := validateEmail(email)
+	tmp, err := validateEmail(email)
+
+	if err != nil {
+		return User{}, err
+	}
+	// dingo:e:1
+	var validated = tmp
+	tmp1, err1 := hashPassword(password)
 
 	if err1 != nil {
 		return User{}, err1
 	}
 	// dingo:e:1
-	var validated = tmp1
-	tmp2, err2 := hashPassword(password)
+	var hashed = tmp1
+	tmp2, err2 := createUserInDB(validated, hashed)
 
 	if err2 != nil {
 		return User{}, err2
 	}
 	// dingo:e:1
-	var hashed = tmp2
-	tmp3, err3 := createUserInDB(validated, hashed)
-
-	if err3 != nil {
-		return User{}, err3
-	}
-	// dingo:e:1
-	var user = tmp3
+	var user = tmp2
 
 	return user, nil
 }
@@ -223,28 +223,28 @@ func handleApiRequest(req *http.Request) (Response, error) {
 		return Response{}, fmt.Errorf("missing Authorization header")
 	}
 
-	tmp1, err1 := authenticateUser(authHeader)
+	tmp, err := authenticateUser(authHeader)
+
+	if err != nil {
+		return Response{}, err
+	}
+	// dingo:e:1
+	var user = tmp
+	tmp1, err1 := parseActionFromRequest(req)
 
 	if err1 != nil {
 		return Response{}, err1
 	}
 	// dingo:e:1
-	var user = tmp1
-	tmp2, err2 := parseActionFromRequest(req)
+	var action = tmp1
+
+	tmp2, err2 := handleRequest(user, action)
 
 	if err2 != nil {
 		return Response{}, err2
 	}
 	// dingo:e:1
-	var action = tmp2
-
-	tmp3, err3 := handleRequest(user, action)
-
-	if err3 != nil {
-		return Response{}, err3
-	}
-	// dingo:e:1
-	var response = tmp3
+	var response = tmp2
 
 	response.Body["user_bio"] = getUserBio(user)
 	response.Body["user_role"] = getUserRoleString(user.Role)

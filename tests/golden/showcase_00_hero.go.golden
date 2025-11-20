@@ -30,20 +30,20 @@ func fetchUser(id int) (*User, error) {
 // Clean error handling with ? operator
 // Notice: Zero manual error checks!
 func getUserData(id int, email string) (*User, error) {
-	tmp1, err1 := validateEmail(email)
+	tmp, err := validateEmail(email)
+
+	if err != nil {
+		return nil, err
+	}
+	// dingo:e:1
+	var validEmail = tmp
+	tmp1, err1 := fetchUser(id)
 
 	if err1 != nil {
 		return nil, err1
 	}
 	// dingo:e:1
-	var validEmail = tmp1
-	tmp2, err2 := fetchUser(id)
-
-	if err2 != nil {
-		return nil, err2
-	}
-	// dingo:e:1
-	var user = tmp2
+	var user = tmp1
 
 	user.Email = validEmail
 	return user, nil

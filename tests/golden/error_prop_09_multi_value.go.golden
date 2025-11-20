@@ -9,13 +9,13 @@ import (
 // parseUserData demonstrates multi-value return with error propagation
 // Input: "john:admin:42" → (name, role, age)
 func parseUserData(input string) (string, string, int, error) {
-	tmp1, tmp2, tmp3, err1 := extractUserFields(input)
+	tmp, tmp1, tmp2, err := extractUserFields(input)
 
-	if err1 != nil {
-		return "", "", 0, err1
+	if err != nil {
+		return "", "", 0, err
 	}
 
-	return tmp1, tmp2, tmp3, nil
+	return tmp, tmp1, tmp2, nil
 }
 
 // extractUserFields simulates a function that returns multiple values
@@ -25,13 +25,13 @@ func extractUserFields(data string) (string, string, int, error) {
 		return "", "", 0, fmt.Errorf("invalid format")
 	}
 
-	tmp1, err1 := strconv.Atoi(parts[2])
+	tmp, err := strconv.Atoi(parts[2])
 
-	if err1 != nil {
-		return "", "", 0, fmt.Errorf("invalid age: %w", err1)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("invalid age: %w", err)
 	}
 	// dingo:e:1
-	var age = tmp1
+	var age = tmp
 	return parts[0], parts[1], age, nil
 }
 func main() {

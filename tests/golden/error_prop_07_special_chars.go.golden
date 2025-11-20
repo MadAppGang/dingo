@@ -6,12 +6,12 @@ import (
 )
 
 func readWithMessage(path string) ([]byte, error) {
-	tmp1, err1 := os.ReadFile(path)
+	tmp, err := os.ReadFile(path)
 
-	if err1 != nil {
-		return nil, fmt.Errorf("failed to read \"important\" file: %w", err1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read \"important\" file: %w", err)
 	}
 	// dingo:e:1
-	var data = tmp1
+	var data = tmp
 	return data, nil
 }

@@ -12,20 +12,20 @@ type Config struct {
 }
 
 func pipeline(path string) (*Config, error) {
-	tmp1, err1 := os.ReadFile(path)
+	tmp, err := os.ReadFile(path)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config: %w", err)
+	}
+	// dingo:e:1
+	var data = tmp
+	var cfg Config
+	tmp1, err1 := json.Unmarshal(data, &cfg)
 
 	if err1 != nil {
-		return nil, fmt.Errorf("failed to read config: %w", err1)
+		return nil, fmt.Errorf("failed to parse config: %w", err1)
 	}
 	// dingo:e:1
-	var data = tmp1
-	var cfg Config
-	tmp2, err2 := json.Unmarshal(data, &cfg)
-
-	if err2 != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err2)
-	}
-	// dingo:e:1
-	var err = tmp2
+	var err = tmp1
 	return &cfg, nil
 }

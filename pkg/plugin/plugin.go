@@ -243,7 +243,15 @@ func (ctx *Context) NextTempVar() string {
 	if ctx.TempVarCounter == 0 {
 		ctx.TempVarCounter = 1
 	}
-	varName := fmt.Sprintf("tmp%d", ctx.TempVarCounter)
+
+	// No-number-first pattern: first tmp has no number, then tmp1, tmp2, etc.
+	varName := ""
+	if ctx.TempVarCounter == 1 {
+		varName = "tmp"
+	} else {
+		varName = fmt.Sprintf("tmp%d", ctx.TempVarCounter-1)
+	}
+
 	ctx.TempVarCounter++
 	return varName
 }

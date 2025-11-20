@@ -5,11 +5,11 @@ import (
 )
 
 func parseInt(s string) (int, error) {
-	tmp1, err1 := strconv.Atoi(s)
+	tmp, err := strconv.Atoi(s)
 
-	if err1 != nil {
-		return 0, err1
+	if err != nil {
+		return 0, err
 	}
 
-	return tmp1, nil
+	return tmp, nil
 }

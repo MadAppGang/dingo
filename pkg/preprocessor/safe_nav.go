@@ -170,7 +170,7 @@ func classifyType(typeName string) TypeKind {
 func NewSafeNavProcessor() *SafeNavProcessor {
 	return &SafeNavProcessor{
 		typeDetector: NewTypeDetector(),
-		tmpCounter:   0,
+		tmpCounter:   1,
 		mappings:     []Mapping{},
 	}
 }
@@ -743,7 +743,13 @@ func (s *SafeNavProcessor) generateOptionMode(base string, elements []ChainEleme
 		outputLinesGenerated += 3
 
 		// Unwrap to get the value
-		tmpVar := fmt.Sprintf("%s%d", base, s.tmpCounter)
+		// No-number-first pattern
+		tmpVar := ""
+		if s.tmpCounter == 1 {
+			tmpVar = base
+		} else {
+			tmpVar = fmt.Sprintf("%s%d", base, s.tmpCounter-1)
+		}
 		s.tmpCounter++
 		buf.WriteString(fmt.Sprintf("\t%s := %s.Unwrap()\n", tmpVar, currentVar))
 		outputLinesGenerated++
@@ -809,7 +815,13 @@ func (s *SafeNavProcessor) generatePointerMode(base string, elements []ChainElem
 		// Access the property or method
 		if i < len(elements)-1 {
 			// Not the last element - create intermediate variable to check next nil
-			tmpVar := fmt.Sprintf("__%s_tmp%d", base, i)
+			// CamelCase pattern without underscores
+			var tmpVar string
+			if i == 0 {
+				tmpVar = base + "Tmp"
+			} else {
+				tmpVar = fmt.Sprintf("%sTmp%d", base, i)
+			}
 			if elem.IsMethod {
 				buf.WriteString(fmt.Sprintf("\t%s := %s.%s(%s)\n", tmpVar, currentVar, elem.Name, elem.RawArgs))
 			} else {

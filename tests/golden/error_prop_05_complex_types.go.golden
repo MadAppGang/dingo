@@ -10,22 +10,22 @@ type User struct {
 }
 
 func fetchUser(id int) (*User, error) {
-	tmp1, err1 := os.ReadFile("user.json")
+	tmp, err := os.ReadFile("user.json")
 
-	if err1 != nil {
-		return nil, err1
+	if err != nil {
+		return nil, err
 	}
 	// dingo:e:1
-	var data = tmp1
+	var data = tmp
 	return &User{ID: id, Name: string(data)}, nil
 }
 func getNames() ([]string, error) {
-	tmp1, err1 := os.ReadFile("names.txt")
+	tmp, err := os.ReadFile("names.txt")
 
-	if err1 != nil {
-		return nil, err1
+	if err != nil {
+		return nil, err
 	}
 	// dingo:e:1
-	var data = tmp1
+	var data = tmp
 	return []string{string(data)}, nil
 }

@@ -154,8 +154,8 @@ func main() {
 		if user.IsNone() {
 			return __INFER___None()
 		}
-		user1 := user.Unwrap()
-		return user1.name
+		user := user.Unwrap()
+		return user.name
 	}()
 	userName := func() __INFER__ {
 		if userNameOpt.IsSome() {
@@ -169,8 +169,8 @@ func main() {
 		if user.IsNone() {
 			return __INFER___None()
 		}
-		user2 := user.Unwrap()
-		return user2.address
+		user1 := user.Unwrap()
+		return user1.address
 	}()
 	cityOpt := __SAFE_NAV_INFER__(addressOpt, "city")
 	city := func() __INFER__ {
@@ -185,8 +185,8 @@ func main() {
 		if profile.IsNone() {
 			return __INFER___None()
 		}
-		profile3 := profile.Unwrap()
-		return profile3.getEmail()
+		profile2 := profile.Unwrap()
+		return profile2.getEmail()
 	}()
 	email := func() __INFER__ {
 		if emailOpt.IsSome() {
@@ -200,8 +200,8 @@ func main() {
 		if user2.IsNone() {
 			return __INFER___None()
 		}
-		user24 := user2.Unwrap()
-		return user24.address
+		user23 := user2.Unwrap()
+		return user23.address
 	}()
 	zipOpt := __SAFE_NAV_INFER__(addressOpt2, "zip")
 	cityOpt2 := __SAFE_NAV_INFER__(addressOpt2, "city")

@@ -58,24 +58,24 @@ func main() {
 	numbers := []int{10, 20, 30, 40}
 
 	index := func() __INFER__ {
-		coalesce1 := find(numbers, 25)
-		if __IS_SOME__(coalesce1) {
-			return __UNWRAP__(coalesce1)
+		coalesce := find(numbers, 25)
+		if __IS_SOME__(coalesce) {
+			return __UNWRAP__(coalesce)
 		}
 		return -1
 	}()
 	value := func() __INFER__ {
-		coalesce2 := find(numbers, 30)
-		if __IS_SOME__(coalesce2) {
-			return __UNWRAP__(coalesce2)
+		coalesce1 := find(numbers, 30)
+		if __IS_SOME__(coalesce1) {
+			return __UNWRAP__(coalesce1)
 		}
 		return 0
 	}()
 
 	result := func() __INFER__ {
-		coalesce3 := find(numbers, 20)
-		if __IS_SOME__(coalesce3) {
-			return __UNWRAP__(coalesce3)
+		coalesce2 := find(numbers, 20)
+		if __IS_SOME__(coalesce2) {
+			return __UNWRAP__(coalesce2)
 		}
 		return -1
 	}()

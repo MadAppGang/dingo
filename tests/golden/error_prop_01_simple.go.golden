@@ -5,13 +5,13 @@ import (
 )
 
 func readConfig(path string) ([]byte, error) {
-	tmp1, err1 := os.ReadFile(path)
+	tmp, err := os.ReadFile(path)
 
-	if err1 != nil {
-		return nil, err1
+	if err != nil {
+		return nil, err
 	}
 	// dingo:e:1
-	var data = tmp1
+	var data = tmp
 	return data, nil
 
 }

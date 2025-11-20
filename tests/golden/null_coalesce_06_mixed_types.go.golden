@@ -107,8 +107,8 @@ func main() {
 		if user.IsNone() {
 			return __INFER___None()
 		}
-		user1 := user.Unwrap()
-		return user1.profile
+		user := user.Unwrap()
+		return user.profile
 	}()
 	bioOpt := __SAFE_NAV_INFER__(profileOpt, "bio")
 	bio := func() __INFER__ {
@@ -140,8 +140,8 @@ func main() {
 		if user2.IsNone() {
 			return __INFER___None()
 		}
-		user22 := user2.Unwrap()
-		return user22.profile
+		user21 := user2.Unwrap()
+		return user21.profile
 	}()
 	bioOpt2 := __SAFE_NAV_INFER__(profileOpt2, "bio")
 	profile := func() __INFER__ {
@@ -156,8 +156,8 @@ func main() {
 		if user3.IsNone() {
 			return __INFER___None()
 		}
-		user33 := user3.Unwrap()
-		return user33.getEmail()
+		user32 := user3.Unwrap()
+		return user32.getEmail()
 	}()
 	email := func() __INFER__ {
 		if emailOpt.IsSome() {

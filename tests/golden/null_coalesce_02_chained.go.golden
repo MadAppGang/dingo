@@ -53,17 +53,17 @@ func main() {
 	lastName := StringOptionSome("Smith")
 
 	name := func() __INFER__ {
-		coalesce1 := firstName
+		coalesce := firstName
+		if coalesce.IsSome() {
+			return coalesce.Unwrap()
+		}
+		coalesce1 := middleName
 		if coalesce1.IsSome() {
 			return coalesce1.Unwrap()
 		}
-		coalesce2 := middleName
+		coalesce2 := lastName
 		if coalesce2.IsSome() {
 			return coalesce2.Unwrap()
-		}
-		coalesce3 := lastName
-		if coalesce3.IsSome() {
-			return coalesce3.Unwrap()
 		}
 		return "Unknown"
 	}()
@@ -71,13 +71,13 @@ func main() {
 	primary := getConfig("primary")
 	fallback := getConfig("fallback")
 	config := func() __INFER__ {
-		coalesce4 := primary
+		coalesce3 := primary
+		if __IS_SOME__(coalesce3) {
+			return __UNWRAP__(coalesce3)
+		}
+		coalesce4 := fallback
 		if __IS_SOME__(coalesce4) {
 			return __UNWRAP__(coalesce4)
-		}
-		coalesce5 := fallback
-		if __IS_SOME__(coalesce5) {
-			return __UNWRAP__(coalesce5)
 		}
 		return "default"
 	}()
@@ -87,21 +87,21 @@ func main() {
 	opt3 := StringOptionNone()
 	opt4 := StringOptionSome("Found")
 	result := func() __INFER__ {
-		coalesce6 := opt1
+		coalesce5 := opt1
+		if coalesce5.IsSome() {
+			return coalesce5.Unwrap()
+		}
+		coalesce6 := opt2
 		if coalesce6.IsSome() {
 			return coalesce6.Unwrap()
 		}
-		coalesce7 := opt2
+		coalesce7 := opt3
 		if coalesce7.IsSome() {
 			return coalesce7.Unwrap()
 		}
-		coalesce8 := opt3
+		coalesce8 := opt4
 		if coalesce8.IsSome() {
 			return coalesce8.Unwrap()
-		}
-		coalesce9 := opt4
-		if coalesce9.IsSome() {
-			return coalesce9.Unwrap()
 		}
 		return "Not Found"
 	}()

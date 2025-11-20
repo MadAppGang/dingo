@@ -154,8 +154,8 @@ func main() {
 		if text.IsNone() {
 			return __INFER___None()
 		}
-		text1 := text.Unwrap()
-		return text1.toUpper()
+		text := text.Unwrap()
+		return text.toUpper()
 	}()
 	upper := func() __INFER__ {
 		if upperOpt.IsSome() {

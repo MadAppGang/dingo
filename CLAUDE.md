@@ -267,22 +267,24 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 All code generators MUST follow these naming rules:
 
 1. **No Underscores - Use camelCase**
-   - ✅ Correct: `tmp1`, `err1`, `coalesce1`
+   - ✅ Correct: `tmp`, `tmp1`, `err`, `err1`, `coalesce`
    - ❌ Wrong: `__tmp0`, `__err0`, `__coalesce0`
 
-2. **One-Based Indexing - Start at 1**
-   - ✅ Correct: `tmp1`, `tmp2`, `tmp3`
-   - ❌ Wrong: `tmp0`, `tmp1`, `tmp2`
+2. **No-Number-First Pattern**
+   - ✅ Correct: First `tmp`, then `tmp1`, `tmp2`
+   - ✅ Correct: First `err`, then `err1`, `err2`
+   - ❌ Wrong: `tmp1`, `tmp2`, `tmp3` (all numbered)
+   - ❌ Wrong: `tmp0`, `tmp1`, `tmp2` (zero-based)
 
 3. **Counter Initialization**
    - ✅ Correct: `counter = 1` or `counter := 1`
    - ❌ Wrong: `counter = 0` or `counter := 0`
 
 **Affected Components:**
-- `pkg/preprocessor/error_prop.go` - Error propagation (`tmp1`, `err1`)
-- `pkg/preprocessor/null_coalesce.go` - Null coalescing (`coalesce1`, `coalesce2`)
-- `pkg/preprocessor/safe_nav.go` - Safe navigation (`val1`, `val2`)
-- `pkg/plugin/plugin.go` - Plugin temp vars (`tmp1`, `tmp2`)
+- `pkg/preprocessor/error_prop.go` - Error propagation (`tmp`, `err` → `tmp1`, `err1`)
+- `pkg/preprocessor/null_coalesce.go` - Null coalescing (`coalesce` → `coalesce1`)
+- `pkg/preprocessor/safe_nav.go` - Safe navigation (`user` → `user1`, `__user_tmp` → `__user_tmp1`)
+- `pkg/plugin/plugin.go` - Plugin temp vars (`tmp` → `tmp1`)
 
 **Rationale:**
 - Go convention: camelCase for local variables

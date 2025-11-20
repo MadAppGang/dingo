@@ -122,7 +122,8 @@ func (it *ImportTracker) GetNeededImports() []string {
 //
 // Example Expansion:
 //   Dingo:  let x = ReadFile(path)?
-//   Go:     tmp1, err1 := ReadFile(path)
+//   Go (first):    tmp, err := ReadFile(path)
+//   Go (second):   tmp1, err1 := AnotherCall()
 //           // dingo:s:1
 //           if err1 != nil {
 //               return nil, err1
@@ -336,8 +337,20 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	// Track function call for import detection
 	e.trackFunctionCallInExpr(exprClean)
 
-	tmpVar := fmt.Sprintf("tmp%d", e.tryCounter)
-	errVar := fmt.Sprintf("err%d", e.tryCounter)
+	// No-number-first pattern: first occurrence has no number
+	tmpVar := ""
+	if e.tryCounter == 1 {
+		tmpVar = "tmp"
+	} else {
+		tmpVar = fmt.Sprintf("tmp%d", e.tryCounter-1)
+	}
+
+	errVar := ""
+	if e.tryCounter == 1 {
+		errVar = "err"
+	} else {
+		errVar = fmt.Sprintf("err%d", e.tryCounter-1)
+	}
 	e.tryCounter++
 
 	// Calculate exact position of ? operator for accurate source mapping
@@ -519,15 +532,26 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	}
 
 	// Generate temporary variable names for all non-error values
-	// For multi-value returns, use sequential counters: tmp1, tmp2, tmp3, ...
-	// CRITICAL FIX: Use base counter for error variable, then increment once for all vars
+	// No-number-first pattern: first tmp/err has no number, then tmp1/err1, tmp2/err2, etc.
 	baseCounter := e.tryCounter
 	tmpVars := []string{}
 	for i := 0; i < numNonErrorReturns; i++ {
-		tmpVars = append(tmpVars, fmt.Sprintf("tmp%d", baseCounter))
+		var tmpVar string
+		if baseCounter == 1 {
+			tmpVar = "tmp"
+		} else {
+			tmpVar = fmt.Sprintf("tmp%d", baseCounter-1)
+		}
+		tmpVars = append(tmpVars, tmpVar)
 		baseCounter++
 	}
-	errVar := fmt.Sprintf("err%d", e.tryCounter)
+
+	var errVar string
+	if e.tryCounter == 1 {
+		errVar = "err"
+	} else {
+		errVar = fmt.Sprintf("err%d", e.tryCounter-1)
+	}
 	e.tryCounter++
 
 	// Calculate exact position of ? operator for accurate source mapping

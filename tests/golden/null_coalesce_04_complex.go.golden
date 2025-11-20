@@ -147,9 +147,9 @@ func main() {
 
 	name := StringOptionNone()
 	display := func() __INFER__ {
-		coalesce1 := name
-		if coalesce1.IsSome() {
-			return coalesce1.Unwrap()
+		coalesce := name
+		if coalesce.IsSome() {
+			return coalesce.Unwrap()
 		}
 		return getDefaultName()
 	}()
@@ -167,17 +167,17 @@ func main() {
 		if config.IsNone() {
 			return __INFER___None()
 		}
-		config1 := config.Unwrap()
-		return config1.host
+		config := config.Unwrap()
+		return config.host
 	}()
 	host := func() __INFER__ {
-		coalesce2 := hostOpt
+		coalesce1 := hostOpt
+		if __IS_SOME__(coalesce1) {
+			return __UNWRAP__(coalesce1)
+		}
+		coalesce2 := getEnv("HOST")
 		if __IS_SOME__(coalesce2) {
 			return __UNWRAP__(coalesce2)
-		}
-		coalesce3 := getEnv("HOST")
-		if __IS_SOME__(coalesce3) {
-			return __UNWRAP__(coalesce3)
 		}
 		return "localhost"
 	}()
@@ -187,30 +187,30 @@ func main() {
 		if user.IsNone() {
 			return __INFER___None()
 		}
-		user2 := user.Unwrap()
-		return user2.toUpper()
+		user1 := user.Unwrap()
+		return user1.toUpper()
 	}()
 	username := func() __INFER__ {
-		coalesce4 := userUpper
+		coalesce3 := userUpper
+		if __IS_SOME__(coalesce3) {
+			return __UNWRAP__(coalesce3)
+		}
+		coalesce4 := getGuestName()
 		if __IS_SOME__(coalesce4) {
 			return __UNWRAP__(coalesce4)
-		}
-		coalesce5 := getGuestName()
-		if __IS_SOME__(coalesce5) {
-			return __UNWRAP__(coalesce5)
 		}
 		return "GUEST"
 	}()
 
 	timeout := IntOptionNone()
 	finalTimeout := func() __INFER__ {
-		coalesce6 := timeout
+		coalesce5 := timeout
+		if coalesce5.IsSome() {
+			return coalesce5.Unwrap()
+		}
+		coalesce6 := parseEnv("TIMEOUT")
 		if coalesce6.IsSome() {
 			return coalesce6.Unwrap()
-		}
-		coalesce7 := parseEnv("TIMEOUT")
-		if coalesce7.IsSome() {
-			return coalesce7.Unwrap()
 		}
 		return getDefaultTimeout()
 	}()
