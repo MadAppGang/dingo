@@ -1,9 +1,5 @@
 package main
 
-// Test: Chained null coalescing (single IIFE optimization)
-// Feature: Null coalescing with multiple fallbacks
-// Complexity: intermediate
-
 type StringOptionTag uint8
 
 const (
@@ -16,10 +12,10 @@ type StringOption struct {
 	some *string
 }
 
-func StringOption_Some(arg0 string) StringOption {
+func StringOptionSome(arg0 string) StringOption {
 	return StringOption{tag: StringOptionTagSome, some: &arg0}
 }
-func StringOption_None() StringOption {
+func StringOptionNone() StringOption {
 	return StringOption{tag: StringOptionTagNone}
 }
 func (e StringOption) IsSome() bool {
@@ -28,53 +24,87 @@ func (e StringOption) IsSome() bool {
 func (e StringOption) IsNone() bool {
 	return e.tag == StringOptionTagNone
 }
-func main() {
-	// Test 1: Chain of Option values (a ?? b ?? c)
-	var firstName StringOption = StringOption_None()
-	var middleName StringOption = StringOption_None()
-	var lastName StringOption = StringOption_Some("Smith")
-
-	// Chained null coalescing - try each in order
-	var name string
-	if firstName.IsSome() {
-		name = *firstName.some
-	} else if middleName.IsSome() {
-		name = *middleName.some
-	} else if lastName.IsSome() {
-		name = *lastName.some
-	} else {
-		name = "Unknown"
+func (o StringOption) Map(fn func(string) string) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return StringOptionSome(fn(*o.some))
+		}
+	case StringOptionTagNone:
+		return o
 	}
+	panic("invalid StringOption state")
+}
+func (o StringOption) AndThen(fn func(string) StringOption) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case StringOptionTagNone:
+		return o
+	}
+	panic("invalid StringOption state")
+}
+func main() {
 
-	// Test 2: Chain with function calls
+	firstName := StringOptionNone()
+	middleName := StringOptionNone()
+	lastName := StringOptionSome("Smith")
+
+	name := func() __INFER__ {
+		coalesce1 := firstName
+		if coalesce1.IsSome() {
+			return coalesce1.Unwrap()
+		}
+		coalesce2 := middleName
+		if coalesce2.IsSome() {
+			return coalesce2.Unwrap()
+		}
+		coalesce3 := lastName
+		if coalesce3.IsSome() {
+			return coalesce3.Unwrap()
+		}
+		return "Unknown"
+	}()
+
 	primary := getConfig("primary")
 	fallback := getConfig("fallback")
-	var config string
-	if primary.IsSome() {
-		config = *primary.some
-	} else if fallback.IsSome() {
-		config = *fallback.some
-	} else {
-		config = "default"
-	}
+	config := func() __INFER__ {
+		coalesce4 := primary
+		if __IS_SOME__(coalesce4) {
+			return __UNWRAP__(coalesce4)
+		}
+		coalesce5 := fallback
+		if __IS_SOME__(coalesce5) {
+			return __UNWRAP__(coalesce5)
+		}
+		return "default"
+	}()
 
-	// Test 3: Long chain
-	var opt1 StringOption = StringOption_None()
-	var opt2 StringOption = StringOption_None()
-	var opt3 StringOption = StringOption_None()
-	var opt4 StringOption = StringOption_Some("Found")
-	var result string
-	if opt1.IsSome() {
-		result = *opt1.some
-	} else if opt2.IsSome() {
-		result = *opt2.some
-	} else if opt3.IsSome() {
-		result = *opt3.some
-	} else if opt4.IsSome() {
-		result = *opt4.some
-	} else {
-		result = "Not Found"
-	}
+	opt1 := StringOptionNone()
+	opt2 := StringOptionNone()
+	opt3 := StringOptionNone()
+	opt4 := StringOptionSome("Found")
+	result := func() __INFER__ {
+		coalesce6 := opt1
+		if coalesce6.IsSome() {
+			return coalesce6.Unwrap()
+		}
+		coalesce7 := opt2
+		if coalesce7.IsSome() {
+			return coalesce7.Unwrap()
+		}
+		coalesce8 := opt3
+		if coalesce8.IsSome() {
+			return coalesce8.Unwrap()
+		}
+		coalesce9 := opt4
+		if coalesce9.IsSome() {
+			return coalesce9.Unwrap()
+		}
+		return "Not Found"
+	}()
 
 	println("Name:", name)
 	println("Config:", config)
@@ -82,7 +112,7 @@ func main() {
 }
 func getConfig(key string) StringOption {
 	if key == "fallback" {
-		return StringOption_Some("backup-value")
+		return StringOptionSome("backup-value")
 	}
-	return StringOption_None()
+	return StringOptionNone()
 }

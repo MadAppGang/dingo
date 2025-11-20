@@ -112,15 +112,18 @@ func (n *NullCoalesceProcessor) processLine(line string, originalLineNum int, ou
 		// Collect all chained expressions
 		chain := []string{left, right}
 		currentPos := i
+		chainLeftEnd := pos.leftEnd // Track the left end of the current chain's first element
 
 		// Look for more ?? in chain (going backwards in positions array)
 		for currentPos > 0 {
 			nextPos := positions[currentPos-1]
-			// Check if this is part of the same chain (right operand overlaps with left)
-			if nextPos.rightEnd == pos.leftEnd {
+			// Check if this is part of the same chain (right operand of previous equals left of current chain)
+			if nextPos.rightEnd == chainLeftEnd {
 				// This is part of chain: prepend the left operand
-				chain = append([]string{line[nextPos.leftStart:nextPos.leftEnd]}, chain...)
+				chainLeft := line[nextPos.leftStart:nextPos.leftEnd]
+				chain = append([]string{chainLeft}, chain...)
 				fullStart = nextPos.leftStart
+				chainLeftEnd = nextPos.leftEnd // Update for next iteration
 				currentPos--
 				i-- // Skip this position in outer loop
 			} else {
@@ -181,6 +184,10 @@ func findNullCoalescePositions(line string) []nullCoalescePosition {
 
 			// Extract left operand (go backwards)
 			leftEnd := i
+			// Skip whitespace backwards to get actual end of left operand (excluding trailing spaces)
+			for leftEnd > 0 && (line[leftEnd-1] == ' ' || line[leftEnd-1] == '\t') {
+				leftEnd--
+			}
 			leftStart := extractOperandBefore(line, leftEnd)
 			if leftStart == -1 {
 				i++
@@ -337,7 +344,8 @@ func extractOperandBefore(line string, end int) int {
 		return start
 	}
 
-	// Case 3: Number literal
+	// Case 3: Number literal OR identifier ending with digit (e.g., opt1)
+	// We need to check if there's a letter/underscore before the digits
 	if lastChar >= '0' && lastChar <= '9' {
 		start := end - 1
 		hasDecimal := false
@@ -352,6 +360,25 @@ func extractOperandBefore(line string, end int) int {
 				break
 			}
 		}
+
+		// Check if there's an identifier character before the number
+		// If so, this is an identifier (like opt1), not a number literal
+		if start > 0 {
+			ch := line[start-1]
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' {
+				// This is an identifier, not a number - continue scanning backwards
+				start--
+				for start > 0 {
+					ch := line[start-1]
+					if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
+						start--
+					} else {
+						break
+					}
+				}
+			}
+		}
+
 		return start
 	}
 

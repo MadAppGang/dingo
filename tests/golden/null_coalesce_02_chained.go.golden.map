@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "mappings": [
+    {
+      "generated_line": 19,
+      "generated_column": 1,
+      "original_line": 19,
+      "original_column": 13,
+      "length": 20,
+      "name": "null_coalesce_iife"
+    },
+    {
+      "generated_line": 24,
+      "generated_column": 1,
+      "original_line": 24,
+      "original_column": 15,
+      "length": 20,
+      "name": "null_coalesce_iife"
+    },
+    {
+      "generated_line": 31,
+      "generated_column": 1,
+      "original_line": 31,
+      "original_column": 15,
+      "length": 20,
+      "name": "null_coalesce_iife"
+    }
+  ]
+}
