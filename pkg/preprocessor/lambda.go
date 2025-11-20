@@ -264,6 +264,12 @@ func (l *LambdaProcessor) processSingleParamArrow(line []byte, lineNum int) []by
 		}
 		buf.WriteString("func(")
 		buf.Write(param)
+
+		// Add TYPE_INFERENCE_NEEDED marker if no type annotation
+		// This signals the lambda_type_inference plugin to infer the type
+		if !bytes.Contains(param, []byte(" ")) {
+			buf.WriteString(" __TYPE_INFERENCE_NEEDED")
+		}
 		buf.WriteString(")")
 
 		// Process body - wrap in { return ... } if expression, pass through if block
@@ -460,7 +466,7 @@ func (l *LambdaProcessor) processRustPipe(line []byte, lineNum int) []byte {
 }
 
 // processParams handles parameter list parsing and type annotation conversion
-// Handles: x, y → x, y
+// Handles: x, y → x __TYPE_INFERENCE_NEEDED, y __TYPE_INFERENCE_NEEDED
 //          x: int → x int
 //          x: int, y: string → x int, y string
 func (l *LambdaProcessor) processParams(params []byte) []byte {
@@ -492,8 +498,11 @@ func (l *LambdaProcessor) processParams(params []byte) []byte {
 			}
 		}
 
-		// No type annotation, keep as-is
-		processed = append(processed, param)
+		// No type annotation - add TYPE_INFERENCE_NEEDED marker
+		var buf bytes.Buffer
+		buf.Write(param)
+		buf.WriteString(" __TYPE_INFERENCE_NEEDED")
+		processed = append(processed, buf.Bytes())
 	}
 
 	return bytes.Join(processed, []byte(", "))

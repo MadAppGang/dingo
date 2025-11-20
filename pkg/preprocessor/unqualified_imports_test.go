@@ -398,7 +398,7 @@ func TestCalculatePosition(t *testing.T) {
 		{
 			name:   "multiline",
 			source: "package main\n\nfunc main() {\n\tx := 42\n}",
-			offset: 17, // 'f' in func
+			offset: 14, // 'f' in func
 			line:   3,
 			col:    1,
 		},

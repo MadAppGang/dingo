@@ -3,6 +3,7 @@ package sourcemap
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"go/token"
 
@@ -60,54 +61,79 @@ func (g *Generator) AddMappingWithName(src, gen token.Position, name string) {
 	})
 }
 
-// Generate creates a source map in JSON format
-// TODO(Future): Implement full VLQ encoding for production use
-// For now, we return a valid but basic source map structure
+// SourceMapV3 represents a Source Map v3 JSON structure
+type SourceMapV3 struct {
+	Version    int      `json:"version"`
+	File       string   `json:"file"`
+	SourceRoot string   `json:"sourceRoot"`
+	Sources    []string `json:"sources"`
+	Names      []string `json:"names"`
+	Mappings   string   `json:"mappings"`
+}
+
+// Generate creates a source map in JSON format with VLQ-encoded mappings
 func (g *Generator) Generate() ([]byte, error) {
-	// Sort mappings by generated position
+	// Sort mappings by generated position for correct VLQ encoding
 	sortedMappings := make([]Mapping, len(g.mappings))
 	copy(sortedMappings, g.mappings)
 
-	// Simple bubble sort for now
-	for i := 0; i < len(sortedMappings); i++ {
-		for j := i + 1; j < len(sortedMappings); j++ {
-			if sortedMappings[i].GenLine > sortedMappings[j].GenLine ||
-				(sortedMappings[i].GenLine == sortedMappings[j].GenLine &&
-					sortedMappings[i].GenColumn > sortedMappings[j].GenColumn) {
-				sortedMappings[i], sortedMappings[j] = sortedMappings[j], sortedMappings[i]
+	// Filter out invalid mappings
+	validMappings := make([]Mapping, 0, len(sortedMappings))
+	for _, m := range sortedMappings {
+		if m.GenLine >= 1 && m.GenColumn >= 1 && m.SourceLine >= 1 && m.SourceColumn >= 1 {
+			validMappings = append(validMappings, m)
+		}
+	}
+
+	// Simple bubble sort by generated line and column
+	for i := 0; i < len(validMappings); i++ {
+		for j := i + 1; j < len(validMappings); j++ {
+			if validMappings[i].GenLine > validMappings[j].GenLine ||
+				(validMappings[i].GenLine == validMappings[j].GenLine &&
+					validMappings[i].GenColumn > validMappings[j].GenColumn) {
+				validMappings[i], validMappings[j] = validMappings[j], validMappings[i]
 			}
 		}
 	}
 
-	// For now, return a skeleton source map
-	// VLQ encoding will be added in future enhancement
-	sourceMap := fmt.Sprintf(`{
-  "version": 3,
-  "file": "%s",
-  "sourceRoot": "",
-  "sources": ["%s"],
-  "names": %s,
-  "mappings": ""
-}`, g.genFile, g.sourceFile, g.formatNames())
+	// Collect unique names
+	names := g.collectUniqueNames(validMappings)
 
-	return []byte(sourceMap), nil
+	// Generate VLQ-encoded mappings
+	mappings := generateVLQMappings(validMappings)
+
+	// Build source map structure
+	sm := SourceMapV3{
+		Version:    3,
+		File:       g.genFile,
+		SourceRoot: "",
+		Sources:    []string{g.sourceFile},
+		Names:      names,
+		Mappings:   mappings,
+	}
+
+	// Marshal to JSON
+	data, err := json.MarshalIndent(sm, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal source map: %w", err)
+	}
+
+	return data, nil
 }
 
-// formatNames formats the names array as JSON
-func (g *Generator) formatNames() string {
-	names := g.collectNames()
-	if len(names) == 0 {
-		return "[]"
-	}
-	result := "["
-	for i, name := range names {
-		if i > 0 {
-			result += ", "
+// collectUniqueNames extracts unique identifier names from mappings
+func (g *Generator) collectUniqueNames(mappings []Mapping) []string {
+	nameSet := make(map[string]bool)
+	names := make([]string, 0)
+
+	for _, m := range mappings {
+		if m.Name != "" && !nameSet[m.Name] {
+			nameSet[m.Name] = true
+			names = append(names, m.Name)
 		}
-		result += fmt.Sprintf(`"%s"`, name)
 	}
-	result += "]"
-	return result
+
+	return names
 }
 
 // GenerateInline creates a base64-encoded inline source map comment
@@ -124,20 +150,6 @@ func (g *Generator) GenerateInline() (string, error) {
 	return fmt.Sprintf("//# sourceMappingURL=data:application/json;base64,%s", encoded), nil
 }
 
-// collectNames extracts unique identifier names from mappings
-func (g *Generator) collectNames() []string {
-	nameSet := make(map[string]bool)
-	names := make([]string, 0)
-
-	for _, m := range g.mappings {
-		if m.Name != "" && !nameSet[m.Name] {
-			nameSet[m.Name] = true
-			names = append(names, m.Name)
-		}
-	}
-
-	return names
-}
 
 // Consumer provides source map lookup functionality
 type Consumer struct {

@@ -109,7 +109,7 @@ func TestCollectNames(t *testing.T) {
 	gen.AddMappingWithName(token.Position{Line: 4, Column: 1}, token.Position{Line: 4, Column: 1}, "id")
 	gen.AddMapping(token.Position{Line: 5, Column: 1}, token.Position{Line: 5, Column: 1}) // No name
 
-	names := gen.collectNames()
+	names := gen.collectUniqueNames(gen.mappings)
 
 	// Should have unique names only
 	if len(names) != 3 {
@@ -179,9 +179,11 @@ func TestGenerateSourceMap(t *testing.T) {
 		t.Errorf("Expected name 'fetchUser', got %v", names[0])
 	}
 
-	// Mappings should be empty string (VLQ not implemented yet)
-	if mappings, ok := sm["mappings"].(string); !ok || mappings != "" {
-		t.Errorf("Expected empty mappings (VLQ TODO), got %q", mappings)
+	// Mappings should now contain VLQ-encoded data
+	if mappings, ok := sm["mappings"].(string); !ok {
+		t.Errorf("Expected mappings string, got %T", sm["mappings"])
+	} else if mappings == "" {
+		t.Error("Expected non-empty VLQ-encoded mappings, got empty string")
 	}
 }
 
@@ -236,15 +238,23 @@ func TestGenerateEmpty(t *testing.T) {
 	}
 }
 
-// Note: Consumer tests require valid VLQ-encoded source maps
-// Since VLQ encoding is TODO (Phase 1.6), we skip consumer tests for now
-// TODO(Phase 1.6): Add consumer tests when VLQ encoding is implemented
-
 func TestConsumerCreation(t *testing.T) {
-	t.Skip("Consumer requires valid VLQ-encoded mappings (TODO Phase 1.6)")
+	gen := NewGenerator("test.dingo", "test.go")
+	gen.AddMapping(token.Position{Line: 1, Column: 1}, token.Position{Line: 1, Column: 1})
 
-	// This test will be enabled when VLQ encoding is implemented
-	// The go-sourcemap library rejects source maps with empty mappings field
+	data, err := gen.Generate()
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	consumer, err := NewConsumer(data)
+	if err != nil {
+		t.Fatalf("NewConsumer() error = %v", err)
+	}
+
+	if consumer == nil {
+		t.Error("Expected valid consumer, got nil")
+	}
 }
 
 func TestConsumerInvalidJSON(t *testing.T) {

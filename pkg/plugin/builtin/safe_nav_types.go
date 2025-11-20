@@ -4,6 +4,7 @@ package builtin
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"strings"
 
@@ -276,6 +277,13 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 }
 
 // resolveTypeForInferNode uses go/types to resolve the actual type for an __INFER__ placeholder
+//
+// This method implements the core type resolution logic from the Phase 9 plan (lines 245-308).
+// It handles:
+// - All Go types (pointers, named types, interfaces, signatures, structs)
+// - Chain walking with proper Option wrapping
+// - Null coalescing type checking
+// - Edge cases (deep chains, generic methods, interface types, etc.)
 func (p *SafeNavTypePlugin) resolveTypeForInferNode(node *inferNode) error {
 	if p.typeInference == nil {
 		return fmt.Errorf("type inference service not available")
@@ -306,6 +314,365 @@ func (p *SafeNavTypePlugin) resolveTypeForInferNode(node *inferNode) error {
 	default:
 		return fmt.Errorf("unexpected parent node type for __INFER__: %T", parent)
 	}
+}
+
+// resolveType resolves the type of an expression, handling all Go types
+// This implements Phase 1 from the plan (lines 249-268)
+func (p *SafeNavTypePlugin) resolveType(expr ast.Expr, info *types.Info) (types.Type, error) {
+	if info == nil || info.Types == nil {
+		return nil, fmt.Errorf("go/types info not available")
+	}
+
+	// Get type from go/types
+	tv, ok := info.Types[expr]
+	if !ok || tv.Type == nil {
+		return nil, fmt.Errorf("no type information for expression: %s", FormatExprForDebug(expr))
+	}
+
+	typ := tv.Type
+
+	// Handle all Go types
+	switch t := typ.(type) {
+	case *types.Pointer:
+		// Dereference pointer, return element type
+		return t.Elem(), nil
+
+	case *types.Named:
+		// Check if Option<T> type
+		if p.isOptionType(t) {
+			// Extract inner type T from Option<T>
+			return p.extractInnerType(t), nil
+		}
+		// Regular named type
+		return t, nil
+
+	case *types.Interface:
+		// Interface type - return as-is
+		return t, nil
+
+	case *types.Signature:
+		// Function type - return signature
+		return t, nil
+
+	case *types.Struct:
+		// Struct type - return as-is
+		return t, nil
+
+	case *types.Slice:
+		// Slice type - return as-is
+		return t, nil
+
+	case *types.Array:
+		// Array type - return as-is
+		return t, nil
+
+	case *types.Map:
+		// Map type - return as-is
+		return t, nil
+
+	case *types.Chan:
+		// Channel type - return as-is
+		return t, nil
+
+	case *types.Basic:
+		// Basic type (int, string, etc.)
+		return t, nil
+
+	default:
+		// Unknown type kind - return as-is
+		return typ, nil
+	}
+}
+
+// extractInnerType extracts T from Option<T>
+// Option types are represented as Option_T in the AST
+func (p *SafeNavTypePlugin) extractInnerType(named *types.Named) types.Type {
+	// Try to extract from type name (e.g., Option_int -> int)
+	typeName := named.Obj().Name()
+	if !strings.HasPrefix(typeName, "Option_") {
+		return nil
+	}
+
+	// Use type inference service to extract type parameter
+	innerType, ok := p.typeInference.GetOptionTypeParam(typeName)
+	if !ok {
+		p.ctx.Logger.Warn("Failed to extract inner type from Option type: %s", typeName)
+		return nil
+	}
+
+	return innerType
+}
+
+// walkChain walks a safe navigation chain and resolves the final type
+// This implements Phase 2 from the plan (lines 270-291)
+//
+// Example: user?.address?.city
+// - Start with user (type: User)
+// - Access address field (type: *Address or Option<Address>)
+// - Access city field (type: string or Option<string>)
+// - Return final type with proper Option wrapping
+func (p *SafeNavTypePlugin) walkChain(root ast.Expr, segments []ast.Expr, info *types.Info) (types.Type, error) {
+	if info == nil {
+		return nil, fmt.Errorf("go/types info not available")
+	}
+
+	// Start with root type
+	currentType, err := p.resolveType(root, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve root type: %w", err)
+	}
+
+	// Walk through each segment
+	for i, segment := range segments {
+		switch seg := segment.(type) {
+		case *ast.SelectorExpr:
+			// Field access: obj.field
+			currentType, err = p.resolveFieldType(currentType, seg.Sel.Name, info)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve field %s at segment %d: %w", seg.Sel.Name, i, err)
+			}
+
+		case *ast.CallExpr:
+			// Method call: obj.method()
+			if sel, ok := seg.Fun.(*ast.SelectorExpr); ok {
+				currentType, err = p.resolveMethodReturnType(currentType, sel.Sel.Name, info)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve method %s at segment %d: %w", sel.Sel.Name, i, err)
+				}
+			} else {
+				return nil, fmt.Errorf("invalid method call at segment %d", i)
+			}
+
+		case *ast.IndexExpr:
+			// Index access: arr[i] or map[key]
+			currentType, err = p.resolveIndexType(currentType, info)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve index access at segment %d: %w", i, err)
+			}
+
+		default:
+			return nil, fmt.Errorf("unsupported segment type at %d: %T", i, segment)
+		}
+
+		// Handle Option wrapping at each step if needed
+		if p.needsOptionWrap(currentType) {
+			currentType = p.wrapInOption(currentType)
+		}
+	}
+
+	return currentType, nil
+}
+
+// resolveFieldType resolves the type of a struct field
+func (p *SafeNavTypePlugin) resolveFieldType(structType types.Type, fieldName string, info *types.Info) (types.Type, error) {
+	// Unwrap pointer if necessary
+	if ptr, ok := structType.(*types.Pointer); ok {
+		structType = ptr.Elem()
+	}
+
+	// Handle named types
+	if named, ok := structType.(*types.Named); ok {
+		structType = named.Underlying()
+	}
+
+	// Must be a struct
+	structTyp, ok := structType.(*types.Struct)
+	if !ok {
+		return nil, fmt.Errorf("cannot access field %s on non-struct type: %v", fieldName, structType)
+	}
+
+	// Find the field
+	for i := 0; i < structTyp.NumFields(); i++ {
+		field := structTyp.Field(i)
+		if field.Name() == fieldName {
+			return field.Type(), nil
+		}
+
+		// Check embedded fields
+		if field.Embedded() {
+			// Recursively search in embedded field
+			if fieldType, err := p.resolveFieldType(field.Type(), fieldName, info); err == nil {
+				return fieldType, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("field %s not found in struct type: %v", fieldName, structType)
+}
+
+// resolveMethodReturnType resolves the return type of a method call
+func (p *SafeNavTypePlugin) resolveMethodReturnType(receiverType types.Type, methodName string, info *types.Info) (types.Type, error) {
+	// Look up method in type's method set
+	var methodSet *types.MethodSet
+
+	// Handle named types
+	if named, ok := receiverType.(*types.Named); ok {
+		methodSet = types.NewMethodSet(named)
+	} else if ptr, ok := receiverType.(*types.Pointer); ok {
+		methodSet = types.NewMethodSet(ptr)
+	} else {
+		methodSet = types.NewMethodSet(receiverType)
+	}
+
+	// Find the method
+	for i := 0; i < methodSet.Len(); i++ {
+		method := methodSet.At(i)
+		if method.Obj().Name() == methodName {
+			// Get method signature
+			sig, ok := method.Type().(*types.Signature)
+			if !ok {
+				return nil, fmt.Errorf("method %s has invalid signature", methodName)
+			}
+
+			// Return first result type (ignore multiple returns for now)
+			if sig.Results() != nil && sig.Results().Len() > 0 {
+				return sig.Results().At(0).Type(), nil
+			}
+
+			// Method has no return value
+			return types.Typ[types.Invalid], nil
+		}
+	}
+
+	return nil, fmt.Errorf("method %s not found on type: %v", methodName, receiverType)
+}
+
+// resolveIndexType resolves the type of an index expression (arr[i] or map[key])
+func (p *SafeNavTypePlugin) resolveIndexType(containerType types.Type, info *types.Info) (types.Type, error) {
+	switch t := containerType.(type) {
+	case *types.Slice:
+		return t.Elem(), nil
+
+	case *types.Array:
+		return t.Elem(), nil
+
+	case *types.Map:
+		return t.Elem(), nil
+
+	case *types.Pointer:
+		// Pointer to array
+		if arr, ok := t.Elem().(*types.Array); ok {
+			return arr.Elem(), nil
+		}
+		return nil, fmt.Errorf("cannot index pointer to non-array type: %v", t)
+
+	default:
+		return nil, fmt.Errorf("cannot index type: %v", containerType)
+	}
+}
+
+// needsOptionWrap checks if a type needs to be wrapped in Option<T>
+// This handles safe navigation through nullable types
+func (p *SafeNavTypePlugin) needsOptionWrap(typ types.Type) bool {
+	// Pointer types are nullable and should be wrapped
+	if _, ok := typ.(*types.Pointer); ok {
+		return true
+	}
+
+	// Option types are already wrapped
+	if named, ok := typ.(*types.Named); ok {
+		if p.isOptionType(named) {
+			return false
+		}
+	}
+
+	// All other types are not nullable
+	return false
+}
+
+// wrapInOption wraps a type in Option<T>
+func (p *SafeNavTypePlugin) wrapInOption(typ types.Type) types.Type {
+	// If already an Option type, don't wrap again
+	if named, ok := typ.(*types.Named); ok {
+		if p.isOptionType(named) {
+			return typ
+		}
+	}
+
+	// Create Option_T type name
+	typeStr := p.typeInference.TypeToString(typ)
+	optionTypeName := "Option_" + p.sanitizeTypeName(typeStr)
+
+	// Create a synthetic Option type
+	// This is a placeholder - the actual Option type will be generated by other plugins
+	optionType := types.NewNamed(
+		types.NewTypeName(token.NoPos, nil, optionTypeName, nil),
+		types.Typ[types.Invalid],
+		nil,
+	)
+
+	return optionType
+}
+
+// sanitizeTypeName converts a type string to a valid identifier
+func (p *SafeNavTypePlugin) sanitizeTypeName(typeName string) string {
+	str := typeName
+	if str == "interface{}" {
+		return "any"
+	}
+	str = strings.ReplaceAll(str, "*", "ptr_")
+	str = strings.ReplaceAll(str, "[]", "slice_")
+	str = strings.ReplaceAll(str, "[", "_")
+	str = strings.ReplaceAll(str, "]", "_")
+	str = strings.ReplaceAll(str, ".", "_")
+	str = strings.ReplaceAll(str, "{", "")
+	str = strings.ReplaceAll(str, "}", "")
+	str = strings.ReplaceAll(str, " ", "")
+	str = strings.Trim(str, "_")
+	return str
+}
+
+// handleNullCoalesce handles type checking for null coalescing operator (??)
+// This implements Phase 3 from the plan (lines 293-307)
+//
+// Example: user?.name ?? "Unknown"
+// - LHS type: Option<string>
+// - RHS type: string
+// - Result type: string (unwrapped from Option)
+func (p *SafeNavTypePlugin) handleNullCoalesce(lhs, rhs ast.Expr, info *types.Info) (types.Type, error) {
+	if info == nil {
+		return nil, fmt.Errorf("go/types info not available")
+	}
+
+	// Resolve LHS type (should be Option<T> or *T)
+	lhsType, err := p.resolveType(lhs, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve LHS type: %w", err)
+	}
+
+	// Resolve RHS type
+	rhsType, err := p.resolveType(rhs, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve RHS type: %w", err)
+	}
+
+	// Unwrap Option<T> from LHS if present
+	unwrapped := p.unwrapOption(lhsType)
+
+	// LHS type must match RHS type
+	if !types.Identical(unwrapped, rhsType) {
+		return nil, fmt.Errorf("type mismatch in ?? operator: %v vs %v", unwrapped, rhsType)
+	}
+
+	return unwrapped, nil
+}
+
+// unwrapOption extracts T from Option<T> or *T
+func (p *SafeNavTypePlugin) unwrapOption(typ types.Type) types.Type {
+	// Unwrap pointer
+	if ptr, ok := typ.(*types.Pointer); ok {
+		return ptr.Elem()
+	}
+
+	// Unwrap Option<T>
+	if named, ok := typ.(*types.Named); ok {
+		if p.isOptionType(named) {
+			return p.extractInnerType(named)
+		}
+	}
+
+	// Not a nullable type - return as-is
+	return typ
 }
 
 // inferFromContext attempts to infer type from surrounding context
@@ -634,4 +1001,261 @@ func (p *SafeNavTypePlugin) GetErrors() []string {
 // ClearErrors clears all accumulated errors
 func (p *SafeNavTypePlugin) ClearErrors() {
 	p.errors = make([]string, 0)
+}
+
+// reportTypeInferenceError reports a detailed type inference error with suggestions
+// This implements Phase 4 from the plan (lines 349-363)
+//
+// Example error output:
+//
+//	Cannot infer type for safe navigation chain 'obj?.field?.method()'
+//	  at line 42, column 10
+//
+//	  Reason: Method 'method' not found on inferred type 'T'
+//
+//	  Suggestion: Add explicit type annotation:
+//	    let result: Option<ReturnType> = obj?.field?.method()
+//
+//	  Or ensure 'field' has a 'method' method defined.
+func (p *SafeNavTypePlugin) reportTypeInferenceError(
+	node ast.Node,
+	chain string,
+	reason string,
+	suggestion string,
+) error {
+	if p.ctx == nil || p.ctx.FileSet == nil {
+		return fmt.Errorf("type inference failed: %s", reason)
+	}
+
+	pos := p.ctx.FileSet.Position(node.Pos())
+
+	errMsg := fmt.Sprintf(
+		"Cannot infer type for safe navigation chain '%s'\n"+
+		"  at %s:%d:%d\n"+
+		"\n"+
+		"  Reason: %s\n"+
+		"\n"+
+		"  Suggestion: %s",
+		chain,
+		pos.Filename,
+		pos.Line,
+		pos.Column,
+		reason,
+		suggestion,
+	)
+
+	return fmt.Errorf("%s", errMsg)
+}
+
+// Edge Case Handlers
+// These implement Priority 1 and Priority 2 edge cases from the plan (lines 310-330)
+
+// handleDeepChain handles deep navigation chains (5+ levels)
+// Example: a?.b?.c?.d?.e?.f
+func (p *SafeNavTypePlugin) handleDeepChain(root ast.Expr, segments []ast.Expr, info *types.Info) (types.Type, error) {
+	// Deep chains are handled by walkChain with no special treatment
+	// The performance cost is linear in chain length, which is acceptable
+	return p.walkChain(root, segments, info)
+}
+
+// handleGenericMethod handles generic method calls
+// Example: opt?.Map(|x| transform(x))?.Filter(pred)
+//
+// Note: Go 1.18+ generics are fully supported by go/types
+// This method validates that type parameters are properly instantiated
+func (p *SafeNavTypePlugin) handleGenericMethod(
+	receiverType types.Type,
+	methodName string,
+	typeArgs []types.Type,
+	info *types.Info,
+) (types.Type, error) {
+	// Look up method
+	returnType, err := p.resolveMethodReturnType(receiverType, methodName, info)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if return type is generic
+	if named, ok := returnType.(*types.Named); ok {
+		// Check for type parameters
+		if named.TypeParams() != nil && named.TypeParams().Len() > 0 {
+			// Validate type arguments match type parameters
+			if len(typeArgs) != named.TypeParams().Len() {
+				return nil, fmt.Errorf(
+					"wrong number of type arguments: got %d, want %d",
+					len(typeArgs),
+					named.TypeParams().Len(),
+				)
+			}
+
+			// Instantiate generic type with type arguments
+			instantiated, err := types.Instantiate(nil, named, typeArgs, false)
+			if err != nil {
+				return nil, fmt.Errorf("failed to instantiate generic type: %w", err)
+			}
+			return instantiated, nil
+		}
+	}
+
+	return returnType, nil
+}
+
+// handleInterfaceType handles safe navigation on interface types
+// Example: iface?.(*ConcreteType).method()
+func (p *SafeNavTypePlugin) handleInterfaceType(
+	interfaceType types.Type,
+	targetType types.Type,
+	info *types.Info,
+) (types.Type, error) {
+	// Validate that targetType implements interfaceType
+	iface, ok := interfaceType.Underlying().(*types.Interface)
+	if !ok {
+		return nil, fmt.Errorf("expected interface type, got %v", interfaceType)
+	}
+
+	// Check if targetType implements the interface
+	if !types.Implements(targetType, iface) {
+		return nil, fmt.Errorf(
+			"type %v does not implement interface %v",
+			targetType,
+			interfaceType,
+		)
+	}
+
+	return targetType, nil
+}
+
+// handleTypeAssertion handles type assertions in safe navigation
+// Example: val?.(*SpecificType)
+func (p *SafeNavTypePlugin) handleTypeAssertion(
+	expr ast.Expr,
+	targetType types.Type,
+	info *types.Info,
+) (types.Type, error) {
+	// Get source type
+	sourceType, err := p.resolveType(expr, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve source type: %w", err)
+	}
+
+	// Source must be an interface
+	_, ok := sourceType.Underlying().(*types.Interface)
+	if !ok {
+		return nil, fmt.Errorf(
+			"invalid type assertion: source type %v is not an interface",
+			sourceType,
+		)
+	}
+
+	// Type assertion in safe navigation always returns Option<T>
+	// because it may fail
+	return p.wrapInOption(targetType), nil
+}
+
+// handleVariadicFunction handles variadic function calls in safe navigation
+// Example: obj?.Call(args...)
+func (p *SafeNavTypePlugin) handleVariadicFunction(
+	receiverType types.Type,
+	methodName string,
+	args []ast.Expr,
+	info *types.Info,
+) (types.Type, error) {
+	// Look up method
+	returnType, err := p.resolveMethodReturnType(receiverType, methodName, info)
+	if err != nil {
+		return nil, err
+	}
+
+	// Variadic functions have no special type handling
+	// The ... operator is syntax sugar handled by the compiler
+	return returnType, nil
+}
+
+// handleCompositeLiteral handles composite literals in safe navigation
+// Example: opt?.SomeStruct{field: val}
+//
+// Note: This is unusual syntax and may not be valid Go
+// We handle it defensively by checking if the composite literal is valid
+func (p *SafeNavTypePlugin) handleCompositeLiteral(
+	compositeLit *ast.CompositeLit,
+	info *types.Info,
+) (types.Type, error) {
+	// Get type from go/types
+	tv, ok := info.Types[compositeLit]
+	if !ok || tv.Type == nil {
+		return nil, fmt.Errorf("no type information for composite literal")
+	}
+
+	return tv.Type, nil
+}
+
+// Priority 2 Edge Cases (Should handle)
+
+// handleFunctionValue handles calling optional function values
+// Example: fnOpt?.()
+func (p *SafeNavTypePlugin) handleFunctionValue(
+	funcType types.Type,
+	info *types.Info,
+) (types.Type, error) {
+	// Unwrap if Option<func>
+	funcType = p.unwrapOption(funcType)
+
+	// Must be a function type
+	sig, ok := funcType.(*types.Signature)
+	if !ok {
+		return nil, fmt.Errorf("cannot call non-function type: %v", funcType)
+	}
+
+	// Return first result (ignore multiple returns for now)
+	if sig.Results() != nil && sig.Results().Len() > 0 {
+		return sig.Results().At(0).Type(), nil
+	}
+
+	return types.Typ[types.Invalid], nil
+}
+
+// handleChannelOp handles channel operations in safe navigation
+// Example: chanOpt?.<-
+func (p *SafeNavTypePlugin) handleChannelOp(
+	chanType types.Type,
+	info *types.Info,
+) (types.Type, error) {
+	// Unwrap if Option<chan>
+	chanType = p.unwrapOption(chanType)
+
+	// Must be a channel type
+	ch, ok := chanType.(*types.Chan)
+	if !ok {
+		return nil, fmt.Errorf("cannot receive from non-channel type: %v", chanType)
+	}
+
+	// Return element type
+	return ch.Elem(), nil
+}
+
+// handleMultipleReturns handles functions with multiple return values
+// Example: opt?.multiReturn()
+// Returns Option<T> where T is the first return value
+func (p *SafeNavTypePlugin) handleMultipleReturns(
+	sig *types.Signature,
+	info *types.Info,
+) (types.Type, error) {
+	if sig.Results() == nil || sig.Results().Len() == 0 {
+		return types.Typ[types.Invalid], nil
+	}
+
+	// Return first result only (unwrap tuple)
+	// This matches the plan's specification (line 323)
+	return sig.Results().At(0).Type(), nil
+}
+
+// handleEmbeddedFields handles embedded field access
+// Example: opt?.EmbeddedStruct.field
+func (p *SafeNavTypePlugin) handleEmbeddedField(
+	structType types.Type,
+	fieldName string,
+	info *types.Info,
+) (types.Type, error) {
+	// This is already handled by resolveFieldType which checks embedded fields
+	return p.resolveFieldType(structType, fieldName, info)
 }

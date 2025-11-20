@@ -9,8 +9,8 @@ const (
 
 type Result struct {
 	tag ResultTag
-	ok  *int
 	err *error
+	ok  *int
 }
 
 func ResultOk(arg0 int) Result {
@@ -25,6 +25,28 @@ func (e Result) IsOk() bool {
 func (e Result) IsErr() bool {
 	return e.tag == ResultTagErr
 }
+func (r Result) Map(fn func(int) int) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return ResultOk(fn(*r.ok))
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
+}
+func (r Result) AndThen(fn func(int) Result) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return fn(*r.ok)
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
+}
 
 // Simple guard on Result type
 func classifyNumber(result Result) string {
@@ -32,8 +54,8 @@ func classifyNumber(result Result) string {
 
 	scrutinee := result
 	switch scrutinee.tag {
-	case ResultOkTag:
-		x := *scrutinee.resultok
+	case ResultTagOk:
+		x := *scrutinee.ok
 
 		if x > 0 {
 			result = "positive"
@@ -44,8 +66,8 @@ func classifyNumber(result Result) string {
 		} else {
 			result = "zero"
 		}
-	case ResultErrTag:
-		e := *scrutinee.resulterr
+	case ResultTagErr:
+		e := *scrutinee.err
 
 		result = "error"
 	}
@@ -60,8 +82,8 @@ func validateAge(result Result) string {
 
 	scrutinee2 := result
 	switch scrutinee2.tag {
-	case ResultOkTag:
-		age := *scrutinee2.resultok
+	case ResultTagOk:
+		age := *scrutinee2.ok
 
 		if age >= 18 && age < 65 {
 			result2 = "adult"
@@ -72,7 +94,7 @@ func validateAge(result Result) string {
 		} else {
 			result2 = "minor"
 		}
-	case ResultErrTag:
+	case ResultTagErr:
 
 		result2 = "invalid"
 	}
@@ -87,8 +109,8 @@ func checkLength(result Result) string {
 
 	scrutinee3 := result
 	switch scrutinee3.tag {
-	case ResultOkTag:
-		n := *scrutinee3.resultok
+	case ResultTagOk:
+		n := *scrutinee3.ok
 
 		if isEven(n) {
 			result3 = "even"
@@ -96,7 +118,7 @@ func checkLength(result Result) string {
 		} else {
 			result3 = "odd"
 		}
-	case ResultErrTag:
+	case ResultTagErr:
 
 		result3 = "error"
 	}

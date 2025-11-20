@@ -8,14 +8,14 @@ const (
 )
 
 type Option struct {
-	tag    OptionTag
+	tag  OptionTag
 	some *int
 }
 
-func Option_Some(arg0 int) Option {
+func OptionSome(arg0 int) Option {
 	return Option{tag: OptionTagSome, some: &arg0}
 }
-func Option_None() Option {
+func OptionNone() Option {
 	return Option{tag: OptionTagNone}
 }
 func (e Option) IsSome() bool {
@@ -24,38 +24,43 @@ func (e Option) IsSome() bool {
 func (e Option) IsNone() bool {
 	return e.tag == OptionTagNone
 }
-
-// Map method for Option chaining
-func (o Option) Map(f func(int) int) Option {
-	if o.IsSome() {
-		return Option_Some(f(*o.some))
+func (o Option) Map(fn func(int) int) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
 	}
-	return o
+	panic("invalid Option state")
 }
-
-// AndThen method for Option chaining
-func (o Option) AndThen(f func(int) Option) Option {
-	if o.IsSome() {
-		return f(*o.some)
+func (o Option) AndThen(fn func(int) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
 	}
-	return o
+	panic("invalid Option state")
 }
-
 func getValue(id int) Option {
 	if id > 0 {
-		return Option_Some(id)
+		return OptionSome(id)
 	}
-	return Option_None()
+	return OptionNone()
 }
 func processValue(opt Option) Option {
-	return opt.Map(func(x int) int {
-		return x * 2
-	}).AndThen(func(x int) Option {
-		if x > 10 {
-			return Option_Some(x)
-		}
-		return Option_None()
-	})
+	return opt.
+		Map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 }).
+		AndThen(func(x __TYPE_INFERENCE_NEEDED) {
+			if x > 10 {
+				return OptionSome(x)
+			}
+			return OptionNone()
+		})
 }
 func main() {
 	result := processValue(getValue(10))

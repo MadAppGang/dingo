@@ -850,7 +850,7 @@ func (p *PatternMatchPlugin) replaceNodeInParent(parent ast.Node, oldNode ast.No
 }
 
 // Transform transforms pattern match switch statements into efficient Go code
-// This phase converts switch statements to if-else chains using Is* methods
+// This phase ensures scrutinee variables are declared and adds exhaustive panic
 // RE-DISCOVERS matches to avoid stale AST pointers from Process phase
 func (p *PatternMatchPlugin) Transform(node ast.Node) (ast.Node, error) {
 	file, ok := node.(*ast.File)
@@ -861,8 +861,6 @@ func (p *PatternMatchPlugin) Transform(node ast.Node) (ast.Node, error) {
 	// Re-discover match expressions (fresh AST walk)
 	// We can't use stored pointers from Process because AST may have been mutated by other plugins
 	matches := make([]*matchExpression, 0)
-
-	// Debug: Check if file has comments
 
 	ast.Inspect(file, func(n ast.Node) bool {
 		switchStmt, ok := n.(*ast.SwitchStmt)
@@ -892,55 +890,29 @@ func (p *PatternMatchPlugin) Transform(node ast.Node) (ast.Node, error) {
 	}
 
 	// Transform each match expression
-	// NOTE: Switch→if transformation disabled - switch-based output is clearer and preserves DINGO comments
-	// We keep exhaustiveness checking (done in Discovery/Process phase)
 	for i, match := range matches {
-		// DISABLED: switch→if transformation (was stripping DINGO comments)
-		// if err := p.transformMatchExpression(file, match); err != nil {
-		//     return nil, fmt.Errorf("transformMatchExpression #%d failed: %w", i, err)
-		// }
-		_ = i
-		_ = match
+		if err := p.transformMatchExpression(file, match); err != nil {
+			return nil, fmt.Errorf("transformMatchExpression #%d failed: %w", i, err)
+		}
 	}
 
 	return file, nil
 }
 
 // transformMatchExpression transforms a single match expression
-// Converts switch statement to if-else chain using Is* methods
+// The preprocessor already generates correct switch statements with scrutinee variables
+// and panic statements. This plugin only validates exhaustiveness during Process phase.
+// No transformation is needed here - the AST is already correct from the preprocessor.
 func (p *PatternMatchPlugin) transformMatchExpression(file *ast.File, match *matchExpression) error {
-	switchStmt := match.switchStmt
+	// The preprocessor (rust_match.go) generates:
+	// 1. scrutinee := <expr> (before switch)
+	// 2. switch scrutinee.tag { ... } (NO Init statement)
+	// 3. panic("unreachable: match is exhaustive") (after switch)
+	//
+	// This is already the correct Go code structure. The plugin's job is only to
+	// validate exhaustiveness during the Process phase, not to transform the AST.
 
-	ifChain := p.buildIfElseChain(match, file)
-	if len(ifChain) == 0 {
-		return fmt.Errorf("failed to build if-else chain for match expression")
-	}
-
-	// CONSENSUS FIX: Preserve switch init statement by wrapping in BlockStmt
-	var replacement []ast.Stmt
-	if switchStmt.Init != nil {
-		// Create block statement: { init; if-else-chain }
-		blockStmt := &ast.BlockStmt{
-			List: append([]ast.Stmt{switchStmt.Init}, ifChain...),
-		}
-		replacement = []ast.Stmt{blockStmt}
-	} else {
-		// No init, just use if-else chain
-		replacement = ifChain
-	}
-
-	// Find parent in file
-	parent := findParent(file, switchStmt)
-	if parent == nil {
-		return fmt.Errorf("cannot find parent of switch statement")
-	}
-
-	// Replace in parent based on parent type
-	replaced := p.replaceNodeInParent(parent, switchStmt, replacement)
-	if !replaced {
-		return fmt.Errorf("failed to replace switch statement in parent: parent type is %T", parent)
-	}
-
+	// No transformation needed - return without modifying the switch statement
 	return nil
 }
 

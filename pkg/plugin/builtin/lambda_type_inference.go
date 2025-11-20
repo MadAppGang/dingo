@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"strings"
 
 	"github.com/MadAppGang/dingo/pkg/plugin"
 )
@@ -129,10 +128,10 @@ func (p *LambdaTypeInferencePlugin) hasUntypedParams(funcLit *ast.FuncLit) bool 
 			return true
 		}
 
-		// Check for placeholder comment indicating type inference needed
-		// This is added by the preprocessor when it cannot determine the type
+		// Check for __TYPE_INFERENCE_NEEDED marker added by preprocessor
+		// This indicates the preprocessor couldn't determine the type and needs plugin help
 		if ident, ok := field.Type.(*ast.Ident); ok {
-			if strings.Contains(ident.Name, "TYPE_INFERENCE_NEEDED") {
+			if ident.Name == "__TYPE_INFERENCE_NEEDED" {
 				return true
 			}
 		}
@@ -281,8 +280,16 @@ func (p *LambdaTypeInferencePlugin) applyInferredTypes(funcLit *ast.FuncLit, sig
 	// Apply types to each parameter
 	sigIndex := 0
 	for _, field := range params {
-		if field.Type != nil {
-			// Skip parameters that already have types
+		// Check if this parameter needs type inference
+		needsInference := field.Type == nil
+		if !needsInference {
+			if ident, ok := field.Type.(*ast.Ident); ok {
+				needsInference = ident.Name == "__TYPE_INFERENCE_NEEDED"
+			}
+		}
+
+		if !needsInference {
+			// Skip parameters that already have concrete types
 			sigIndex += len(field.Names)
 			continue
 		}
@@ -295,6 +302,22 @@ func (p *LambdaTypeInferencePlugin) applyInferredTypes(funcLit *ast.FuncLit, sig
 		paramType := sigParams.At(sigIndex).Type()
 		field.Type = p.typeToAST(paramType)
 		sigIndex += len(field.Names)
+	}
+
+	// Apply return type if the signature has one and funcLit doesn't
+	if sig.Results() != nil && sig.Results().Len() > 0 {
+		if funcLit.Type.Results == nil || funcLit.Type.Results.NumFields() == 0 {
+			// Add return type from signature
+			funcLit.Type.Results = &ast.FieldList{
+				List: make([]*ast.Field, sig.Results().Len()),
+			}
+			for i := 0; i < sig.Results().Len(); i++ {
+				resultType := sig.Results().At(i).Type()
+				funcLit.Type.Results.List[i] = &ast.Field{
+					Type: p.typeToAST(resultType),
+				}
+			}
+		}
 	}
 
 	return true

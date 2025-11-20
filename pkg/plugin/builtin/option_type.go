@@ -412,7 +412,7 @@ func (p *OptionTypePlugin) emitOptionTagEnum() {
 
 // emitSomeConstructor generates Some constructor
 func (p *OptionTypePlugin) emitSomeConstructor(optionTypeName, valueType string) {
-	funcName := fmt.Sprintf("%sSome", optionTypeName)
+	funcName := fmt.Sprintf("%s_Some", optionTypeName)
 	valueTypeAST := p.typeToAST(valueType, false)
 
 	// func Option_T_Some(arg0 T) Option_T {
@@ -507,7 +507,7 @@ func (p *OptionTypePlugin) emitSomeConstructor(optionTypeName, valueType string)
 
 // emitNoneConstructor generates None constructor
 func (p *OptionTypePlugin) emitNoneConstructor(optionTypeName, valueType string) {
-	funcName := fmt.Sprintf("%sNone", optionTypeName)
+	funcName := fmt.Sprintf("%s_None", optionTypeName)
 
 	// func Option_T_None() Option_T {
 	//     return Option_T{tag: OptionTagNone}

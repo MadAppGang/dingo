@@ -2,33 +2,33 @@
   "version": 1,
   "mappings": [
     {
-      "generated_line": 35,
+      "generated_line": 15,
       "generated_column": 1,
-      "original_line": 35,
+      "original_line": 15,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 36,
+      "generated_line": 16,
       "generated_column": 1,
-      "original_line": 35,
+      "original_line": 15,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 37,
+      "generated_line": 17,
       "generated_column": 1,
-      "original_line": 35,
+      "original_line": 15,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 67,
+      "generated_line": 47,
       "generated_column": 1,
-      "original_line": 35,
+      "original_line": 15,
       "original_column": 1,
       "length": 1,
       "name": "rust_match"

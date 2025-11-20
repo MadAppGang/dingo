@@ -71,6 +71,10 @@ func NewWithPlugins(fset *token.FileSet, registry *plugin.Registry, logger plugi
 	optionPlugin := builtin.NewOptionTypePlugin()
 	pipeline.RegisterPlugin(optionPlugin)
 
+	// Lambda type inference plugin (infers lambda parameter types from context)
+	lambdaTypeInferencePlugin := builtin.NewLambdaTypeInferencePlugin()
+	pipeline.RegisterPlugin(lambdaTypeInferencePlugin)
+
 	// Phase 4 - Pattern matching plugin (Task D, F)
 	patternMatchPlugin := builtin.NewPatternMatchPlugin()
 	pipeline.RegisterPlugin(patternMatchPlugin)

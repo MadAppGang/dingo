@@ -11,9 +11,9 @@ const (
 
 type Color struct {
 	tag   ColorTag
-	rgb_r *int
-	rgb_g *int
 	rgb_b *int
+	rgb_g *int
+	rgb_r *int
 }
 
 func ColorRed() Color {

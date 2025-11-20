@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -133,7 +134,9 @@ func TestHandleSomeConstructor_Addressability(t *testing.T) {
 				// Type inference failed - handleSomeConstructor defaults to interface{}
 				expectedType = "interface{}"
 			}
-			optionType := "Option_" + SanitizeTypeName(expectedType)
+			// FIX: Match the actual format used in handleSomeConstructor (line 236)
+			// handleSomeConstructor uses: fmt.Sprintf("Option%s", SanitizeTypeName(valueType))
+			optionType := fmt.Sprintf("Option%s", SanitizeTypeName(expectedType))
 			if !p.emittedTypes[optionType] {
 				t.Errorf("Expected Option type %s to be emitted", optionType)
 			}

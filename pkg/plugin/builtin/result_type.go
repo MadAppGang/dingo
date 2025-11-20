@@ -113,14 +113,22 @@ func (p *ResultTypePlugin) handleGenericResult(expr *ast.IndexExpr) {
 		var resultType string
 		// This is a Result<T> (single type parameter)
 		// Default error type to "error"
-		telemType, ok := p.typeInference.InferType(expr.Index)
-		if !ok || telemType == nil {
-			p.ctx.Logger.Warn("ResultTypePlugin: Could not infer type for Result<T> element. Falling back to heuristic.")
-			// Fallback to old heuristic if type inference fails
-			typeName = p.getTypeName(expr.Index)
-			resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
+
+		// Check if type inference is available
+		if p.typeInference != nil {
+			telemType, ok := p.typeInference.InferType(expr.Index)
+			if ok && telemType != nil {
+				typeName = p.typeInference.TypeToString(telemType)
+				resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
+			} else {
+				p.ctx.Logger.Warn("ResultTypePlugin: Could not infer type for Result<T> element. Falling back to heuristic.")
+				// Fallback to old heuristic if type inference fails
+				typeName = p.getTypeName(expr.Index)
+				resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
+			}
 		} else {
-			typeName = p.typeInference.TypeToString(telemType)
+			// No type inference service - use heuristic
+			typeName = p.getTypeName(expr.Index)
 			resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
 		}
 
@@ -138,20 +146,28 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 		if len(expr.Indices) == 2 {
 			var okType, errType string
 			// Result<T, E> with explicit error type
-			okElemType, ok := p.typeInference.InferType(expr.Indices[0])
-			if !ok || okElemType == nil {
-				p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T,E>. Falling back to heuristic.")
-				okType = p.getTypeName(expr.Indices[0])
-			} else {
-				okType = p.typeInference.TypeToString(okElemType)
-			}
 
-			errElemType, ok := p.typeInference.InferType(expr.Indices[1])
-			if !ok || errElemType == nil {
-				p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Err' type for Result<T,E>. Falling back to heuristic.")
-				errType = p.getTypeName(expr.Indices[1])
+			// Check if type inference is available
+			if p.typeInference != nil {
+				okElemType, ok := p.typeInference.InferType(expr.Indices[0])
+				if !ok || okElemType == nil {
+					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T,E>. Falling back to heuristic.")
+					okType = p.getTypeName(expr.Indices[0])
+				} else {
+					okType = p.typeInference.TypeToString(okElemType)
+				}
+
+				errElemType, ok := p.typeInference.InferType(expr.Indices[1])
+				if !ok || errElemType == nil {
+					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Err' type for Result<T,E>. Falling back to heuristic.")
+					errType = p.getTypeName(expr.Indices[1])
+				} else {
+					errType = p.typeInference.TypeToString(errElemType)
+				}
 			} else {
-				errType = p.typeInference.TypeToString(errElemType)
+				// No type inference service - use heuristic
+				okType = p.getTypeName(expr.Indices[0])
+				errType = p.getTypeName(expr.Indices[1])
 			}
 
 			resultType := fmt.Sprintf("Result%s",
@@ -164,12 +180,19 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 		} else if len(expr.Indices) == 1 {
 			var okType string
 			// Result<T> with default error type
-			okElemType, ok := p.typeInference.InferType(expr.Indices[0])
-			if !ok || okElemType == nil {
-				p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T>. Falling back to heuristic.")
-				okType = p.getTypeName(expr.Indices[0])
+
+			// Check if type inference is available
+			if p.typeInference != nil {
+				okElemType, ok := p.typeInference.InferType(expr.Indices[0])
+				if !ok || okElemType == nil {
+					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T>. Falling back to heuristic.")
+					okType = p.getTypeName(expr.Indices[0])
+				} else {
+					okType = p.typeInference.TypeToString(okElemType)
+				}
 			} else {
-				okType = p.typeInference.TypeToString(okElemType)
+				// No type inference service - use heuristic
+				okType = p.getTypeName(expr.Indices[0])
 			}
 			resultType := fmt.Sprintf("Result%s", SanitizeTypeName(okType, "error"))
 
@@ -673,7 +696,7 @@ func (p *ResultTypePlugin) emitConstructorFunction(resultTypeName, argType strin
 		fieldName = "err"
 	}
 
-	funcName := fmt.Sprintf("%s%s", resultTypeName, funcSuffix)
+	funcName := fmt.Sprintf("%s_%s", resultTypeName, funcSuffix)
 	argTypeAST := p.typeToAST(argType, false) // Non-pointer parameter
 
 	// func Result_T_E_Ok(arg0 T) Result_T_E {

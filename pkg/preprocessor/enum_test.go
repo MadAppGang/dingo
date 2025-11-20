@@ -50,14 +50,14 @@ enum Status {
 	}
 
 	// Verify constructors
-	if !strings.Contains(output, "func Status_Pending() Status") {
-		t.Error("Missing Status_Pending constructor")
+	if !strings.Contains(output, "func StatusPending() Status") {
+		t.Error("Missing StatusPending constructor")
 	}
-	if !strings.Contains(output, "func Status_Active() Status") {
-		t.Error("Missing Status_Active constructor")
+	if !strings.Contains(output, "func StatusActive() Status") {
+		t.Error("Missing StatusActive constructor")
 	}
-	if !strings.Contains(output, "func Status_Complete() Status") {
-		t.Error("Missing Status_Complete constructor")
+	if !strings.Contains(output, "func StatusComplete() Status") {
+		t.Error("Missing StatusComplete constructor")
 	}
 
 	// Verify Is* methods
@@ -123,14 +123,14 @@ enum Shape {
 	}
 
 	// Verify constructors with parameters
-	if !strings.Contains(output, "func Shape_Point() Shape") {
-		t.Error("Missing Shape_Point constructor")
+	if !strings.Contains(output, "func ShapePoint() Shape") {
+		t.Error("Missing ShapePoint constructor")
 	}
-	if !strings.Contains(output, "func Shape_Circle(radius float64) Shape") {
-		t.Error("Missing Shape_Circle constructor with parameter")
+	if !strings.Contains(output, "func ShapeCircle(radius float64) Shape") {
+		t.Error("Missing ShapeCircle constructor with parameter")
 	}
-	if !strings.Contains(output, "func Shape_Rectangle(width float64, height float64) Shape") {
-		t.Error("Missing Shape_Rectangle constructor with parameters")
+	if !strings.Contains(output, "func ShapeRectangle(width float64, height float64) Shape") {
+		t.Error("Missing ShapeRectangle constructor with parameters")
 	}
 
 	// Verify Is* methods
@@ -178,13 +178,13 @@ enum Option {
 	}
 
 	// Verify None variant (unit variant)
-	if !strings.Contains(output, "func Option_None() Option") {
-		t.Error("Missing Option_None constructor")
+	if !strings.Contains(output, "func OptionNone() Option") {
+		t.Error("Missing OptionNone constructor")
 	}
 
 	// Verify Some variant (with generic type T)
-	if !strings.Contains(output, "func Option_Some(value T) Option") {
-		t.Error("Missing Option_Some constructor")
+	if !strings.Contains(output, "func OptionSome(value T) Option") {
+		t.Error("Missing OptionSome constructor")
 	}
 	if !strings.Contains(output, "some_value *T") {
 		t.Error("Missing some_value field with type T")
@@ -227,13 +227,13 @@ enum Size {
 	}
 
 	// Verify Color variants
-	if !strings.Contains(output, "func Color_Red() Color") {
-		t.Error("Missing Color_Red constructor")
+	if !strings.Contains(output, "func ColorRed() Color") {
+		t.Error("Missing ColorRed constructor")
 	}
 
 	// Verify Size variants
-	if !strings.Contains(output, "func Size_Small() Size") {
-		t.Error("Missing Size_Small constructor")
+	if !strings.Contains(output, "func SizeSmall() Size") {
+		t.Error("Missing SizeSmall constructor")
 	}
 
 	// Verify generated code compiles
@@ -332,11 +332,11 @@ enum Result {
 	}
 
 	// Verify constructors with complex types
-	if !strings.Contains(output, "func Result_Ok(value []string) Result") {
-		t.Error("Missing Result_Ok constructor with []string parameter")
+	if !strings.Contains(output, "func ResultOk(value []string) Result") {
+		t.Error("Missing ResultOk constructor with []string parameter")
 	}
-	if !strings.Contains(output, "func Result_Err(error error) Result") {
-		t.Error("Missing Result_Err constructor with error parameter")
+	if !strings.Contains(output, "func ResultErr(error error) Result") {
+		t.Error("Missing ResultErr constructor with error parameter")
 	}
 
 	// Verify generated code compiles
@@ -365,7 +365,7 @@ enum Single {
 			shouldFail: false,
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "type SingleTag uint8") &&
-					strings.Contains(output, "func Single_Only() Single")
+					strings.Contains(output, "func SingleOnly() Single")
 			},
 		},
 		{

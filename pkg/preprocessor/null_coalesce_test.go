@@ -21,8 +21,8 @@ func TestNullCoalesceProcessor_SimpleIdentifier(t *testing.T) {
 		t.Errorf("Expected IIFE, got: %s", output)
 	}
 
-	// Should check and unwrap
-	if !strings.Contains(output, "IsSome()") || !strings.Contains(output, "Unwrap()") {
+	// Should check and use __UNWRAP__ placeholder
+	if !strings.Contains(output, "IsSome()") || !strings.Contains(output, "__UNWRAP__") {
 		t.Errorf("Expected Option check, got: %s", output)
 	}
 
@@ -422,5 +422,87 @@ let name = user ?? "Unknown"`
 	// Second line should have null coalesce
 	if !strings.Contains(output, "func()") {
 		t.Errorf("Expected IIFE in second line, got: %s", output)
+	}
+}
+
+func TestNullCoalesceProcessor_CommentsIgnored(t *testing.T) {
+	processor := NewNullCoalesceProcessor()
+
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "single-line comment with ??",
+			source: "// Use value ?? default\nlet x = a ?? b",
+			want:   "// Use value ?? default",
+		},
+		{
+			name:   "inline comment with ??",
+			source: "let x = a ?? b // fallback: a ?? b",
+			want:   "// fallback: a ?? b",
+		},
+		{
+			name:   "multi-line comment with ??",
+			source: "/* This is ?? not code */\nlet x = a ?? b",
+			want:   "/* This is ?? not code */",
+		},
+		{
+			name:   "code with inline comment",
+			source: `let result = value ?? "default" // Use ?? for null coalescing`,
+			want:   "// Use ?? for null coalescing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, _, err := processor.Process([]byte(tt.source))
+			if err != nil {
+				t.Fatalf("Process failed: %v", err)
+			}
+
+			output := string(result)
+
+			// Comment should be preserved exactly
+			if !strings.Contains(output, tt.want) {
+				t.Errorf("Expected comment preserved: %q\nGot: %s", tt.want, output)
+			}
+
+			// Comment should NOT be transformed
+			lines := strings.Split(output, "\n")
+			for _, line := range lines {
+				if strings.HasPrefix(strings.TrimSpace(line), "//") ||
+				   strings.HasPrefix(strings.TrimSpace(line), "/*") {
+					// This is a comment line - should not contain func() or IIFE
+					if strings.Contains(line, "func()") {
+						t.Errorf("Comment was transformed (contains func()): %s", line)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestNullCoalesceProcessor_StringLiteralsWithCommentMarkers(t *testing.T) {
+	processor := NewNullCoalesceProcessor()
+
+	// String literals containing // should not be treated as comments
+	source := `let url = value ?? "http://example.com"`
+	result, _, err := processor.Process([]byte(source))
+	if err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	output := string(result)
+
+	// Should preserve the URL in string literal
+	if !strings.Contains(output, "http://example.com") {
+		t.Errorf("Expected URL preserved, got: %s", output)
+	}
+
+	// Should still transform the ??
+	if !strings.Contains(output, "func()") {
+		t.Errorf("Expected ?? to be transformed, got: %s", output)
 	}
 }

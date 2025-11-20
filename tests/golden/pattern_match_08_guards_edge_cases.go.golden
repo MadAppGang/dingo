@@ -10,9 +10,9 @@ const (
 
 type Value struct {
 	tag    ValueTag
-	small  *int
-	medium *int
 	large  *int
+	medium *int
+	small  *int
 }
 
 func ValueSmall(arg0 int) Value {

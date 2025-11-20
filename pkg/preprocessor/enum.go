@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -198,6 +199,19 @@ func isIdentifierChar(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_'
 }
 
+// sortStrings sorts a string slice in-place using simple insertion sort
+func sortStrings(arr []string) {
+	for i := 1; i < len(arr); i++ {
+		key := arr[i]
+		j := i - 1
+		for j >= 0 && arr[j] > key {
+			arr[j+1] = arr[j]
+			j--
+		}
+		arr[j+1] = key
+	}
+}
+
 // Variant represents a single enum variant
 type Variant struct {
 	Name   string
@@ -363,34 +377,69 @@ func (e *EnumProcessor) generateSumType(enumName string, variants []Variant) str
 	buf.WriteString(fmt.Sprintf("type %s struct {\n", enumName))
 	buf.WriteString("\ttag " + tagTypeName + "\n")
 
-	// Add fields for each variant
-	// Add fields for each variant
-	// Naming strategy:
-	// - Tuple variants (single field): use variant name in lowercase (e.g., "ok", "err", "some")
-	// - Tuple variants (multiple fields): use _N format (e.g., "_0", "_1")
-	// - Struct variants: use variantname_fieldname to avoid conflicts (e.g., "circle_radius", "rectangle_width")
+	// CRITICAL BUG FIX: Collect all fields from ALL variants into struct
+	// OLD BUGGY APPROACH (nested loops): Generated duplicate fields with wrong names
+	// NEW CORRECT APPROACH: Single pass, deduplicate field names
+
+	// Strategy:
+	// - Single-field tuple variants: Use lowercase variant name (ok, err, some)
+	// - Multi-field tuple variants: Use variant name + suffix (first no suffix, then 1, 2, 3)
+	//   Example: Triple(int, string, bool) → first, second1, third2
+	// - Struct variants: Use variant_fieldname format
+
+	fieldMap := make(map[string]string) // fieldName -> fieldType (for deduplication)
+
 	for _, variant := range variants {
 		if len(variant.Fields) > 0 {
-			for _, field := range variant.Fields {
+			// Determine field naming strategy for this variant
+			isSingleTupleVariant := len(variant.Fields) == 1 &&
+				len(variant.Fields[0].Name) > 0 &&
+				variant.Fields[0].Name[0] >= '0' &&
+				variant.Fields[0].Name[0] <= '9'
+
+			for fieldIdx, field := range variant.Fields {
 				var fieldName string
-				// Check if this is a tuple variant (numeric field name)
 				isTupleField := len(field.Name) > 0 && field.Name[0] >= '0' && field.Name[0] <= '9'
 
-				if isTupleField && len(variant.Fields) == 1 {
+				if isSingleTupleVariant {
 					// Single tuple field - use variant name (e.g., "ok", "err", "some")
 					fieldName = strings.ToLower(variant.Name)
 				} else if isTupleField {
-					// Multiple tuple fields - use _N format (e.g., "_0", "_1")
-					fieldName = "_" + field.Name
+					// Multiple tuple fields - use proper naming convention
+					// First field: lowercase variant name (no suffix)
+					// Second field: lowercase variant name + "1"
+					// Third field: lowercase variant name + "2"
+					// etc.
+					baseName := strings.ToLower(variant.Name)
+					if fieldIdx == 0 {
+						fieldName = baseName // First field: no suffix
+					} else {
+						fieldName = fmt.Sprintf("%s%d", baseName, fieldIdx) // 2nd+ fields: suffix with index (1, 2, 3...)
+					}
 				} else {
-					// Struct variant with named fields - use variantname_fieldname to avoid conflicts
+					// Struct variant with named fields - use variant_fieldname
 					fieldName = strings.ToLower(variant.Name) + "_" + field.Name
 				}
 
-				buf.WriteString(fmt.Sprintf("\t%s *%s\n", fieldName, field.Type))
+				// Add to field map (deduplicates if same field used in multiple variants)
+				fieldMap[fieldName] = field.Type
 			}
 		}
 	}
+
+	// Generate fields in alphabetical order for consistency
+	var fieldNames []string
+	for name := range fieldMap {
+		fieldNames = append(fieldNames, name)
+	}
+	// Sort for deterministic output
+	sort.Strings(fieldNames)
+
+	for _, fieldName := range fieldNames {
+		fieldType := fieldMap[fieldName]
+		buf.WriteString(fmt.Sprintf("\t%s *%s\n", fieldName, fieldType))
+	}
+
 	buf.WriteString("}\n\n")
 
 	// 4. Generate constructor functions
@@ -408,7 +457,13 @@ func (e *EnumProcessor) generateSumType(enumName string, variants []Variant) str
 			params := []string{}
 			assignments := []string{}
 
-			for _, field := range variant.Fields {
+			// CRITICAL: Use same field naming strategy as struct generation above
+			isSingleTupleVariant := len(variant.Fields) == 1 &&
+				len(variant.Fields[0].Name) > 0 &&
+				variant.Fields[0].Name[0] >= '0' &&
+				variant.Fields[0].Name[0] <= '9'
+
+			for fieldIdx, field := range variant.Fields {
 				// Determine parameter name
 				paramName := field.Name
 				isTupleField := len(field.Name) > 0 && field.Name[0] >= '0' && field.Name[0] <= '9'
@@ -417,16 +472,21 @@ func (e *EnumProcessor) generateSumType(enumName string, variants []Variant) str
 					paramName = "arg" + field.Name
 				}
 
-				// Determine field name using same logic as struct generation
+				// Determine field name using SAME logic as struct generation
 				var fieldName string
-				if isTupleField && len(variant.Fields) == 1 {
+				if isSingleTupleVariant {
 					// Single tuple field - use variant name (e.g., "ok", "err", "some")
 					fieldName = strings.ToLower(variant.Name)
 				} else if isTupleField {
-					// Multiple tuple fields - use _N format
-					fieldName = "_" + field.Name
+					// Multiple tuple fields - use proper naming convention (first, second1, third2)
+					baseName := strings.ToLower(variant.Name)
+					if fieldIdx == 0 {
+						fieldName = baseName // First field: no suffix
+					} else {
+						fieldName = fmt.Sprintf("%s%d", baseName, fieldIdx) // 2nd+ fields: suffix 1, 2, 3
+					}
 				} else {
-					// Struct variant with named fields - use variantname_fieldname
+					// Struct variant with named fields - use variant_fieldname
 					fieldName = strings.ToLower(variant.Name) + "_" + field.Name
 				}
 
@@ -443,16 +503,146 @@ func (e *EnumProcessor) generateSumType(enumName string, variants []Variant) str
 	}
 
 	// 5. Generate Is* methods
-	for i, variant := range variants {
+	for _, variant := range variants {
 		tagConstName := fmt.Sprintf("%s%s", tagTypeName, variant.Name)
 		buf.WriteString(fmt.Sprintf("func (e %s) Is%s() bool {\n", enumName, variant.Name))
 		buf.WriteString(fmt.Sprintf("\treturn e.tag == %s\n", tagConstName))
-		buf.WriteString("}")
-		// Add newline after each method except the last
-		if i < len(variants)-1 {
-			buf.WriteString("\n")
+		buf.WriteString("}\n")
+	}
+
+	// 6. Generate Map and AndThen methods for Option/Result-like enums
+	e.generateHelperMethods(&buf, enumName, tagTypeName, variants)
+
+	return buf.String()
+}
+
+// generateHelperMethods generates Map and AndThen methods for Option/Result-like enums
+// These methods enable functional chaining patterns
+func (e *EnumProcessor) generateHelperMethods(buf *bytes.Buffer, enumName, tagTypeName string, variants []Variant) {
+	// Detect if this is an Option or Result type based on variant names
+	isOption := e.hasVariants(variants, []string{"Some", "None"})
+	isResult := e.hasVariants(variants, []string{"Ok", "Err"})
+
+	if !isOption && !isResult {
+		// Only generate helpers for Option/Result-like enums
+		return
+	}
+
+	if isOption {
+		e.generateOptionHelpers(buf, enumName, tagTypeName, variants)
+	}
+
+	if isResult {
+		e.generateResultHelpers(buf, enumName, tagTypeName, variants)
+	}
+}
+
+// hasVariants checks if the enum has specific variant names
+func (e *EnumProcessor) hasVariants(variants []Variant, names []string) bool {
+	found := make(map[string]bool)
+	for _, v := range variants {
+		for _, name := range names {
+			if v.Name == name {
+				found[name] = true
+			}
+		}
+	}
+	return len(found) == len(names)
+}
+
+// generateOptionHelpers generates Map and AndThen for Option types
+func (e *EnumProcessor) generateOptionHelpers(buf *bytes.Buffer, enumName, tagTypeName string, variants []Variant) {
+	// Find the Some variant to get the value type
+	var someVariant *Variant
+	for i := range variants {
+		if variants[i].Name == "Some" {
+			someVariant = &variants[i]
+			break
 		}
 	}
 
-	return buf.String()
+	if someVariant == nil || len(someVariant.Fields) == 0 {
+		return // Can't generate without knowing the type
+	}
+
+	valueType := someVariant.Fields[0].Type
+	fieldName := "some" // lowercase variant name
+
+	// Map(fn func(T) T) Option
+	// Note: Since Go lacks generics, we can only map T -> T, not T -> U
+	buf.WriteString("\n")
+	buf.WriteString(fmt.Sprintf("func (o %s) Map(fn func(%s) %s) %s {\n", enumName, valueType, valueType, enumName))
+	buf.WriteString("\tswitch o.tag {\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sSome:\n", tagTypeName))
+	buf.WriteString(fmt.Sprintf("\t\tif o.%s != nil {\n", fieldName))
+	buf.WriteString(fmt.Sprintf("\t\t\treturn %sSome(fn(*o.%s))\n", enumName, fieldName))
+	buf.WriteString("\t\t}\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sNone:\n", tagTypeName))
+	buf.WriteString("\t\treturn o\n")
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\tpanic(\"invalid %s state\")\n", enumName))
+	buf.WriteString("}\n")
+
+	// AndThen(fn func(T) Option) Option
+	buf.WriteString("\n")
+	buf.WriteString(fmt.Sprintf("func (o %s) AndThen(fn func(%s) %s) %s {\n", enumName, valueType, enumName, enumName))
+	buf.WriteString("\tswitch o.tag {\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sSome:\n", tagTypeName))
+	buf.WriteString(fmt.Sprintf("\t\tif o.%s != nil {\n", fieldName))
+	buf.WriteString(fmt.Sprintf("\t\t\treturn fn(*o.%s)\n", fieldName))
+	buf.WriteString("\t\t}\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sNone:\n", tagTypeName))
+	buf.WriteString("\t\treturn o\n")
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\tpanic(\"invalid %s state\")\n", enumName))
+	buf.WriteString("}\n")
+}
+
+// generateResultHelpers generates Map and AndThen for Result types
+func (e *EnumProcessor) generateResultHelpers(buf *bytes.Buffer, enumName, tagTypeName string, variants []Variant) {
+	// Find Ok and Err variants
+	var okVariant, errVariant *Variant
+	for i := range variants {
+		if variants[i].Name == "Ok" {
+			okVariant = &variants[i]
+		} else if variants[i].Name == "Err" {
+			errVariant = &variants[i]
+		}
+	}
+
+	if okVariant == nil || errVariant == nil || len(okVariant.Fields) == 0 || len(errVariant.Fields) == 0 {
+		return // Can't generate without both types
+	}
+
+	okType := okVariant.Fields[0].Type
+	okFieldName := "ok" // lowercase variant name
+
+	// Map(fn func(T) T) Result
+	// Note: Since Go lacks generics, we can only map T -> T, not T -> U
+	buf.WriteString("\n")
+	buf.WriteString(fmt.Sprintf("func (r %s) Map(fn func(%s) %s) %s {\n", enumName, okType, okType, enumName))
+	buf.WriteString("\tswitch r.tag {\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sOk:\n", tagTypeName))
+	buf.WriteString(fmt.Sprintf("\t\tif r.%s != nil {\n", okFieldName))
+	buf.WriteString(fmt.Sprintf("\t\t\treturn %sOk(fn(*r.%s))\n", enumName, okFieldName))
+	buf.WriteString("\t\t}\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sErr:\n", tagTypeName))
+	buf.WriteString("\t\treturn r\n")
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\tpanic(\"invalid %s state\")\n", enumName))
+	buf.WriteString("}\n")
+
+	// AndThen(fn func(T) Result) Result
+	buf.WriteString("\n")
+	buf.WriteString(fmt.Sprintf("func (r %s) AndThen(fn func(%s) %s) %s {\n", enumName, okType, enumName, enumName))
+	buf.WriteString("\tswitch r.tag {\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sOk:\n", tagTypeName))
+	buf.WriteString(fmt.Sprintf("\t\tif r.%s != nil {\n", okFieldName))
+	buf.WriteString(fmt.Sprintf("\t\t\treturn fn(*r.%s)\n", okFieldName))
+	buf.WriteString("\t\t}\n")
+	buf.WriteString(fmt.Sprintf("\tcase %sErr:\n", tagTypeName))
+	buf.WriteString("\t\treturn r\n")
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\tpanic(\"invalid %s state\")\n", enumName))
+	buf.WriteString("}\n")
 }

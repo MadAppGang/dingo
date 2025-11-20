@@ -17,9 +17,9 @@ func getValue(id int) Option {
 }
 
 func processValue(opt Option) Option {
-	return opt
-		.map(|x| x * 2)
-		.and_then(|x| {
+	return opt.
+		Map(x => x * 2).
+		AndThen(x => {
 			if x > 10 {
 				return OptionSome(x)
 			}

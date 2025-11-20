@@ -25,6 +25,28 @@ func (e Option) IsSome() bool {
 func (e Option) IsNone() bool {
 	return e.tag == OptionTagNone
 }
+func (o Option) Map(fn func(int) int) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func (o Option) AndThen(fn func(int) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
 func getAge() Option {
 	return OptionNone()
 }

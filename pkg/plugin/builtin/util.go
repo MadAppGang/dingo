@@ -5,18 +5,19 @@ import (
 	"strings"
 )
 
-// SanitizeTypeName converts type name parts to camelCase
+// SanitizeTypeName converts type name parts to underscore format with leading underscore
+// This is used for Result<T,E> → Result_T_E and Option<T> → Option_T naming
 // Examples:
-//   ("int", "error") → "IntError"
-//   ("string", "option") → "StringOption"
-//   ("any", "error") → "AnyError"
-//   ("http", "request") → "HTTPRequest"
-//   ("url", "parser") → "URLParser"
-//   ("CustomError") → "CustomError"
+//   ("int", "error") → "_int_error"
+//   ("string") → "_string"
+//   ("any", "error") → "_interface_error"
+//   ("*User", "error") → "_ptr_User_error"
+//   ("[]int", "error") → "_slice_int_error"
 func SanitizeTypeName(parts ...string) string {
 	var result strings.Builder
 	for _, part := range parts {
-		result.WriteString(capitalizeTypeComponent(part))
+		result.WriteString("_")
+		result.WriteString(sanitizeTypeComponent(part))
 	}
 	return result.String()
 }
@@ -54,35 +55,47 @@ var (
 	}
 )
 
-// capitalizeTypeComponent handles acronyms and built-in types
-func capitalizeTypeComponent(s string) string {
+// sanitizeTypeComponent sanitizes individual type components for underscore format
+// Handles special prefixes like *, [], map[], chan, etc.
+func sanitizeTypeComponent(s string) string {
 	if s == "" {
 		return s
 	}
 
-	lower := strings.ToLower(s)
-	if upper, ok := commonAcronyms[lower]; ok {
-		return upper
+	// Handle pointer types: *T → ptr_T
+	if strings.HasPrefix(s, "*") {
+		return "ptr_" + sanitizeTypeComponent(strings.TrimPrefix(s, "*"))
 	}
 
-	// Built-in types - capitalize first letter only
-	if builtinTypes[lower] {
-		return strings.ToUpper(s[:1]) + s[1:]
+	// Handle slice types: []T → slice_T
+	if strings.HasPrefix(s, "[]") {
+		return "slice_" + sanitizeTypeComponent(strings.TrimPrefix(s, "[]"))
 	}
 
-	// Single lowercase letter - capitalize it
-	if len(s) == 1 && s[0] >= 'a' && s[0] <= 'z' {
-		return strings.ToUpper(s)
+	// Handle map types: map[K]V → map_K_V (simplified)
+	if strings.HasPrefix(s, "map[") {
+		// Complex parsing - for now just use "map"
+		return "map"
 	}
 
-	// User-defined type - preserve original capitalization if already capitalized
-	// Otherwise capitalize first letter
-	if len(s) > 0 && s[0] >= 'A' && s[0] <= 'Z' {
-		return s // Already capitalized, preserve
+	// Handle chan types
+	if strings.HasPrefix(s, "chan ") {
+		return "chan_" + sanitizeTypeComponent(strings.TrimPrefix(s, "chan "))
 	}
 
-	// Lowercase user type - capitalize first letter
-	return strings.ToUpper(s[:1]) + s[1:]
+	// Handle interface{} → interface
+	if s == "interface{}" {
+		return "interface"
+	}
+
+	// Handle any → interface (Go 1.18+)
+	if s == "any" {
+		return "interface"
+	}
+
+	// Otherwise return as-is (preserves case for user types like User, CustomError)
+	// Built-in types like int, string, error remain lowercase
+	return s
 }
 
 // GenerateTempVarName generates temporary variable names with optional numbering

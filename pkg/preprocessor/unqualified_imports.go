@@ -69,7 +69,12 @@ func (p *UnqualifiedImportProcessor) Process(source []byte) ([]byte, []Mapping, 
 			continue
 		}
 
-		// Check if already qualified (e.g., "os.ReadFile")
+		// Check if this is a method declaration (e.g., func (r Result) Map(...))
+		if p.isMethodDeclaration(source, funcNameStart) {
+			continue
+		}
+
+		// Check if already qualified or is a method call (e.g., "os.ReadFile" or "result.Map")
 		if p.isAlreadyQualified(source, funcNameStart) {
 			continue
 		}
@@ -94,8 +99,16 @@ func (p *UnqualifiedImportProcessor) Process(source []byte) ([]byte, []Mapping, 
 		origLine, origCol := calculatePosition(source, funcNameStart)
 		genLine, genCol := calculatePosition([]byte(result.String()), result.Len())
 
-		// Write qualified name
-		qualified := pkg + "." + funcName
+		// Extract package alias from import path
+		// For "encoding/json" → "json"
+		// For "os" → "os"
+		pkgAlias := pkg
+		if idx := strings.LastIndex(pkg, "/"); idx != -1 {
+			pkgAlias = pkg[idx+1:]
+		}
+
+		// Write qualified name using package alias
+		qualified := pkgAlias + "." + funcName
 		result.WriteString(qualified)
 
 		// Track import
@@ -157,10 +170,23 @@ func (p *UnqualifiedImportProcessor) isAlreadyQualified(source []byte, funcPos i
 		return false
 	}
 
-	// Found '.', check if there's an identifier before it
-	i--
+	// Found '.', this is always a method call or qualified identifier
+	// Examples: result.Map(...), AndThen(...).Map(...), pkg.Function(...)
+	// All of these are valid and should be skipped by UnqualifiedImportProcessor
+	return true
+}
 
-	// Skip whitespace before dot
+// isMethodDeclaration checks if a function name is part of a method declaration
+// by looking for the pattern: func (receiver Type) MethodName(
+func (p *UnqualifiedImportProcessor) isMethodDeclaration(source []byte, funcPos int) bool {
+	if funcPos < 6 { // Need at least "func ("
+		return false
+	}
+
+	// Look backwards from function name to find "func ("
+	i := funcPos - 1
+
+	// Skip whitespace before function name
 	for i >= 0 && (source[i] == ' ' || source[i] == '\t' || source[i] == '\n') {
 		i--
 	}
@@ -169,9 +195,51 @@ func (p *UnqualifiedImportProcessor) isAlreadyQualified(source []byte, funcPos i
 		return false
 	}
 
-	// Check if preceded by identifier characters
-	if isIdentifierChar(source[i]) {
-		return true
+	// Look for closing paren of receiver: ) MethodName
+	if source[i] != ')' {
+		return false
+	}
+
+	// Found ')', now look for opening paren and 'func' keyword
+	parenDepth := 1
+	i--
+
+	// Skip backward through receiver declaration: (r Result)
+	for i >= 0 && parenDepth > 0 {
+		if source[i] == ')' {
+			parenDepth++
+		} else if source[i] == '(' {
+			parenDepth--
+		}
+		i--
+	}
+
+	if parenDepth != 0 || i < 0 {
+		return false
+	}
+
+	// Now i should be just before '(', skip whitespace
+	for i >= 0 && (source[i] == ' ' || source[i] == '\t' || source[i] == '\n') {
+		i--
+	}
+
+	if i < 3 { // Need at least "func"
+		return false
+	}
+
+	// Check for 'func' keyword
+	if i >= 3 &&
+		source[i-3] == 'f' &&
+		source[i-2] == 'u' &&
+		source[i-1] == 'n' &&
+		source[i] == 'c' {
+		// Verify 'func' is a complete word (preceded by whitespace or start of file)
+		if i == 3 {
+			return true
+		}
+		if i > 3 && !isIdentifierChar(source[i-4]) {
+			return true
+		}
 	}
 
 	return false

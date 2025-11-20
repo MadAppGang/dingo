@@ -24,6 +24,28 @@ func (e Option) IsSome() bool {
 func (e Option) IsNone() bool {
 	return e.tag == OptionTagNone
 }
+func (o Option) Map(fn func(string) string) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func (o Option) AndThen(fn func(string) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
 func findInMap(m map[string]string, key string) Option {
 	val, exists := m[key]
 	if exists {

@@ -24,6 +24,28 @@ func (e Option) IsSome() bool {
 func (e Option) IsNone() bool {
 	return e.tag == OptionTagNone
 }
+func (o Option) Map(fn func(int) int) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func (o Option) AndThen(fn func(int) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
 
 type ResultTag uint8
 
@@ -34,8 +56,8 @@ const (
 
 type Result struct {
 	tag ResultTag
-	ok  *int
 	err *error
+	ok  *int
 }
 func ResultOk(arg0 int) Result {
 	return Result{tag: ResultTagOk, ok: &arg0}
@@ -49,6 +71,28 @@ func (e Result) IsOk() bool {
 func (e Result) IsErr() bool {
 	return e.tag == ResultTagErr
 }
+func (r Result) Map(fn func(int) int) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return ResultOk(fn(*r.ok))
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
+}
+func (r Result) AndThen(fn func(int) Result) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return fn(*r.ok)
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
+}
 
 // Using 'where' keyword (Swift-style)
 func analyzeValue(opt Option) string {
@@ -56,8 +100,8 @@ func analyzeValue(opt Option) string {
 
 	scrutinee := opt
 	switch scrutinee.tag {
-	case OptionSomeTag:
-		x := *scrutinee.optionsome
+	case OptionTagSome:
+		x := *scrutinee.some
 
 		if x > 100 {
 			result = "large"
@@ -71,6 +115,9 @@ func analyzeValue(opt Option) string {
 		} else {
 			result = "non-positive"
 		}
+	case OptionTagNone:
+
+		result = "none"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
@@ -83,8 +130,8 @@ func processResult(result Result) string {
 
 	scrutinee2 := result
 	switch scrutinee2.tag {
-	case ResultOkTag:
-		val := *scrutinee2.resultok
+	case ResultTagOk:
+		val := *scrutinee2.ok
 
 		if val > 100 {
 			result2 = "large value"
@@ -95,7 +142,7 @@ func processResult(result Result) string {
 		} else {
 			result2 = "non-positive value"
 		}
-	case ResultErrTag:
+	case ResultTagErr:
 
 		result2 = "error"
 	}
@@ -110,8 +157,8 @@ func categorize(opt Option) string {
 
 	scrutinee3 := opt
 	switch scrutinee3.tag {
-	case OptionSomeTag:
-		x := *scrutinee3.optionsome
+	case OptionTagSome:
+		x := *scrutinee3.some
 
 		if x%3 == 0 && x%5 == 0 {
 			result3 = "fizzbuzz"
@@ -125,6 +172,9 @@ func categorize(opt Option) string {
 		} else {
 			result3 = "number"
 		}
+	case OptionTagNone:
+
+		result3 = "empty"
 	}
 	panic("unreachable: match is exhaustive")
 	return result3

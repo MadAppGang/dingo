@@ -1,0 +1,2 @@
+[features]
+lambda_style = "rust"

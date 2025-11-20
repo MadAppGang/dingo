@@ -8,194 +8,130 @@ func TestSanitizeTypeName(t *testing.T) {
 		parts    []string
 		expected string
 	}{
-		// Single built-in types
+		// Single built-in types (leading underscore for type params)
 		{
 			name:     "int",
 			parts:    []string{"int"},
-			expected: "Int",
+			expected: "_int",
 		},
 		{
 			name:     "string",
 			parts:    []string{"string"},
-			expected: "String",
+			expected: "_string",
 		},
 		{
 			name:     "error",
 			parts:    []string{"error"},
-			expected: "Error",
+			expected: "_error",
 		},
 		{
 			name:     "bool",
 			parts:    []string{"bool"},
-			expected: "Bool",
+			expected: "_bool",
 		},
 		{
-			name:     "any",
+			name:     "any → interface",
 			parts:    []string{"any"},
-			expected: "Any",
+			expected: "_interface",
 		},
 
-		// Two-part type names
+		// Two-part type names (leading underscore, underscore separated)
 		{
 			name:     "int + error",
 			parts:    []string{"int", "error"},
-			expected: "IntError",
+			expected: "_int_error",
 		},
 		{
 			name:     "string + option",
 			parts:    []string{"string", "option"},
-			expected: "StringOption",
+			expected: "_string_option",
 		},
 		{
 			name:     "any + error",
 			parts:    []string{"any", "error"},
-			expected: "AnyError",
+			expected: "_interface_error",
 		},
 
-		// Acronyms (all-caps)
-		{
-			name:     "http",
-			parts:    []string{"http"},
-			expected: "HTTP",
-		},
-		{
-			name:     "url",
-			parts:    []string{"url"},
-			expected: "URL",
-		},
-		{
-			name:     "json",
-			parts:    []string{"json"},
-			expected: "JSON",
-		},
-		{
-			name:     "xml",
-			parts:    []string{"xml"},
-			expected: "XML",
-		},
-		{
-			name:     "api",
-			parts:    []string{"api"},
-			expected: "API",
-		},
-		{
-			name:     "id",
-			parts:    []string{"id"},
-			expected: "ID",
-		},
-		{
-			name:     "uuid",
-			parts:    []string{"uuid"},
-			expected: "UUID",
-		},
-
-		// Acronyms in compound types
-		{
-			name:     "http + request",
-			parts:    []string{"http", "request"},
-			expected: "HTTPRequest",
-		},
-		{
-			name:     "url + parser",
-			parts:    []string{"url", "parser"},
-			expected: "URLParser",
-		},
-		{
-			name:     "json + error",
-			parts:    []string{"json", "error"},
-			expected: "JSONError",
-		},
-
-		// User-defined types (preserve capitalization)
+		// User-defined types (preserve capitalization with leading underscore)
 		{
 			name:     "User",
 			parts:    []string{"User"},
-			expected: "User",
+			expected: "_User",
 		},
 		{
 			name:     "CustomError",
 			parts:    []string{"CustomError"},
-			expected: "CustomError",
+			expected: "_CustomError",
 		},
 		{
 			name:     "UserID",
 			parts:    []string{"UserID"},
-			expected: "UserID",
+			expected: "_UserID",
 		},
 
 		// User types in compound names
 		{
 			name:     "CustomError + int",
 			parts:    []string{"CustomError", "int"},
-			expected: "CustomErrorInt",
+			expected: "_CustomError_int",
 		},
 		{
 			name:     "int + CustomError",
 			parts:    []string{"int", "CustomError"},
-			expected: "IntCustomError",
+			expected: "_int_CustomError",
 		},
 		{
 			name:     "UserID + error",
 			parts:    []string{"UserID", "error"},
-			expected: "UserIDError",
+			expected: "_UserID_error",
 		},
 
-		// Mixed cases
+		// Pointer types
 		{
-			name:     "HTTP + CustomError",
-			parts:    []string{"http", "CustomError"},
-			expected: "HTTPCustomError",
+			name:     "*User",
+			parts:    []string{"*User"},
+			expected: "_ptr_User",
 		},
 		{
-			name:     "URL + UserID",
-			parts:    []string{"url", "UserID"},
-			expected: "URLUserID",
+			name:     "*int + error",
+			parts:    []string{"*int", "error"},
+			expected: "_ptr_int_error",
+		},
+
+		// Slice types
+		{
+			name:     "[]string",
+			parts:    []string{"[]string"},
+			expected: "_slice_string",
+		},
+		{
+			name:     "[]int + error",
+			parts:    []string{"[]int", "error"},
+			expected: "_slice_int_error",
 		},
 
 		// Three-part names
 		{
 			name:     "int + string + error",
 			parts:    []string{"int", "string", "error"},
-			expected: "IntStringError",
-		},
-		{
-			name:     "http + request + error",
-			parts:    []string{"http", "request", "error"},
-			expected: "HTTPRequestError",
+			expected: "_int_string_error",
 		},
 
 		// Edge cases
 		{
-			name:     "empty string part",
-			parts:    []string{"", "error"},
-			expected: "Error",
-		},
-		{
-			name:     "single character",
-			parts:    []string{"a"},
-			expected: "A",
-		},
-		{
 			name:     "numeric types",
 			parts:    []string{"int64", "error"},
-			expected: "Int64Error",
+			expected: "_int64_error",
 		},
 		{
 			name:     "uint types",
 			parts:    []string{"uint32"},
-			expected: "Uint32",
+			expected: "_uint32",
 		},
 		{
 			name:     "float types",
 			parts:    []string{"float64", "error"},
-			expected: "Float64Error",
-		},
-
-		// Case sensitivity tests
-		{
-			name:     "HTTP (already caps) stays HTTP",
-			parts:    []string{"HTTP"},
-			expected: "HTTP",
+			expected: "_float64_error",
 		},
 	}
 
@@ -323,52 +259,64 @@ func TestGenerateTempVarName(t *testing.T) {
 	}
 }
 
-func TestCapitalizeTypeComponent(t *testing.T) {
+func TestSanitizeTypeComponent(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
 		expected string
 	}{
-		// Built-in types
+		// Built-in types (preserve lowercase)
 		{
 			name:     "int",
 			input:    "int",
-			expected: "Int",
+			expected: "int",
 		},
 		{
 			name:     "string",
 			input:    "string",
-			expected: "String",
+			expected: "string",
 		},
 		{
-			name:     "any",
+			name:     "error",
+			input:    "error",
+			expected: "error",
+		},
+		{
+			name:     "any → interface",
 			input:    "any",
-			expected: "Any",
+			expected: "interface",
+		},
+		{
+			name:     "interface{} → interface",
+			input:    "interface{}",
+			expected: "interface",
 		},
 
-		// Acronyms
+		// Pointer types
 		{
-			name:     "http lowercase",
-			input:    "http",
-			expected: "HTTP",
+			name:     "*User",
+			input:    "*User",
+			expected: "ptr_User",
 		},
 		{
-			name:     "HTTP uppercase",
-			input:    "HTTP",
-			expected: "HTTP",
-		},
-		{
-			name:     "url lowercase",
-			input:    "url",
-			expected: "URL",
-		},
-		{
-			name:     "URL uppercase",
-			input:    "URL",
-			expected: "URL",
+			name:     "*int",
+			input:    "*int",
+			expected: "ptr_int",
 		},
 
-		// User types
+		// Slice types
+		{
+			name:     "[]string",
+			input:    "[]string",
+			expected: "slice_string",
+		},
+		{
+			name:     "[]int",
+			input:    "[]int",
+			expected: "slice_int",
+		},
+
+		// User types (preserve case)
 		{
 			name:     "User",
 			input:    "User",
@@ -379,11 +327,6 @@ func TestCapitalizeTypeComponent(t *testing.T) {
 			input:    "CustomError",
 			expected: "CustomError",
 		},
-		{
-			name:     "myType (user defined - gets capitalized)",
-			input:    "myType",
-			expected: "MyType",
-		},
 
 		// Edge cases
 		{
@@ -391,23 +334,13 @@ func TestCapitalizeTypeComponent(t *testing.T) {
 			input:    "",
 			expected: "",
 		},
-		{
-			name:     "single letter",
-			input:    "a",
-			expected: "A",
-		},
-		{
-			name:     "single letter uppercase",
-			input:    "A",
-			expected: "A",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := capitalizeTypeComponent(tt.input)
+			result := sanitizeTypeComponent(tt.input)
 			if result != tt.expected {
-				t.Errorf("capitalizeTypeComponent(%q) = %q, want %q",
+				t.Errorf("sanitizeTypeComponent(%q) = %q, want %q",
 					tt.input, result, tt.expected)
 			}
 		})

@@ -13,8 +13,8 @@ const (
 
 type Result struct {
 	tag ResultTag
-	ok  *string
 	err *error
+	ok  *string
 }
 
 func ResultOk(arg0 string) Result {
@@ -28,6 +28,28 @@ func (e Result) IsOk() bool {
 }
 func (e Result) IsErr() bool {
 	return e.tag == ResultTagErr
+}
+func (r Result) Map(fn func(string) string) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return ResultOk(fn(*r.ok))
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
+}
+func (r Result) AndThen(fn func(string) Result) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return fn(*r.ok)
+		}
+	case ResultTagErr:
+		return r
+	}
+	panic("invalid Result state")
 }
 func parseConfig(host Result, port Result, timeout Result) string {
 

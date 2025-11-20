@@ -14,17 +14,17 @@ const (
 
 type Request struct {
 	tag    RequestTag
-	get    *string
-	_0     *string
-	_1     *string
 	delete *string
+	get    *string
+	post   *string
+	post1  *string
 }
 
 func RequestGet(arg0 string) Request {
 	return Request{tag: RequestTagGet, get: &arg0}
 }
 func RequestPost(arg0 string, arg1 string) Request {
-	return Request{tag: RequestTagPost, _0: &arg0, _1: &arg1}
+	return Request{tag: RequestTagPost, post: &arg0, post1: &arg1}
 }
 func RequestDelete(arg0 string) Request {
 	return Request{tag: RequestTagDelete, delete: &arg0}
@@ -87,8 +87,8 @@ func routeRequest(req Request) string {
 			result = "static resource"
 		}
 	case RequestTagPost:
-		path := *scrutinee._0
-		body := *scrutinee._1
+		path := *scrutinee.post
+		body := *scrutinee.post1
 
 		if len(body) > 100 && strings.Contains(path, "upload") {
 			result = "large upload"
@@ -105,6 +105,9 @@ func routeRequest(req Request) string {
 		} else {
 			result = "delete request"
 		}
+	default:
+
+		result = "unknown"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
@@ -134,7 +137,13 @@ func classifyStatus(status Status) string {
 
 		if duration > 3600 {
 			result2 = "long pause"
+
+		} else if true {
+			result2 = "short pause"
 		}
+	case StatusTagStopped:
+
+		result2 = "stopped"
 	}
 	panic("unreachable: match is exhaustive")
 	return result2

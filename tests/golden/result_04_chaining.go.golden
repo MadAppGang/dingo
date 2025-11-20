@@ -1,6 +1,8 @@
 package main
 
-import "errors"
+import (
+	"errors"
+)
 
 type ResultTag uint8
 
@@ -10,15 +12,15 @@ const (
 )
 
 type Result struct {
-	tag   ResultTag
-	ok  *int
+	tag ResultTag
 	err *error
+	ok  *int
 }
 
-func Result_Ok(arg0 int) Result {
+func ResultOk(arg0 int) Result {
 	return Result{tag: ResultTagOk, ok: &arg0}
 }
-func Result_Err(arg0 error) Result {
+func ResultErr(arg0 error) Result {
 	return Result{tag: ResultTagErr, err: &arg0}
 }
 func (e Result) IsOk() bool {
@@ -27,41 +29,44 @@ func (e Result) IsOk() bool {
 func (e Result) IsErr() bool {
 	return e.tag == ResultTagErr
 }
-
-// Map method for Result chaining
-func (r Result) Map(f func(int) int) Result {
-	if r.IsOk() {
-		return Result_Ok(f(*r.ok))
+func (r Result) Map(fn func(int) int) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return ResultOk(fn(*r.ok))
+		}
+	case ResultTagErr:
+		return r
 	}
-	return r
+	panic("invalid Result state")
 }
-
-// AndThen method for Result chaining
-func (r Result) AndThen(f func(int) Result) Result {
-	if r.IsOk() {
-		return f(*r.ok)
+func (r Result) AndThen(fn func(int) Result) Result {
+	switch r.tag {
+	case ResultTagOk:
+		if r.ok != nil {
+			return fn(*r.ok)
+		}
+	case ResultTagErr:
+		return r
 	}
-	return r
+	panic("invalid Result state")
 }
-
 func parse(s string) Result {
 	if s == "" {
-		return Result_Err(errors.New("empty string"))
+		return ResultErr(errors.New("empty string"))
 	}
-	return Result_Ok(len(s))
+	return ResultOk(len(s))
 }
 func validate(n int) Result {
 	if n < 5 {
-		return Result_Err(errors.New("too short"))
+		return ResultErr(errors.New("too short"))
 	}
-	return Result_Ok(n)
+	return ResultOk(n)
 }
 func processInput(input string) Result {
-	return parse(input).AndThen(func(x int) Result {
-		return validate(x)
-	}).Map(func(x int) int {
-		return x * 2
-	})
+	return parse(input).
+		AndThen(func(x __TYPE_INFERENCE_NEEDED) { return validate(x) }).
+		Map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 })
 }
 func main() {
 	result := processInput("hello world")

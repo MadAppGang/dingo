@@ -11,8 +11,8 @@ const (
 
 type patterns struct {
 	tag patternsTag
-	ok  *Value
 	err *error
+	ok  *Value
 }
 
 func patternsOk(arg0 Value) patterns {
@@ -26,6 +26,28 @@ func (e patterns) IsOk() bool {
 }
 func (e patterns) IsErr() bool {
 	return e.tag == patternsTagErr
+}
+func (r patterns) Map(fn func(Value) Value) patterns {
+	switch r.tag {
+	case patternsTagOk:
+		if r.ok != nil {
+			return patternsOk(fn(*r.ok))
+		}
+	case patternsTagErr:
+		return r
+	}
+	panic("invalid patterns state")
+}
+func (r patterns) AndThen(fn func(Value) patterns) patterns {
+	switch r.tag {
+	case patternsTagOk:
+		if r.ok != nil {
+			return fn(*r.ok)
+		}
+	case patternsTagErr:
+		return r
+	}
+	panic("invalid patterns state")
 }
 
 type ValueTag uint8
@@ -57,7 +79,7 @@ func processResult(r Result) string {
 
 	scrutinee := r
 	switch scrutinee.tag {
-	case ResultOkTag:
+	case ResultTagOk:
 		nestedResultOk := *scrutinee.resultok
 		switch nestedResultOk.tag {
 		case ValueTagInt:
@@ -67,8 +89,8 @@ func processResult(r Result) string {
 			s := *nestedResultOk.string
 			result = "Got string: " + s
 		}
-	case ResultErrTag:
-		e := *scrutinee.resulterr
+	case ResultTagErr:
+		e := *scrutinee.err
 
 		result = "Error: " + e.Error()
 	}

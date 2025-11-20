@@ -26,9 +26,9 @@ func validate(n int) Result {
 }
 
 func processInput(input string) Result {
-	return parse(input)
-		.and_then(|x| validate(x))
-		.map(|x| x * 2)
+	return parse(input).
+		AndThen(x => validate(x)).
+		Map(x => x * 2)
 }
 
 func main() {

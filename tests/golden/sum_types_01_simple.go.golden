@@ -12,13 +12,13 @@ type Status struct {
 	tag StatusTag
 }
 
-func StatusPending() Status {
+func Status_Pending() Status {
 	return Status{tag: StatusTagPending}
 }
-func StatusActive() Status {
+func Status_Active() Status {
 	return Status{tag: StatusTagActive}
 }
-func StatusComplete() Status {
+func Status_Complete() Status {
 	return Status{tag: StatusTagComplete}
 }
 func (e Status) IsPending() bool {

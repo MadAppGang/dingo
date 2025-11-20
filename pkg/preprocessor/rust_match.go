@@ -886,7 +886,19 @@ func (r *RustMatchProcessor) generateCaseWithGuards(scrutineeVar string, group a
 				if isInAssignment && assignmentVar != "" {
 					buf.WriteString(fmt.Sprintf("\t\t%s = %s\n", assignmentVar, arm.expression))
 				} else {
-					buf.WriteString(fmt.Sprintf("\t\t%s\n", arm.expression))
+					// FIX T2B: Add return statement for expression-only arms
+					exprTrimmed := strings.TrimSpace(arm.expression)
+					needsReturn := !strings.HasPrefix(exprTrimmed, "return ") &&
+						!strings.HasPrefix(exprTrimmed, "panic(") &&
+						!strings.HasPrefix(exprTrimmed, "break") &&
+						!strings.HasPrefix(exprTrimmed, "continue") &&
+						!strings.HasPrefix(exprTrimmed, "{")
+
+					if needsReturn {
+						buf.WriteString(fmt.Sprintf("\t\treturn %s\n", arm.expression))
+					} else {
+						buf.WriteString(fmt.Sprintf("\t\t%s\n", arm.expression))
+					}
 				}
 			}
 		}
@@ -956,7 +968,19 @@ func (r *RustMatchProcessor) generateCaseWithGuards(scrutineeVar string, group a
 			if isInAssignment && assignmentVar != "" {
 				buf.WriteString(fmt.Sprintf("\t\t%s = %s\n", assignmentVar, exprStr))
 			} else {
-				buf.WriteString(fmt.Sprintf("\t\t%s\n", exprStr))
+				// FIX T2B: Add return statement for expression-only arms
+				exprTrimmed := strings.TrimSpace(exprStr)
+				needsReturn := !strings.HasPrefix(exprTrimmed, "return ") &&
+					!strings.HasPrefix(exprTrimmed, "panic(") &&
+					!strings.HasPrefix(exprTrimmed, "break") &&
+					!strings.HasPrefix(exprTrimmed, "continue") &&
+					!strings.HasPrefix(exprTrimmed, "{")
+
+				if needsReturn {
+					buf.WriteString(fmt.Sprintf("\t\treturn %s\n", exprStr))
+				} else {
+					buf.WriteString(fmt.Sprintf("\t\t%s\n", exprStr))
+				}
 			}
 		} else {
 			// No guard: this is the else clause (or standalone if no other guards)
@@ -973,7 +997,20 @@ func (r *RustMatchProcessor) generateCaseWithGuards(scrutineeVar string, group a
 			if isInAssignment && assignmentVar != "" {
 				buf.WriteString(fmt.Sprintf("%s%s = %s\n", indent, assignmentVar, exprStr))
 			} else {
-				buf.WriteString(fmt.Sprintf("%s%s\n", indent, exprStr))
+				// FIX T2B: Add return statement for expression-only arms
+				// If expression doesn't already start with return/panic/break/continue, add return
+				exprTrimmed := strings.TrimSpace(exprStr)
+				needsReturn := !strings.HasPrefix(exprTrimmed, "return ") &&
+					!strings.HasPrefix(exprTrimmed, "panic(") &&
+					!strings.HasPrefix(exprTrimmed, "break") &&
+					!strings.HasPrefix(exprTrimmed, "continue") &&
+					!strings.HasPrefix(exprTrimmed, "{") // Block expressions handle their own returns
+
+				if needsReturn {
+					buf.WriteString(fmt.Sprintf("%sreturn %s\n", indent, exprStr))
+				} else {
+					buf.WriteString(fmt.Sprintf("%s%s\n", indent, exprStr))
+				}
 			}
 
 			// Close else block if we had previous guards
@@ -1005,7 +1042,19 @@ func (r *RustMatchProcessor) generateCase(scrutineeVar string, arm patternArm, o
 		if isInAssignment && assignmentVar != "" {
 			buf.WriteString(fmt.Sprintf("\t%s = %s\n", assignmentVar, arm.expression))
 		} else {
-			buf.WriteString(fmt.Sprintf("\t%s\n", arm.expression))
+			// FIX T2B: Add return statement for expression-only arms
+			exprTrimmed := strings.TrimSpace(arm.expression)
+			needsReturn := !strings.HasPrefix(exprTrimmed, "return ") &&
+				!strings.HasPrefix(exprTrimmed, "panic(") &&
+				!strings.HasPrefix(exprTrimmed, "break") &&
+				!strings.HasPrefix(exprTrimmed, "continue") &&
+				!strings.HasPrefix(exprTrimmed, "{")
+
+			if needsReturn {
+				buf.WriteString(fmt.Sprintf("\treturn %s\n", arm.expression))
+			} else {
+				buf.WriteString(fmt.Sprintf("\t%s\n", arm.expression))
+			}
 		}
 
 		mappings = append(mappings, Mapping{
@@ -1140,6 +1189,7 @@ func (r *RustMatchProcessor) generateCase(scrutineeVar string, arm patternArm, o
 
 // getTagName converts pattern name to Go tag constant name (CamelCase)
 // Ok → ResultTagOk, Err → ResultTagErr, Some → OptionTagSome, None → OptionTagNone
+// ResultOk → ResultTagOk, OptionSome → OptionTagSome (constructor-style names)
 // Status_Pending → StatusTagPending (for custom enums)
 func (r *RustMatchProcessor) getTagName(pattern string) string {
 	switch pattern {
@@ -1150,6 +1200,15 @@ func (r *RustMatchProcessor) getTagName(pattern string) string {
 	case "Some":
 		return "OptionTagSome"
 	case "None":
+		return "OptionTagNone"
+	// Constructor-style names: ResultOk, ResultErr, OptionSome, OptionNone
+	case "ResultOk":
+		return "ResultTagOk"
+	case "ResultErr":
+		return "ResultTagErr"
+	case "OptionSome":
+		return "OptionTagSome"
+	case "OptionNone":
 		return "OptionTagNone"
 	default:
 		// Custom enum variant: EnumName_Variant → EnumNameTagVariant
@@ -1167,15 +1226,18 @@ func (r *RustMatchProcessor) getTagName(pattern string) string {
 // generateBinding generates binding extraction code (CamelCase field names)
 func (r *RustMatchProcessor) generateBinding(scrutinee string, pattern string, binding string) string {
 	switch pattern {
-	case "Ok":
+	case "Ok", "ResultOk":
 		// For Result<T,E>, Ok value is stored in ok field (pointer to T)
 		return fmt.Sprintf("%s := *%s.ok", binding, scrutinee)
-	case "Err":
-		// For Result<T,E>, Err value is stored in err field (E)
-		return fmt.Sprintf("%s := %s.err", binding, scrutinee)
-	case "Some":
+	case "Err", "ResultErr":
+		// For Result<T,E>, Err value is stored in err field (pointer to E)
+		return fmt.Sprintf("%s := *%s.err", binding, scrutinee)
+	case "Some", "OptionSome":
 		// For Option<T>, Some value is stored in some field (pointer to T)
 		return fmt.Sprintf("%s := *%s.some", binding, scrutinee)
+	case "None", "OptionNone":
+		// None has no value to extract
+		return ""
 	default:
 		// Custom enum variant: check if this is a multi-field tuple binding
 		// Multi-field tuple bindings contain commas, e.g., "path, body"
@@ -1183,12 +1245,26 @@ func (r *RustMatchProcessor) generateBinding(scrutinee string, pattern string, b
 			// Multi-field tuple: split binding and generate extraction for each field
 			bindings := strings.Split(binding, ",")
 			var extractions []string
+
+			// Extract base variant name
+			variantName := pattern
+			if idx := strings.LastIndex(pattern, "_"); idx != -1 {
+				variantName = pattern[idx+1:]
+			}
+			baseName := strings.ToLower(variantName)
+
 			for i, b := range bindings {
 				b = strings.TrimSpace(b)
 				if b == "_" {
 					continue // Skip wildcard bindings
 				}
-				fieldName := fmt.Sprintf("_%d", i)
+				// Use correct naming: first field no suffix, then 1, 2, 3
+				var fieldName string
+				if i == 0 {
+					fieldName = baseName
+				} else {
+					fieldName = fmt.Sprintf("%s%d", baseName, i)
+				}
 				extractions = append(extractions, fmt.Sprintf("%s := *%s.%s", b, scrutinee, fieldName))
 			}
 			return strings.Join(extractions, "\n\t")
@@ -1219,16 +1295,16 @@ func (r *RustMatchProcessor) generateBinding(scrutinee string, pattern string, b
 //   -> "x := *elem0.ok"
 func (r *RustMatchProcessor) generateTupleBinding(elemVar string, variant string, binding string) string {
 	switch variant {
-	case "Ok":
+	case "Ok", "ResultOk":
 		// For Result<T,E>, Ok value is stored in ok field (pointer to T)
 		return fmt.Sprintf("%s := *%s.ok", binding, elemVar)
-	case "Err":
+	case "Err", "ResultErr":
 		// For Result<T,E>, Err value is stored in err field (pointer to E)
 		return fmt.Sprintf("%s := *%s.err", binding, elemVar)
-	case "Some":
+	case "Some", "OptionSome":
 		// For Option<T>, Some value is stored in some field (pointer to T)
 		return fmt.Sprintf("%s := *%s.some", binding, elemVar)
-	case "None":
+	case "None", "OptionNone":
 		// None has no value to extract
 		return ""
 	default:

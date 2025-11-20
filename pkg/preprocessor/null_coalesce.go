@@ -164,8 +164,16 @@ type nullCoalescePosition struct {
 func findNullCoalescePositions(line string) []nullCoalescePosition {
 	var positions []nullCoalescePosition
 
+	// Find comment start position
+	commentStart := findCommentStart(line)
+
 	i := 0
 	for i < len(line) {
+		// Skip if we're inside a comment
+		if commentStart != -1 && i >= commentStart {
+			break
+		}
+
 		// Look for ?? pattern
 		if i+1 < len(line) && line[i] == '?' && line[i+1] == '?' {
 			opStart := i
@@ -209,6 +217,58 @@ func findNullCoalescePositions(line string) []nullCoalescePosition {
 	}
 
 	return positions
+}
+
+// findCommentStart finds the start position of a comment (// or /*) in a line
+// Returns -1 if no comment found
+// NOTE: Does not handle string literals containing comment markers
+func findCommentStart(line string) int {
+	inString := false
+	stringChar := byte(0)
+
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+
+		// Track string state
+		if !inString {
+			if ch == '"' || ch == '\'' || ch == '`' {
+				inString = true
+				stringChar = ch
+			}
+		} else {
+			// Inside string - check for closing quote
+			if ch == stringChar {
+				// Check if escaped
+				if i > 0 && line[i-1] == '\\' {
+					// Count consecutive backslashes
+					backslashCount := 0
+					for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
+						backslashCount++
+					}
+					// If odd number of backslashes, quote is escaped
+					if backslashCount%2 == 1 {
+						continue
+					}
+				}
+				inString = false
+			}
+			continue
+		}
+
+		// Check for comment markers (only when not in string)
+		if !inString {
+			// Single-line comment
+			if i+1 < len(line) && line[i] == '/' && line[i+1] == '/' {
+				return i
+			}
+			// Multi-line comment start
+			if i+1 < len(line) && line[i] == '/' && line[i+1] == '*' {
+				return i
+			}
+		}
+	}
+
+	return -1
 }
 
 // extractOperandBefore extracts an operand before a position
@@ -261,11 +321,14 @@ func extractOperandBefore(line string, end int) int {
 			return -1 // Unbalanced
 		}
 
-		// Continue backwards to get function/method name
+		// Continue backwards to get function/method name (including obj.method() chains)
 		start++ // Adjust for loop overshoot
 		for start > 0 {
 			ch := line[start-1]
-			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '.' {
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
+				start--
+			} else if ch == '.' || ch == '?' {
+				// Method chain or safe nav - continue backwards
 				start--
 			} else {
 				break
@@ -314,7 +377,7 @@ func extractOperandBefore(line string, end int) int {
 }
 
 // extractOperandAfter extracts an operand after a position
-// Handles: identifiers, literals, function calls
+// Handles: identifiers, literals, function calls, method chains, safe nav
 func extractOperandAfter(line string, start int) int {
 	if start >= len(line) {
 		return -1
@@ -340,7 +403,7 @@ func extractOperandAfter(line string, start int) int {
 		return -1 // Unclosed string
 	}
 
-	// Case 2: Number literal
+	// Case 2: Number literal (positive only - don't parse - as operator)
 	if ch >= '0' && ch <= '9' {
 		end := start + 1
 		hasDecimal := false
@@ -358,9 +421,10 @@ func extractOperandAfter(line string, start int) int {
 		return end
 	}
 
-	// Case 3: Identifier (possibly with function call)
+	// Case 3: Identifier with method chains, safe nav, function calls
 	if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' {
 		end := start + 1
+		// Scan identifier with chaining
 		for end < len(line) {
 			ch := line[end]
 			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
@@ -380,8 +444,17 @@ func extractOperandAfter(line string, start int) int {
 				if depth != 0 {
 					return -1 // Unbalanced
 				}
-				return end
+				// After function call, continue to check for more chaining
+			} else if ch == '.' {
+				// Property access or method call
+				end++
+				// Continue parsing identifier/method after dot
+			} else if ch == '?' && end+1 < len(line) && line[end+1] == '.' {
+				// Safe navigation ?.
+				end += 2
+				// Continue parsing identifier/method after ?.
 			} else {
+				// Stop at operators like +, -, ??, etc.
 				break
 			}
 		}
@@ -509,29 +582,21 @@ func (n *NullCoalesceProcessor) generateInline(chain []string, leftType TypeKind
 	var buf bytes.Buffer
 	var mappings []Mapping
 
-	// Generate based on left type
+	// Generate based on left type (single-line IIFE to avoid indentation issues)
+	// Note: For enum-based Option types, we use __UNWRAP__ placeholder which will be resolved during AST phase
 	switch leftType {
 	case TypeOption:
-		// Option type: check IsSome()
-		buf.WriteString("func() __INFER__ {\n")
-		buf.WriteString(fmt.Sprintf("\tif %s.IsSome() {\n", left))
-		buf.WriteString(fmt.Sprintf("\t\treturn %s.Unwrap()\n", left))
-		buf.WriteString("\t}\n")
-		buf.WriteString(fmt.Sprintf("\treturn %s\n", right))
-		buf.WriteString("}()")
+		// Option type: check IsSome() and use __UNWRAP__ for value extraction
+		buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
 
 	case TypePointer:
 		// Pointer type: check nil
-		buf.WriteString("func() __INFER__ {\n")
-		buf.WriteString(fmt.Sprintf("\tif %s != nil {\n", left))
-		buf.WriteString(fmt.Sprintf("\t\treturn *%s\n", left))
-		buf.WriteString("\t}\n")
-		buf.WriteString(fmt.Sprintf("\treturn %s\n", right))
-		buf.WriteString("}()")
+		buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s != nil { return *%s }; return %s }()", left, left, right))
 
 	case TypeUnknown, TypeRegular:
-		// Unknown type: generate placeholder for AST plugin
-		buf.WriteString(fmt.Sprintf("__NULL_COALESCE_INFER__(%s, %s)", left, right))
+		// Unknown type: assume Option type (most common case)
+		// Generate IIFE with Option checks and __UNWRAP__ placeholder
+		buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
 	}
 
 	// Add mapping
@@ -548,12 +613,13 @@ func (n *NullCoalesceProcessor) generateInline(chain []string, leftType TypeKind
 }
 
 // generateIIFE generates IIFE code for complex cases (including chaining)
+// Uses single-line format to avoid indentation issues
 func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, originalLine int, outputLine int) (string, []Mapping) {
 	var buf bytes.Buffer
 	var mappings []Mapping
 
-	// Generate IIFE for chained coalescing
-	buf.WriteString("func() __INFER__ {\n")
+	// Build single-line IIFE
+	buf.WriteString("func() __INFER__ { ")
 
 	// Generate checks for each element in chain
 	for i := 0; i < len(chain)-1; i++ {
@@ -564,58 +630,44 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 			tmpVar := fmt.Sprintf("__coalesce%d", n.tmpCounter)
 			n.tmpCounter++
 
-			buf.WriteString(fmt.Sprintf("\t%s := %s\n", tmpVar, operand))
+			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))
 
 			// Check based on type
 			switch leftType {
 			case TypeOption:
-				buf.WriteString(fmt.Sprintf("\tif %s.IsSome() {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn %s.Unwrap()\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
 
 			case TypePointer:
-				buf.WriteString(fmt.Sprintf("\tif %s != nil {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn *%s\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if %s != nil { return *%s }; ", tmpVar, tmpVar))
 
 			case TypeUnknown, TypeRegular:
 				// Generate placeholder check
-				buf.WriteString(fmt.Sprintf("\tif __IS_SOME__(%s) {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn __UNWRAP__(%s)\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
 			}
 		} else {
 			// Subsequent operands in chain: evaluate and check
 			tmpVar := fmt.Sprintf("__coalesce%d", n.tmpCounter)
 			n.tmpCounter++
 
-			buf.WriteString(fmt.Sprintf("\t%s := %s\n", tmpVar, operand))
+			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))
 
 			// All subsequent values treated same as first type
 			switch leftType {
 			case TypeOption:
-				buf.WriteString(fmt.Sprintf("\tif %s.IsSome() {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn %s.Unwrap()\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
 
 			case TypePointer:
-				buf.WriteString(fmt.Sprintf("\tif %s != nil {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn *%s\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if %s != nil { return *%s }; ", tmpVar, tmpVar))
 
 			case TypeUnknown, TypeRegular:
-				buf.WriteString(fmt.Sprintf("\tif __IS_SOME__(%s) {\n", tmpVar))
-				buf.WriteString(fmt.Sprintf("\t\treturn __UNWRAP__(%s)\n", tmpVar))
-				buf.WriteString("\t}\n")
+				buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
 			}
 		}
 	}
 
 	// Final fallback: return last element
 	lastOperand := strings.TrimSpace(chain[len(chain)-1])
-	buf.WriteString(fmt.Sprintf("\treturn %s\n", lastOperand))
-
-	buf.WriteString("}()")
+	buf.WriteString(fmt.Sprintf("return %s }()", lastOperand))
 
 	// Add mapping
 	mappings = append(mappings, Mapping{

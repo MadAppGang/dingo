@@ -1,0 +1,227 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+enum UserRole {
+	Guest,
+	User,
+	Admin,
+	Moderator
+}
+
+type User struct {
+	ID       string
+	Email    string
+	Name     string
+	Role     UserRole
+	Verified bool
+	Bio      *string
+}
+
+type Action struct {
+	Type       string
+	Permission string
+}
+
+type Response struct {
+	StatusCode int
+	Body       map[string]interface{}
+}
+
+type JWTClaims struct {
+	UserID string
+	Exp    int64
+}
+
+func authenticateUser(token string) (User, error) {
+	if token == "" {
+		return User{}, fmt.Errorf("missing token")
+	}
+
+	let claims = parseJWT(token)?
+	let user = fetchUserFromDB(claims.UserID)?
+
+	return user, nil
+}
+
+func parseJWT(token string) (JWTClaims, error) {
+	if !strings.HasPrefix(token, "Bearer ") {
+		return JWTClaims{}, fmt.Errorf("invalid format")
+	}
+
+	return JWTClaims{UserID: "user_123", Exp: 3600}, nil
+}
+
+func fetchUserFromDB(id string) (User, error) {
+	if id == "" {
+		return User{}, fmt.Errorf("not found")
+	}
+
+	let bio = "Software developer"
+
+	return User{
+		ID:       id,
+		Email:    "user@example.com",
+		Name:     "John Doe",
+		Role:     UserRole_User(),
+		Verified: true,
+		Bio:      &bio,
+	}, nil
+}
+
+func handleRequest(user User, action Action) (Response, error) {
+	match user.Role {
+		UserRole_Admin() => {
+			return executeAdminAction(user.ID, action)
+		}
+		UserRole_Moderator() => {
+			return executeModAction(user.ID, action)
+		}
+		UserRole_User() => {
+			if !user.Verified {
+				return Response{}, fmt.Errorf("verification required")
+			}
+			return executeUserAction(user.ID, action)
+		}
+		UserRole_Guest() => {
+			return executeGuestAction(action)
+		}
+	}
+}
+
+func getUserRoleString(role UserRole) string {
+	match role {
+		UserRole_Admin() => "admin",
+		UserRole_Moderator() => "moderator",
+		UserRole_User() => "user",
+		UserRole_Guest() => "guest"
+	}
+}
+
+func getUserBio(user User) string {
+	return user.Bio ?? "No bio provided"
+}
+
+func createUserPipeline(email string, password string) (User, error) {
+	let validated = validateEmail(email)?
+	let hashed = hashPassword(password)?
+	let user = createUserInDB(validated, hashed)?
+
+	return user, nil
+}
+
+func validateEmail(email string) (string, error) {
+	if !strings.Contains(email, "@") {
+		return "", fmt.Errorf("invalid email")
+	}
+	return email, nil
+}
+
+func hashPassword(password string) (string, error) {
+	if len(password) < 8 {
+		return "", fmt.Errorf("password too short")
+	}
+	return "hashed_" + password, nil
+}
+
+func createUserInDB(email string, hashedPassword string) (User, error) {
+	return User{
+		ID:       "new_user_123",
+		Email:    email,
+		Name:     strings.Split(email, "@")[0],
+		Role:     UserRole_Guest(),
+		Verified: false,
+		Bio:      nil,
+	}, nil
+}
+
+func handleApiRequest(req *http.Request) (Response, error) {
+	let authHeader = req.Header.Get("Authorization")
+	if authHeader == "" {
+		return Response{}, fmt.Errorf("missing Authorization header")
+	}
+
+	let user = authenticateUser(authHeader)?
+	let action = parseActionFromRequest(req)?
+
+	let response = handleRequest(user, action)?
+
+	response.Body["user_bio"] = getUserBio(user)
+	response.Body["user_role"] = getUserRoleString(user.Role)
+
+	return response, nil
+}
+
+func parseActionFromRequest(req *http.Request) (Action, error) {
+	let action Action
+	if err := json.NewDecoder(req.Body).Decode(&action); err != nil {
+		return Action{}, fmt.Errorf("invalid body")
+	}
+	return action, nil
+}
+
+func executeAdminAction(id string, action Action) (Response, error) {
+	return Response{
+		StatusCode: 200,
+		Body: map[string]interface{}{
+			"status": "admin action",
+			"user":   id,
+		},
+	}, nil
+}
+
+func executeModAction(id string, action Action) (Response, error) {
+	return Response{
+		StatusCode: 200,
+		Body: map[string]interface{}{
+			"status": "moderator action",
+		},
+	}, nil
+}
+
+func executeUserAction(id string, action Action) (Response, error) {
+	return Response{
+		StatusCode: 200,
+		Body: map[string]interface{}{
+			"status": "user action",
+		},
+	}, nil
+}
+
+func executeGuestAction(action Action) (Response, error) {
+	return Response{
+		StatusCode: 200,
+		Body: map[string]interface{}{
+			"status": "guest action",
+		},
+	}, nil
+}
+
+func main() {
+	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		response, err := handleApiRequest(r)
+
+		if err != nil {
+			w.WriteHeader(500)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+
+		w.WriteHeader(response.StatusCode)
+		json.NewEncoder(w).Encode(response.Body)
+	})
+
+	fmt.Println("Dingo Showcase Server - Demonstrating:")
+	fmt.Println("  - Sum types (enums)")
+	fmt.Println("  - Error propagation (? operator)")
+	fmt.Println("  - Pattern matching (exhaustiveness)")
+	fmt.Println("  - Null coalescing (?? operator)")
+	fmt.Println("Starting on :8080...")
+
+	http.ListenAndServe(":8080", nil)
+}

@@ -2,65 +2,65 @@
   "version": 1,
   "mappings": [
     {
-      "generated_line": 36,
+      "generated_line": 16,
       "generated_column": 1,
-      "original_line": 36,
+      "original_line": 16,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 37,
+      "generated_line": 17,
       "generated_column": 1,
-      "original_line": 36,
+      "original_line": 16,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 38,
+      "generated_line": 18,
       "generated_column": 1,
-      "original_line": 36,
+      "original_line": 16,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 150,
+      "generated_line": 130,
       "generated_column": 1,
-      "original_line": 36,
+      "original_line": 16,
       "original_column": 1,
       "length": 1,
       "name": "rust_match"
     },
     {
-      "generated_line": 156,
+      "generated_line": 136,
       "generated_column": 1,
-      "original_line": 49,
+      "original_line": 29,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 157,
+      "generated_line": 137,
       "generated_column": 1,
-      "original_line": 49,
+      "original_line": 29,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 158,
+      "generated_line": 138,
       "generated_column": 1,
-      "original_line": 49,
+      "original_line": 29,
       "original_column": 1,
       "length": 5,
       "name": "rust_match"
     },
     {
-      "generated_line": 190,
+      "generated_line": 170,
       "generated_column": 1,
-      "original_line": 49,
+      "original_line": 29,
       "original_column": 1,
       "length": 1,
       "name": "rust_match"
