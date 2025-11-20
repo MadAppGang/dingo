@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 9,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 4,
       "original_column": 13,
       "length": 14,
@@ -67,7 +67,7 @@
     },
     {
       "generated_line": 17,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 6,
       "original_column": 12,
       "length": 24,
@@ -131,17 +131,17 @@
     },
     {
       "generated_line": 9,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 4,
-      "original_column": 20,
+      "original_column": 16,
       "length": 11,
       "name": "unqualified:ReadFile"
     },
     {
       "generated_line": 17,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 12,
-      "original_column": 20,
+      "original_column": 16,
       "length": 14,
       "name": "unqualified:Unmarshal"
     }

@@ -152,21 +152,28 @@ func (p *Preprocessor) Process() (string, *SourceMap, error) {
 
 	// Inject all needed imports at the end (after all transformations complete)
 	if len(neededImports) > 0 {
-		originalLineCount := strings.Count(string(result), "\n") + 1
-		var importInsertLine int
+		var importInsertLine, importBlockEndLine int
 		var err error
-		// IMPORTANT-2 FIX: injectImportsWithPosition now returns errors instead of silent fallback
-		result, importInsertLine, err = injectImportsWithPosition(result, neededImports)
+		// CRITICAL FIX: Get both import start and end lines for accurate shifting
+		result, importInsertLine, importBlockEndLine, err = injectImportsWithPosition(result, neededImports)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to inject imports: %w", err)
 		}
-		newLineCount := strings.Count(string(result), "\n") + 1
-		importLinesAdded := newLineCount - originalLineCount
 
-		// Adjust all source mappings to account for added import lines
-		// CRITICAL-2 FIX: Only shift mappings for lines AFTER import insertion point
-		if importLinesAdded > 0 {
-			adjustMappingsForImports(sourceMap, importLinesAdded, importInsertLine)
+		// Calculate how many lines the import block occupies
+		// importInsertLine is where imports start (e.g., line 2)
+		// importBlockEndLine is where imports end (e.g., line 3 for single-line import)
+		// CRITICAL FIX: Only apply adjustment if imports were actually added
+		if importInsertLine > 0 && importBlockEndLine > 0 {
+			// Add +3 to account for code generator reformatting:
+			// - Single-line "import \"pkg\"" becomes 3-line block format "import (\n\t\"pkg\"\n)"
+			// - Additional blank line added after import block
+			// - go/printer reformatting adds extra spacing
+			// So a single-line import at line 3 becomes lines 3-6 (+3 extra lines)
+			importBlockSize := importBlockEndLine - importInsertLine + 3
+
+			// Adjust all source mappings to account for added import lines
+			adjustMappingsForImports(sourceMap, importBlockSize, importInsertLine)
 		}
 	}
 
@@ -193,16 +200,15 @@ func (p *Preprocessor) HasCache() bool {
 	return p.cache != nil
 }
 
-// injectImportsWithPosition adds needed imports to the source code and returns the insertion line
-// IMPORTANT-2 FIX: Now returns errors instead of silently falling back to original source
-// Returns: modified source, insertion line (1-based), and error
-func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, error) {
+// injectImportsWithPosition adds needed imports to the source code and returns the insertion line and end line
+// CRITICAL FIX: Now returns both start and end lines of import block for accurate source map adjustment
+// Returns: modified source, import block start line (1-based), import block end line (1-based), and error
+func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, int, error) {
 	// Parse the source
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
-		// IMPORTANT-2 FIX: Return error instead of silently falling back
-		return nil, 0, fmt.Errorf("failed to parse source for import injection: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to parse source for import injection: %w", err)
 	}
 
 	// Deduplicate and sort needed imports
@@ -219,7 +225,7 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, err
 
 	// If no new imports needed, return original
 	if len(importMap) == 0 {
-		return source, 1, nil
+		return source, 0, 0, nil
 	}
 
 	// Determine import insertion line (after package declaration, before first decl)
@@ -244,18 +250,53 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, err
 	// Generate output with imports
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, fset, node); err != nil {
-		// IMPORTANT-2 FIX: Return error instead of silently falling back
-		return nil, 0, fmt.Errorf("failed to print AST with imports: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to print AST with imports: %w", err)
 	}
 
-	return buf.Bytes(), importInsertLine, nil
+	// CRITICAL FIX: Determine import block end line by scanning the generated output
+	// We need to find where the import block ends in the printed output
+	result := buf.Bytes()
+	resultStr := string(result)
+	lines := strings.Split(resultStr, "\n")
+
+	// Find the last import line by looking for import declarations
+	importBlockEndLine := importInsertLine
+	inImportBlock := false
+	for i, line := range lines {
+		lineNum := i + 1 // 1-based line number
+		trimmed := strings.TrimSpace(line)
+
+		// Check if we're entering the import block
+		if strings.HasPrefix(trimmed, "import") {
+			inImportBlock = true
+			importBlockEndLine = lineNum
+			continue
+		}
+
+		// If we're in import block, check if we've reached the end
+		if inImportBlock {
+			// Check if we reached a declaration (end of import section)
+			if strings.HasPrefix(trimmed, "func") || strings.HasPrefix(trimmed, "type") ||
+			   strings.HasPrefix(trimmed, "const") || strings.HasPrefix(trimmed, "var") {
+				// Reached first declaration. Import block has ended.
+				break
+			}
+
+			// Update end line for any non-blank line in import block
+			if trimmed != "" {
+				importBlockEndLine = lineNum
+			}
+		}
+	}
+
+	return result, importInsertLine, importBlockEndLine, nil
 }
 
 // adjustMappingsForImports shifts mapping line numbers to account for added imports
-// CRITICAL-2 FIX: Only shifts mappings for lines AFTER the import insertion point
+// CRITICAL FIX: Shifts mappings for lines AFTER the import insertion point
 func adjustMappingsForImports(sourceMap *SourceMap, numImportLines int, importInsertionLine int) {
 	for i := range sourceMap.Mappings {
-		// CRITICAL-2 FIX: Only shift mappings for lines AFTER import insertion
+		// CRITICAL FIX: Only shift mappings for lines AFTER import insertion
 		//
 		// importInsertionLine is the line number (1-based) where imports are inserted
 		// (typically line 2 or 3, right after the package declaration).
@@ -267,7 +308,7 @@ func adjustMappingsForImports(sourceMap *SourceMap, numImportLines int, importIn
 		// Example:
 		//   Line 1: package main
 		//   Line 2: [IMPORTS INSERTED HERE] ← importInsertionLine = 2
-		//   Line 3: func foo() { ... } (shifts to line 5 if 2 imports added)
+		//   Line 3: func foo() { ... } (shifts to line 7 if 4-line import block added)
 		//
 		// Mappings with GeneratedLine=1 or 2 stay as-is.
 		// Mappings with GeneratedLine=3+ are shifted by numImportLines.

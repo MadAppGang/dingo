@@ -107,7 +107,7 @@ func isAddressable(expr ast.Expr) bool {
 //
 // Example transformation:
 //   Input:  Ok(42)
-//   Output: Ok(func() *int { __tmp0 := 42; return &__tmp0 }())
+//   Output: Ok(func() *int { tmp1 := 42; return &tmp1 }())
 //
 // This pattern allows taking the address of literals and other non-addressable expressions.
 //

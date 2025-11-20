@@ -204,14 +204,14 @@ func complexOperation() (string, int, bool, error) {
 
 	// Verify the transformation generated multiple temporary variables
 	resultStr := string(result)
-	if !strings.Contains(resultStr, "__tmp0") {
-		t.Error("Expected __tmp0 in output")
+	if !strings.Contains(resultStr, "tmp1") {
+		t.Error("Expected tmp1 in output")
 	}
-	if !strings.Contains(resultStr, "__tmp1") {
-		t.Error("Expected __tmp1 in output")
+	if !strings.Contains(resultStr, "tmp2") {
+		t.Error("Expected tmp2 in output")
 	}
-	if !strings.Contains(resultStr, "__tmp2") {
-		t.Error("Expected __tmp2 in output")
+	if !strings.Contains(resultStr, "tmp3") {
+		t.Error("Expected tmp3 in output")
 	}
 }
 

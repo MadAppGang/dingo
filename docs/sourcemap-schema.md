@@ -94,8 +94,8 @@ This matches `go/token.Position` and `go/ast` behavior.
 1: package main
 2:
 3: func main() {
-4:     data, __err__ := ReadFile("config.json")
-5:     if __err__ != nil {
+4:     data, err1 := ReadFile("config.json")
+5:     if err1 != nil {
 6:         return
 7:     }
 8: }
@@ -184,8 +184,8 @@ data := ReadFile("config.json")?
 
 **Generated Go (`example.go`)**:
 ```go
-data, __err__ := ReadFile("config.json")
-if __err__ != nil {
+data, err1 := ReadFile("config.json")
+if err1 != nil {
     return
 }
 ```

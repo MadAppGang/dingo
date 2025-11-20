@@ -472,6 +472,94 @@
       "original_column": 1,
       "length": 1,
       "name": "rust_match"
+    },
+    {
+      "generated_line": 94,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 5,
+      "name": "rust_match"
+    },
+    {
+      "generated_line": 95,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 5,
+      "name": "rust_match"
+    },
+    {
+      "generated_line": 96,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 5,
+      "name": "rust_match"
+    },
+    {
+      "generated_line": 97,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 4,
+      "name": "rust_match_arm"
+    },
+    {
+      "generated_line": 98,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 3,
+      "name": "rust_match_binding"
+    },
+    {
+      "generated_line": 99,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 9,
+      "name": "rust_match_arm"
+    },
+    {
+      "generated_line": 101,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 4,
+      "name": "rust_match_arm"
+    },
+    {
+      "generated_line": 102,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 4,
+      "name": "rust_match_arm"
+    },
+    {
+      "generated_line": 104,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 1,
+      "name": "rust_match"
+    },
+    {
+      "generated_line": 105,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 5,
+      "name": "rust_match_panic"
+    },
+    {
+      "generated_line": 106,
+      "generated_column": 1,
+      "original_line": 94,
+      "original_column": 1,
+      "length": 1,
+      "name": "rust_match"
     }
   ]
 }

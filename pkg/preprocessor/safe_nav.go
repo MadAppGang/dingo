@@ -186,7 +186,7 @@ func (s *SafeNavProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 	s.typeDetector.ParseSource(source)
 
 	// Reset state
-	s.tmpCounter = 0
+	s.tmpCounter = 1
 	s.mappings = []Mapping{}
 
 	lines := strings.Split(string(source), "\n")
@@ -712,7 +712,7 @@ func (s *SafeNavProcessor) generateOptionMode(base string, elements []ChainEleme
 		outputLinesGenerated += 3
 
 		// Unwrap to get the value
-		tmpVar := fmt.Sprintf("__%s%d", base, s.tmpCounter)
+		tmpVar := fmt.Sprintf("%s%d", base, s.tmpCounter)
 		s.tmpCounter++
 		buf.WriteString(fmt.Sprintf("\t%s := %s.Unwrap()\n", tmpVar, currentVar))
 		outputLinesGenerated++

@@ -66,17 +66,19 @@ Example for chained coalescing:
 ```go
 // Before (multi-line):
 func() __INFER__ {
-	__coalesce0 := first
-	if __coalesce0.IsSome() {
-		return __coalesce0.Unwrap()
+	coalesce1 := first
+	if coalesce1.IsSome() {
+		return coalesce1.Unwrap()
 	}
 	// ... more checks
 	return last
 }()
 
 // After (single-line):
-func() __INFER__ { __coalesce0 := first; if __coalesce0.IsSome() { return __UNWRAP__(__coalesce0) }; __coalesce1 := second; if __coalesce1.IsSome() { return __UNWRAP__(__coalesce1) }; return last }()
+func() __INFER__ { coalesce1 := first; if coalesce1.IsSome() { return __UNWRAP__(coalesce1) }; coalesce2 := second; if coalesce2.IsSome() { return __UNWRAP__(coalesce2) }; return last }()
 ```
+
+**Note (2025-11-20)**: Updated examples to use new naming convention (`coalesce1` instead of `__coalesce0`). See `ai-docs/naming-convention-guide.md` for details.
 
 ### 3. Updated `__UNWRAP__` placeholder
 

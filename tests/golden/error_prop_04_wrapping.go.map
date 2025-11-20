@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 10,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 5,
       "original_column": 13,
       "length": 14,
@@ -67,9 +67,9 @@
     },
     {
       "generated_line": 10,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 5,
-      "original_column": 20,
+      "original_column": 16,
       "length": 11,
       "name": "unqualified:ReadFile"
     }

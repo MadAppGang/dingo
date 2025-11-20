@@ -2,28 +2,12 @@
   "version": 1,
   "mappings": [
     {
-      "generated_line": 10,
-      "generated_column": 20,
+      "generated_line": 12,
+      "generated_column": 16,
       "original_line": 5,
       "original_column": 13,
       "length": 14,
       "name": "expr_mapping"
-    },
-    {
-      "generated_line": 10,
-      "generated_column": 1,
-      "original_line": 5,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 11,
-      "generated_column": 1,
-      "original_line": 5,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
     },
     {
       "generated_line": 12,
@@ -66,10 +50,34 @@
       "name": "error_prop"
     },
     {
-      "generated_line": 10,
-      "generated_column": 20,
+      "generated_line": 17,
+      "generated_column": 1,
       "original_line": 5,
-      "original_column": 20,
+      "original_column": 27,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 18,
+      "generated_column": 6,
+      "original_line": 5,
+      "original_column": 6,
+      "length": 4,
+      "name": "var_name"
+    },
+    {
+      "generated_line": 18,
+      "generated_column": 1,
+      "original_line": 5,
+      "original_column": 27,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 12,
+      "generated_column": 16,
+      "original_line": 5,
+      "original_column": 16,
       "length": 11,
       "name": "unqualified:ReadFile"
     }

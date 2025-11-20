@@ -236,10 +236,14 @@ type Context struct {
 //
 // CRITICAL FIX #6 (Code Review): Encapsulation for TempVarCounter
 //
-// Returns a string like "__tmp0", "__tmp1", etc.
+// Returns a string like "tmp1", "tmp2", etc.
 // Note: NOT thread-safe. Plugins MUST run sequentially.
 func (ctx *Context) NextTempVar() string {
-	varName := fmt.Sprintf("__tmp%d", ctx.TempVarCounter)
+	// Initialize counter to 1 if this is the first call
+	if ctx.TempVarCounter == 0 {
+		ctx.TempVarCounter = 1
+	}
+	varName := fmt.Sprintf("tmp%d", ctx.TempVarCounter)
 	ctx.TempVarCounter++
 	return varName
 }

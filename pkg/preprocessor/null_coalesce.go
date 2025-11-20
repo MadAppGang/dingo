@@ -45,7 +45,7 @@ func (n *NullCoalesceProcessor) Process(source []byte) ([]byte, []Mapping, error
 	n.typeDetector.ParseSource(source)
 
 	// Reset state
-	n.tmpCounter = 0
+	n.tmpCounter = 1
 	n.mappings = []Mapping{}
 
 	lines := strings.Split(string(source), "\n")
@@ -627,7 +627,7 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 
 		if i == 0 {
 			// First operand: evaluate once and check
-			tmpVar := fmt.Sprintf("__coalesce%d", n.tmpCounter)
+			tmpVar := fmt.Sprintf("coalesce%d", n.tmpCounter)
 			n.tmpCounter++
 
 			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))
@@ -646,7 +646,7 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 			}
 		} else {
 			// Subsequent operands in chain: evaluate and check
-			tmpVar := fmt.Sprintf("__coalesce%d", n.tmpCounter)
+			tmpVar := fmt.Sprintf("coalesce%d", n.tmpCounter)
 			n.tmpCounter++
 
 			buf.WriteString(fmt.Sprintf("%s := %s; ", tmpVar, operand))

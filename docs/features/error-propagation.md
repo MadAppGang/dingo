@@ -52,17 +52,17 @@ All three syntaxes generate identical Go code:
 
 ```go
 func processUser(id int) (User, error) {
-    __tmp0, __err0 := fetchUser(id)
-    if __err0 != nil {
-        return User{}, __err0
+    tmp1, err1 := fetchUser(id)
+    if err1 != nil {
+        return User{}, err1
     }
-    user := __tmp0
+    user := tmp1
 
-    __tmp1, __err1 := fetchProfile(user.ID)
-    if __err1 != nil {
-        return User{}, __err1
+    tmp2, err2 := fetchProfile(user.ID)
+    if err2 != nil {
+        return User{}, err2
     }
-    profile := __tmp1
+    profile := tmp2
 
     return profile, nil
 }

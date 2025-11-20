@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 11,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 9,
       "original_column": 13,
       "length": 21,
@@ -67,7 +67,7 @@
     },
     {
       "generated_line": 22,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 14,
       "original_column": 13,
       "length": 21,
@@ -131,17 +131,17 @@
     },
     {
       "generated_line": 11,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 9,
-      "original_column": 20,
+      "original_column": 16,
       "length": 11,
       "name": "unqualified:ReadFile"
     },
     {
       "generated_line": 22,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 20,
-      "original_column": 20,
+      "original_column": 16,
       "length": 11,
       "name": "unqualified:ReadFile"
     }

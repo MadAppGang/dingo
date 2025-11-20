@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 6,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 4,
       "original_column": 9,
       "length": 7,
@@ -67,9 +67,9 @@
     },
     {
       "generated_line": 6,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 4,
-      "original_column": 20,
+      "original_column": 16,
       "length": 12,
       "name": "unqualified:Atoi"
     }

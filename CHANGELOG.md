@@ -4,6 +4,62 @@ All notable changes to the Dingo compiler will be documented in this file.
 
 ## [Unreleased]
 
+### 🔧 Generated Variable Naming Convention (2025-11-20)
+
+**Date**: 2025-11-20
+**Type**: Code Quality & Consistency Fix
+**Scope**: All Code Generators
+
+**Overview:**
+Standardized ALL generated temporary variable naming across the entire codebase to follow Go's camelCase convention with one-based indexing. Eliminates inconsistent double-underscore prefixes and zero-based numbering.
+
+**Changes:**
+
+**Naming Transformations:**
+- Error propagation: `__tmp0`, `__err0` → `tmp1`, `err1`
+- Null coalescing: `__coalesce0` → `coalesce1`
+- Safe navigation: `__val0` → `val1`
+- Plugin temps: `__tmp0` → `tmp1`
+- Counters: Start at `1` instead of `0`
+
+**Implementation:**
+1. **Updated preprocessors**:
+   - `pkg/preprocessor/error_prop.go`: `tmpCounter = 1`, `tmp%d`, `err%d`
+   - `pkg/preprocessor/null_coalesce.go`: `tmpCounter = 1`, `coalesce%d`
+   - `pkg/preprocessor/safe_nav.go`: `tmpCounter = 1`, removed `__` prefix
+   - `pkg/preprocessor/rust_match.go`: Fixed unused variable warning
+
+2. **Updated plugins**:
+   - `pkg/plugin/plugin.go`: `NextTempVar()` generates `tmp1`, auto-initializes to 1
+   - `pkg/plugin/builtin/addressability.go`: Updated comments
+
+3. **Updated tests**:
+   - `pkg/preprocessor/config_test.go`: Expect `tmp1, tmp2, tmp3`
+   - `pkg/plugin/context_test.go`: Expect `tmp1, tmp2, tmp3`
+   - `pkg/plugin/builtin/addressability_test.go`: All instances updated
+
+4. **Regenerated golden tests**: 16 files
+   - All `error_prop_*.go` (9 files)
+   - All `safe_nav_*.go` (3 files)
+   - `option_02_literals.go`, `result_01_basic.go`, `showcase_00_hero.go`, `sum_types_02_struct_variant.go`
+
+**Documentation Updates:**
+- `CLAUDE.md`: Added "Code Generation Standards" section with naming rules
+- `docs/features/error-propagation.md`: Updated examples with new naming
+- All code comments referencing old naming updated
+
+**Rationale:**
+- **Go Convention**: Local variables use camelCase, not underscore prefixes
+- **Readability**: `tmp1` is cleaner than `__tmp0`
+- **Consistency**: All generators now follow same pattern
+- **Human-like**: Generated code looks hand-written
+- **One-based**: More natural (first item is `1`, not `0`)
+
+**Files Changed:**
+- **Source files**: 9 (preprocessors, plugins, tests)
+- **Golden tests**: 16 regenerated
+- **Documentation**: 3 (CLAUDE.md, error-propagation.md, CHANGELOG.md)
+
 ### 🔧 Naming Convention Standardization (2025-11-20)
 
 **Date**: 2025-11-20

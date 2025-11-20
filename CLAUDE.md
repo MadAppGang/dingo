@@ -260,6 +260,36 @@ See `ai-docs/claude-research.md` and `ai-docs/gemini_research.md` for details:
 4. **Simplicity**: Only add features that solve real pain points
 5. **Readable Output**: Generated Go should look hand-written
 
+### Code Generation Standards
+
+**CRITICAL: Variable Naming Convention (Enforced 2025-11-20)**
+
+All code generators MUST follow these naming rules:
+
+1. **No Underscores - Use camelCase**
+   - ✅ Correct: `tmp1`, `err1`, `coalesce1`
+   - ❌ Wrong: `__tmp0`, `__err0`, `__coalesce0`
+
+2. **One-Based Indexing - Start at 1**
+   - ✅ Correct: `tmp1`, `tmp2`, `tmp3`
+   - ❌ Wrong: `tmp0`, `tmp1`, `tmp2`
+
+3. **Counter Initialization**
+   - ✅ Correct: `counter = 1` or `counter := 1`
+   - ❌ Wrong: `counter = 0` or `counter := 0`
+
+**Affected Components:**
+- `pkg/preprocessor/error_prop.go` - Error propagation (`tmp1`, `err1`)
+- `pkg/preprocessor/null_coalesce.go` - Null coalescing (`coalesce1`, `coalesce2`)
+- `pkg/preprocessor/safe_nav.go` - Safe navigation (`val1`, `val2`)
+- `pkg/plugin/plugin.go` - Plugin temp vars (`tmp1`, `tmp2`)
+
+**Rationale:**
+- Go convention: camelCase for local variables
+- Readability: No visual clutter from underscores
+- Consistency: All generators follow same pattern
+- Human-like: Generated code looks hand-written
+
 ### Planned Features (Priority Order)
 
 1. `Result<T, E>` type (replaces `(T, error)`)

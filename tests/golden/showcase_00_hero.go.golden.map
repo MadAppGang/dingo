@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 34,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 34,
       "original_column": 19,
       "length": 20,
@@ -59,6 +59,14 @@
     },
     {
       "generated_line": 40,
+      "generated_column": 6,
+      "original_line": 34,
+      "original_column": 6,
+      "length": 10,
+      "name": "var_name"
+    },
+    {
+      "generated_line": 40,
       "generated_column": 1,
       "original_line": 34,
       "original_column": 39,
@@ -67,7 +75,7 @@
     },
     {
       "generated_line": 41,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 35,
       "original_column": 13,
       "length": 13,
@@ -120,6 +128,14 @@
       "original_column": 26,
       "length": 1,
       "name": "error_prop"
+    },
+    {
+      "generated_line": 47,
+      "generated_column": 6,
+      "original_line": 35,
+      "original_column": 6,
+      "length": 4,
+      "name": "var_name"
     },
     {
       "generated_line": 47,

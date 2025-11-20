@@ -3,7 +3,7 @@
   "mappings": [
     {
       "generated_line": 12,
-      "generated_column": 36,
+      "generated_column": 28,
       "original_line": 8,
       "original_column": 9,
       "length": 24,
@@ -67,7 +67,7 @@
     },
     {
       "generated_line": 28,
-      "generated_column": 20,
+      "generated_column": 16,
       "original_line": 18,
       "original_column": 12,
       "length": 22,

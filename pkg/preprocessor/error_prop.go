@@ -122,13 +122,13 @@ func (it *ImportTracker) GetNeededImports() []string {
 //
 // Example Expansion:
 //   Dingo:  let x = ReadFile(path)?
-//   Go:     __tmp0, __err0 := ReadFile(path)
+//   Go:     tmp1, err1 := ReadFile(path)
 //           // dingo:s:1
-//           if __err0 != nil {
-//               return nil, __err0
+//           if err1 != nil {
+//               return nil, err1
 //           }
 //           // dingo:e:1
-//           var x = __tmp0
+//           var x = tmp1
 //
 // The number after 's' and 'e' indicates how many original lines were consumed.
 // Currently always 1 since error propagation only processes single-line expressions.
@@ -170,7 +170,7 @@ func NewErrorPropProcessorWithConfig(config *Config) *ErrorPropProcessor {
 		config = DefaultConfig()
 	}
 	return &ErrorPropProcessor{
-		tryCounter: 0,
+		tryCounter: 1,
 		config:     config,
 	}
 }
@@ -200,7 +200,7 @@ func (e *ErrorPropProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 		// Check if this is a function declaration
 		if e.isFunctionDeclaration(line) {
 			e.currentFunc = e.parseFunctionSignature(inputLineNum)
-			e.tryCounter = 0 // Reset counter for each function
+			e.tryCounter = 1 // Reset counter for each function
 		}
 
 		// Process the line, passing the current output line number
@@ -322,8 +322,8 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	// Track function call for import detection
 	e.trackFunctionCallInExpr(exprClean)
 
-	tmpVar := fmt.Sprintf("__tmp%d", e.tryCounter)
-	errVar := fmt.Sprintf("__err%d", e.tryCounter)
+	tmpVar := fmt.Sprintf("tmp%d", e.tryCounter)
+	errVar := fmt.Sprintf("err%d", e.tryCounter)
 	e.tryCounter++
 
 	// Calculate exact position of ? operator for accurate source mapping
@@ -341,7 +341,7 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	indent := e.getIndent(matches[0])
 	mappings := []Mapping{}
 
-	// Line 1: __tmpN, __errN := expr
+	// Line 1: tmpN, errN := expr
 	buf.WriteString(indent)
 	generatedLine := fmt.Sprintf("%s, %s := %s\n", tmpVar, errVar, exprClean)
 	buf.WriteString(generatedLine)
@@ -353,7 +353,7 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 	exprWithoutQ := strings.TrimSuffix(exprClean, "?")
 	exprPosInOriginal := strings.Index(fullLineText, exprWithoutQ)
 	if exprPosInOriginal >= 0 {
-		// Position in generated line: after "__tmpN, __errN := "
+		// Position in generated line: after "tmpN, errN := "
 		prefixLen := len(tmpVar) + len(", ") + len(errVar) + len(" := ")
 		genCol := len(indent) + prefixLen + 1 // +1 for 1-based indexing
 
@@ -394,7 +394,7 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 		Name:            "error_prop",
 	})
 
-	// Line 3: if __errN != nil {
+	// Line 3: if errN != nil {
 	buf.WriteString(indent)
 	buf.WriteString(fmt.Sprintf("if %s != nil {\n", errVar))
 	mappings = append(mappings, Mapping{
@@ -444,9 +444,29 @@ func (e *ErrorPropProcessor) expandAssignment(matches []string, expr string, err
 		Name:            "error_prop",
 	})
 
-	// Line 7: var varName = __tmpN
+	// Line 7: var varName = tmpN
 	buf.WriteString(indent)
 	buf.WriteString(fmt.Sprintf("var %s = %s", varName, tmpVar))
+
+	// CRITICAL FIX: Add mapping for the variable name itself
+	// Find position of variable name in original line
+	varNamePos := strings.Index(fullLineText, varName)
+	if varNamePos >= 0 {
+		// Position in generated line: after "var "
+		genVarCol := len(indent) + len("var ") + 1 // +1 for 1-based indexing
+		origVarCol := varNamePos + 1 // +1 for 1-based indexing
+
+		mappings = append(mappings, Mapping{
+			OriginalLine:    originalLine,
+			OriginalColumn:  origVarCol,
+			GeneratedLine:   startOutputLine + 6,
+			GeneratedColumn: genVarCol,
+			Length:          len(varName),
+			Name:            "var_name",
+		})
+	}
+
+	// Also keep the original error_prop mapping for the ? operator
 	mappings = append(mappings, Mapping{
 		OriginalLine:    originalLine,
 		OriginalColumn:  qPos + 1, // 1-based column position of ?
@@ -485,15 +505,15 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	}
 
 	// Generate temporary variable names for all non-error values
-	// For multi-value returns, use sequential counters: __tmp0, __tmp1, __tmp2, ...
+	// For multi-value returns, use sequential counters: tmp1, tmp2, tmp3, ...
 	// CRITICAL FIX: Use base counter for error variable, then increment once for all vars
 	baseCounter := e.tryCounter
 	tmpVars := []string{}
 	for i := 0; i < numNonErrorReturns; i++ {
-		tmpVars = append(tmpVars, fmt.Sprintf("__tmp%d", baseCounter))
+		tmpVars = append(tmpVars, fmt.Sprintf("tmp%d", baseCounter))
 		baseCounter++
 	}
-	errVar := fmt.Sprintf("__err%d", e.tryCounter)
+	errVar := fmt.Sprintf("err%d", e.tryCounter)
 	e.tryCounter++
 
 	// Calculate exact position of ? operator for accurate source mapping
@@ -511,7 +531,7 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	indent := e.getIndent(matches[0])
 	mappings := []Mapping{}
 
-	// Line 1: __tmp0, __tmp1, ..., __errN := expr
+	// Line 1: tmp1, tmp2, ..., errN := expr
 	buf.WriteString(indent)
 	allVars := append(tmpVars, errVar)
 	generatedLine := fmt.Sprintf("%s := %s\n", strings.Join(allVars, ", "), exprClean)
@@ -524,7 +544,7 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 	exprWithoutQ := strings.TrimSuffix(exprClean, "?")
 	exprPosInOriginal := strings.Index(fullLineText, exprWithoutQ)
 	if exprPosInOriginal >= 0 {
-		// Position in generated line: after "__tmp0, __tmp1, ..., __errN := "
+		// Position in generated line: after "tmp1, tmp2, ..., errN := "
 		varsPrefix := strings.Join(allVars, ", ") + " := "
 		genCol := len(indent) + len(varsPrefix) + 1 // +1 for 1-based indexing
 
@@ -565,7 +585,7 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 		Name:            "error_prop",
 	})
 
-	// Line 3: if __errN != nil {
+	// Line 3: if errN != nil {
 	buf.WriteString(indent)
 	buf.WriteString(fmt.Sprintf("if %s != nil {\n", errVar))
 	mappings = append(mappings, Mapping{
@@ -615,11 +635,11 @@ func (e *ErrorPropProcessor) expandReturn(matches []string, expr string, errMsg 
 		Name:            "error_prop",
 	})
 
-	// Line 7: return __tmp0, __tmp1, ..., nil (all non-error values + nil for error)
+	// Line 7: return tmp1, tmp2, ..., nil (all non-error values + nil for error)
 	buf.WriteString(indent)
 	// CRITICAL-2 FIX: Return all temporary variables in success path
-	// For function returning (A, B, error), generate: return __tmp0, __tmp1, nil
-	// For function returning (A, error), generate: return __tmp0, nil
+	// For function returning (A, B, error), generate: return tmp1, tmp2, nil
+	// For function returning (A, error), generate: return tmp1, nil
 	returnVals := append([]string{}, tmpVars...) // copy all tmp vars
 
 	// Add nil for error position (last return value)

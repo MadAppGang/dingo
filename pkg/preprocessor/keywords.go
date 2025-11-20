@@ -6,11 +6,14 @@ import (
 
 // Package-level compiled regex (Issue 2: Regex Performance)
 var (
-	// Match: let identifier(s) = expression
-	// Handles both single: let x = 5
-	// And multiple: let x, y, z = func()
-	// Captures all identifiers (including commas and spaces)
-	letPattern = regexp.MustCompile(`\blet\s+([\w\s,]+?)\s*=`)
+	// Match: let identifier(s) [: type] = expression
+	// Handles:
+	//   - Single: let x = 5
+	//   - Multiple: let x, y, z = func()
+	//   - With type: let name: string = "hello"
+	//   - With complex type: let opt: Option<int> = Some(42)
+	// Captures identifiers and optional type annotation
+	letPattern = regexp.MustCompile(`\blet\s+([\w\s,]+?)(?:\s*:\s*[^=]+?)?\s*=`)
 )
 
 // KeywordProcessor converts Dingo keywords to Go keywords

@@ -464,7 +464,7 @@ func TestIsAddressable_NilExpression(t *testing.T) {
 // TestWrapInIIFE_BasicStructure verifies the IIFE structure is correct
 func TestWrapInIIFE_BasicStructure(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 0,
+		TempVarCounter: 1,
 	}
 
 	expr := &ast.BasicLit{
@@ -517,10 +517,10 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 		t.Fatalf("First statement is %T, want *ast.AssignStmt", funcLit.Body.List[0])
 	}
 
-	// Verify assignment LHS is __tmp0
+	// Verify assignment LHS is tmp1
 	lhsIdent, ok := assignStmt.Lhs[0].(*ast.Ident)
-	if !ok || lhsIdent.Name != "__tmp0" {
-		t.Errorf("Assignment LHS is %v, want __tmp0", assignStmt.Lhs[0])
+	if !ok || lhsIdent.Name != "tmp1" {
+		t.Errorf("Assignment LHS is %v, want tmp1", assignStmt.Lhs[0])
 	}
 
 	// Verify second statement is return
@@ -529,15 +529,15 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 		t.Fatalf("Second statement is %T, want *ast.ReturnStmt", funcLit.Body.List[1])
 	}
 
-	// Verify return value is &__tmp0
+	// Verify return value is &tmp1
 	unaryExpr, ok := returnStmt.Results[0].(*ast.UnaryExpr)
 	if !ok || unaryExpr.Op != token.AND {
 		t.Fatalf("Return value is %T with op %v, want *ast.UnaryExpr with &", returnStmt.Results[0], unaryExpr.Op)
 	}
 
 	returnIdent, ok := unaryExpr.X.(*ast.Ident)
-	if !ok || returnIdent.Name != "__tmp0" {
-		t.Errorf("Return address-of is %v, want &__tmp0", unaryExpr.X)
+	if !ok || returnIdent.Name != "tmp1" {
+		t.Errorf("Return address-of is %v, want &tmp1", unaryExpr.X)
 	}
 
 	// Verify CallExpr has no args (immediate invocation)
@@ -554,7 +554,7 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 // TestWrapInIIFE_MultipleCalls verifies unique temp var names
 func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 0,
+		TempVarCounter: 1,
 	}
 
 	// First call
@@ -566,8 +566,8 @@ func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	assignStmt1 := funcLit1.Body.List[0].(*ast.AssignStmt)
 	lhs1 := assignStmt1.Lhs[0].(*ast.Ident)
 
-	if lhs1.Name != "__tmp0" {
-		t.Errorf("First call generated %s, want __tmp0", lhs1.Name)
+	if lhs1.Name != "tmp1" {
+		t.Errorf("First call generated %s, want tmp1", lhs1.Name)
 	}
 
 	// Second call
@@ -604,7 +604,7 @@ func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 // TestMaybeWrapForAddressability_Addressable verifies that addressable expressions get &expr
 func TestMaybeWrapForAddressability_Addressable(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 0,
+		TempVarCounter: 1,
 	}
 
 	expr := ast.NewIdent("x")
@@ -634,7 +634,7 @@ func TestMaybeWrapForAddressability_Addressable(t *testing.T) {
 // TestMaybeWrapForAddressability_NonAddressable verifies that non-addressable expressions get wrapped
 func TestMaybeWrapForAddressability_NonAddressable(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 0,
+		TempVarCounter: 1,
 	}
 
 	expr := &ast.BasicLit{Kind: token.INT, Value: "42"}
@@ -860,7 +860,7 @@ func TestWrapInIIFE_TypePreservation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.typeName, func(t *testing.T) {
-			ctx := &plugin.Context{TempVarCounter: 0}
+			ctx := &plugin.Context{TempVarCounter: 1}
 			expr := &ast.BasicLit{Kind: token.INT, Value: "0"}
 
 			result := wrapInIIFE(expr, tt.typeName, ctx)
@@ -894,7 +894,7 @@ func BenchmarkIsAddressable_Literal(b *testing.B) {
 }
 
 func BenchmarkWrapInIIFE(b *testing.B) {
-	ctx := &plugin.Context{TempVarCounter: 0}
+	ctx := &plugin.Context{TempVarCounter: 1}
 	expr := &ast.BasicLit{Kind: token.INT, Value: "42"}
 	for i := 0; i < b.N; i++ {
 		wrapInIIFE(expr, "int", ctx)
@@ -903,7 +903,7 @@ func BenchmarkWrapInIIFE(b *testing.B) {
 }
 
 func BenchmarkMaybeWrapForAddressability_NoWrap(b *testing.B) {
-	ctx := &plugin.Context{TempVarCounter: 0}
+	ctx := &plugin.Context{TempVarCounter: 1}
 	expr := ast.NewIdent("x")
 	for i := 0; i < b.N; i++ {
 		MaybeWrapForAddressability(expr, "int", ctx)
@@ -911,7 +911,7 @@ func BenchmarkMaybeWrapForAddressability_NoWrap(b *testing.B) {
 }
 
 func BenchmarkMaybeWrapForAddressability_Wrap(b *testing.B) {
-	ctx := &plugin.Context{TempVarCounter: 0}
+	ctx := &plugin.Context{TempVarCounter: 1}
 	expr := &ast.BasicLit{Kind: token.INT, Value: "42"}
 	for i := 0; i < b.N; i++ {
 		MaybeWrapForAddressability(expr, "int", ctx)
@@ -921,7 +921,7 @@ func BenchmarkMaybeWrapForAddressability_Wrap(b *testing.B) {
 
 // Example test to demonstrate usage
 func ExampleMaybeWrapForAddressability() {
-	ctx := &plugin.Context{TempVarCounter: 0}
+	ctx := &plugin.Context{TempVarCounter: 1}
 
 	// Addressable expression (identifier) - gets &x
 	addrExpr := ast.NewIdent("x")
@@ -944,7 +944,7 @@ func TestWrapInIIFE_ValidGoCode(t *testing.T) {
 	// We don't run the printer here (would need imports), but the structure is verified above
 	// Manual verification: the IIFE structure matches Go syntax rules
 
-	ctx := &plugin.Context{TempVarCounter: 0}
+	ctx := &plugin.Context{TempVarCounter: 1}
 	expr := &ast.BasicLit{Kind: token.INT, Value: "42"}
 	result := wrapInIIFE(expr, "int", ctx)
 
