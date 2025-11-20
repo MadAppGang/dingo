@@ -460,6 +460,102 @@ For complete delegation patterns, templates, examples, and anti-recursion rules,
 - Complete workflow examples
 - Context savings metrics (23x reduction)
 
+## Parallel Multi-Model Review Protocol
+
+When user requests multiple code reviewers (internal + external models):
+
+### Execution Pattern (One-Shot)
+
+**User Request**: "Run internal and external reviewers (grok, minimax, codex, gemini)"
+
+**Required Pattern**:
+
+```
+Message 1 (Preparation):
+  - Create directories ONLY (Bash mkdir)
+  - NO other operations
+
+Message 2 (Parallel Execution):
+  - Launch ALL reviewers in SINGLE message
+  - ONLY Task tool calls (no Bash, no TodoWrite)
+  - Each Task call is independent
+
+Message 3 (Automatic Consolidation):
+  - DO NOT wait for user to request consolidation
+  - Automatically launch consolidation agent
+  - Pass all review file paths
+
+Message 4 (Results):
+  - Present consolidated review to user
+```
+
+### State Machine
+
+```
+PREP → PARALLEL_REVIEW → AUTO_CONSOLIDATE → PRESENT
+         ↑ Single message      ↑ Automatic (no user prompt)
+```
+
+### Critical Rules
+
+**DO**:
+- Separate directory creation from parallel execution
+- Use only Task tool in parallel execution message
+- Auto-consolidate after N reviews (N ≥ 2)
+- Present consolidated results
+
+**DON'T**:
+- Mix Bash and Task in same message
+- Wait for user to request consolidation
+- Launch reviewers sequentially
+- Include TodoWrite in parallel execution message
+
+### Example: Correct One-Shot Execution
+
+```
+User: "Run internal and 4 external reviewers in parallel"
+
+Assistant Message 1:
+  [Bash] mkdir -p ai-docs/sessions/XXX/reviews
+
+Assistant Message 2:
+  [Task] Internal review → summary
+  [Task] Grok review → summary
+  [Task] MiniMax review → summary
+  [Task] Codex review → summary
+  [Task] Gemini review → summary
+
+Assistant Message 3 (AUTOMATIC - no user prompt):
+  [Task] Consolidate reviews → summary
+
+Assistant Message 4:
+  "Consolidated review complete: 5 reviewers analyzed..."
+```
+
+### Proxy Mode for External Models
+
+When code-reviewer agent uses external models via claudish:
+
+**Required**: Blocking execution
+```bash
+# CORRECT (blocking):
+REVIEW=$(claudish --model openai/gpt-5.1-codex <<'EOF'
+Review prompt...
+EOF
+)
+
+# Write to file
+echo "$REVIEW" > review.md
+
+# Return summary (2-5 sentences)
+```
+
+**NEVER**: Background execution
+```bash
+# WRONG (returns too early):
+claudish --model ... &
+```
+
 ---
 
 ### Implementation Architecture (Actual)
