@@ -59,11 +59,6 @@ formatters:
       local-prefixes:
         - github.com/MadAppGang/dingo
 
-issues:
-  exclude-files:
-    - "tests/golden/.*\\.go$"
-    - "scripts/.*\\.go$"
-
 run:
   timeout: 5m
   build-tags:

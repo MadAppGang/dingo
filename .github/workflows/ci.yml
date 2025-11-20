@@ -87,7 +87,7 @@ jobs:
       uses: golangci/golangci-lint-action@v9
       with:
         version: v2.6
-        args: --timeout=5m --skip-dirs=tests --skip-dirs=scripts --tests=false
+        args: --timeout=5m --exclude-files="tests/golden/.*\\.go" --exclude-files="scripts/.*\\.go"
 
   build-vscode-extension:
     name: Build VS Code Extension
