@@ -1,0 +1,88 @@
+package main
+
+type OptionTag uint8
+
+const (
+	OptionTagSome OptionTag = iota
+	OptionTagNone
+)
+
+type Option struct {
+	tag  OptionTag
+	some *int
+}
+
+func OptionSome(arg0 int) Option {
+	return Option{tag: OptionTagSome, some: &arg0}
+}
+func OptionNone() Option {
+	return Option{tag: OptionTagNone}
+}
+func (e Option) IsSome() bool {
+	return e.tag == OptionTagSome
+}
+func (e Option) IsNone() bool {
+	return e.tag == OptionTagNone
+}
+func (o Option) Map(fn func(int) int) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return OptionSome(fn(*o.some))
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func (o Option) AndThen(fn func(int) Option) Option {
+	switch o.tag {
+	case OptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case OptionTagNone:
+		return o
+	}
+	panic("invalid Option state")
+}
+func find(arr []int, target int) Option {
+	for i, val := range arr {
+		if val == target {
+			return OptionSome(i)
+		}
+	}
+	return OptionNone()
+}
+func main() {
+	numbers := []int{10, 20, 30, 40}
+
+	index := func() __INFER__ {
+		coalesce := find(numbers, 25)
+		if coalesce.IsSome() {
+			return coalesce.Unwrap()
+		}
+		return -1
+	}()
+	value := func() int {
+		coalesce1 := find(numbers, 30)
+		if coalesce1.IsSome() {
+			return coalesce1.Unwrap()
+		}
+		return 0
+	}()
+
+	result := func() __INFER__ {
+		coalesce2 := find(numbers, 20)
+		if coalesce2.IsSome() {
+			return coalesce2.Unwrap()
+		}
+		return -1
+	}()
+	msg := "not found"
+	if result >= 0 {
+		msg = "found"
+	}
+
+	println("Index:", index, "Value:", value, "Status:", msg)
+}

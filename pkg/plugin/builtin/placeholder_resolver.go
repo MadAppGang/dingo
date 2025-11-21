@@ -245,16 +245,13 @@ func (p *PlaceholderResolverPlugin) inferReturnTypeFromBody(funcLit *ast.FuncLit
 					if nilType != "" {
 						returnTypes = append(returnTypes, nilType)
 					}
-				} else if expr.Name == "fallback" || strings.Contains(expr.Name, "Option") {
-					// Likely an Option variable
-					// Try to find its type in surrounding code
+				} else {
+					// Try to infer variable type from declaration
 					optType := p.inferVariableType(funcLit, expr.Name)
 					if optType != "" {
 						returnTypes = append(returnTypes, optType)
-					}
-				} else {
-					// Try to get type from context
-					if p.typeInference != nil {
+					} else if p.typeInference != nil {
+						// Fallback to go/types inference
 						if typ, ok := p.typeInference.InferType(expr); ok {
 							typeName := p.typeInference.TypeToString(typ)
 							returnTypes = append(returnTypes, typeName)
@@ -318,8 +315,9 @@ func (p *PlaceholderResolverPlugin) inferReturnTypeFromBody(funcLit *ast.FuncLit
 
 		// Check if we have Option returns and primitive returns mixed
 		// In null coalescing, if we have Option and primitive, return the Option type
+		// NOTE: With the preprocessor fix (Option ?? Option no longer unwraps),
+		// this scenario should not occur, but we keep the logic for robustness
 		hasOption := false
-		hasPrimitive := false
 		optionType := ""
 
 		for _, rt := range returnTypes {
@@ -328,8 +326,6 @@ func (p *PlaceholderResolverPlugin) inferReturnTypeFromBody(funcLit *ast.FuncLit
 				if optionType == "" {
 					optionType = rt
 				}
-			} else if rt == "string" || rt == "int" || rt == "float64" || rt == "bool" {
-				hasPrimitive = true
 			}
 		}
 
@@ -368,14 +364,25 @@ func (p *PlaceholderResolverPlugin) inferVariableType(funcLit *ast.FuncLit, varN
 						// Check if it's an Option constructor
 						if call, ok := rhs.(*ast.CallExpr); ok {
 							if fun, ok := call.Fun.(*ast.Ident); ok {
+								// Option constructor pattern
 								if strings.Contains(fun.Name, "Option") {
-									// Extract the Option type
 									if strings.HasSuffix(fun.Name, "Some") {
 										varType = strings.TrimSuffix(fun.Name, "Some")
+										return false
 									} else if strings.HasSuffix(fun.Name, "None") {
 										varType = strings.TrimSuffix(fun.Name, "None")
+										return false
 									}
-									return false
+								}
+							}
+							// Not an Option constructor - try go/types inference
+							if varType == "" && p.typeInference != nil {
+								if typ, ok := p.typeInference.InferType(call); ok {
+									typeName := p.typeInference.TypeToString(typ)
+									if strings.Contains(typeName, "Option") || strings.Contains(typeName, "option") {
+										varType = typeName
+										return false
+									}
 								}
 							}
 						}
@@ -386,32 +393,62 @@ func (p *PlaceholderResolverPlugin) inferVariableType(funcLit *ast.FuncLit, varN
 		return true
 	})
 
-	// If not found locally, look in parent scope
+	// If not found locally, look in parent scope (statements before the funcLit)
 	if varType == "" {
+		// Find the block containing this function literal
+		var containingBlock *ast.BlockStmt
 		p.ctx.WalkParents(funcLit, func(parent ast.Node) bool {
-			if assign, ok := parent.(*ast.AssignStmt); ok {
-				for i, lhs := range assign.Lhs {
-					if ident, ok := lhs.(*ast.Ident); ok && ident.Name == varName {
-						if i < len(assign.Rhs) {
-							rhs := assign.Rhs[i]
-							if call, ok := rhs.(*ast.CallExpr); ok {
-								if fun, ok := call.Fun.(*ast.Ident); ok {
-									if strings.Contains(fun.Name, "Option") {
-										if strings.HasSuffix(fun.Name, "Some") {
-											varType = strings.TrimSuffix(fun.Name, "Some")
-										} else if strings.HasSuffix(fun.Name, "None") {
-											varType = strings.TrimSuffix(fun.Name, "None")
+			if block, ok := parent.(*ast.BlockStmt); ok {
+				containingBlock = block
+				return false
+			}
+			return true
+		})
+
+		// Scan all statements in the containing block
+		if containingBlock != nil {
+			for _, stmt := range containingBlock.List {
+				if assign, ok := stmt.(*ast.AssignStmt); ok {
+					for i, lhs := range assign.Lhs {
+						if ident, ok := lhs.(*ast.Ident); ok && ident.Name == varName {
+							if i < len(assign.Rhs) {
+								rhs := assign.Rhs[i]
+								// Check for Option constructor
+								if call, ok := rhs.(*ast.CallExpr); ok {
+									if fun, ok := call.Fun.(*ast.Ident); ok {
+										// Option constructor pattern
+										if strings.Contains(fun.Name, "Option") {
+											if strings.HasSuffix(fun.Name, "Some") {
+												varType = strings.TrimSuffix(fun.Name, "Some")
+												break
+											} else if strings.HasSuffix(fun.Name, "None") {
+												varType = strings.TrimSuffix(fun.Name, "None")
+												break
+											}
 										}
-										return false
+										// Function call returning Option (e.g., getUserName())
+										// Pattern: function name contains "get" or ends with known Option-returning patterns
+										// Try to infer from function name or use go/types
+										if p.typeInference != nil {
+											if typ, ok := p.typeInference.InferType(call); ok {
+												typeName := p.typeInference.TypeToString(typ)
+												if strings.Contains(typeName, "Option") {
+													varType = typeName
+													break
+												}
+											}
+										}
 									}
 								}
 							}
 						}
 					}
+					if varType != "" {
+						break
+					}
 				}
 			}
-			return true
-		})
+		}
 	}
 
 	return varType

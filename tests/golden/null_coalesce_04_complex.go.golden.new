@@ -1,0 +1,263 @@
+package main
+
+type StringOptionTag uint8
+
+const (
+	StringOptionTagSome StringOptionTag = iota
+	StringOptionTagNone
+)
+
+type StringOption struct {
+	tag  StringOptionTag
+	some *string
+}
+
+func StringOptionSome(arg0 string) StringOption {
+	return StringOption{tag: StringOptionTagSome, some: &arg0}
+}
+func StringOptionNone() StringOption {
+	return StringOption{tag: StringOptionTagNone}
+}
+func (e StringOption) IsSome() bool {
+	return e.tag == StringOptionTagSome
+}
+func (e StringOption) IsNone() bool {
+	return e.tag == StringOptionTagNone
+}
+func (o StringOption) Map(fn func(string) string) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return StringOptionSome(fn(*o.some))
+		}
+	case StringOptionTagNone:
+		return o
+	}
+	panic("invalid StringOption state")
+}
+func (o StringOption) AndThen(fn func(string) StringOption) StringOption {
+	switch o.tag {
+	case StringOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case StringOptionTagNone:
+		return o
+	}
+	panic("invalid StringOption state")
+}
+
+type IntOptionTag uint8
+
+const (
+	IntOptionTagSome IntOptionTag = iota
+	IntOptionTagNone
+)
+
+type IntOption struct {
+	tag  IntOptionTag
+	some *int
+}
+func IntOptionSome(arg0 int) IntOption {
+	return IntOption{tag: IntOptionTagSome, some: &arg0}
+}
+func IntOptionNone() IntOption {
+	return IntOption{tag: IntOptionTagNone}
+}
+func (e IntOption) IsSome() bool {
+	return e.tag == IntOptionTagSome
+}
+func (e IntOption) IsNone() bool {
+	return e.tag == IntOptionTagNone
+}
+func (o IntOption) Map(fn func(int) int) IntOption {
+	switch o.tag {
+	case IntOptionTagSome:
+		if o.some != nil {
+			return IntOptionSome(fn(*o.some))
+		}
+	case IntOptionTagNone:
+		return o
+	}
+	panic("invalid IntOption state")
+}
+func (o IntOption) AndThen(fn func(int) IntOption) IntOption {
+	switch o.tag {
+	case IntOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case IntOptionTagNone:
+		return o
+	}
+	panic("invalid IntOption state")
+}
+
+type ConfigOptionTag uint8
+
+const (
+	ConfigOptionTagSome ConfigOptionTag = iota
+	ConfigOptionTagNone
+)
+
+type ConfigOption struct {
+	tag  ConfigOptionTag
+	some *Config
+}
+func ConfigOptionSome(arg0 Config) ConfigOption {
+	return ConfigOption{tag: ConfigOptionTagSome, some: &arg0}
+}
+func ConfigOptionNone() ConfigOption {
+	return ConfigOption{tag: ConfigOptionTagNone}
+}
+func (e ConfigOption) IsSome() bool {
+	return e.tag == ConfigOptionTagSome
+}
+func (e ConfigOption) IsNone() bool {
+	return e.tag == ConfigOptionTagNone
+}
+func (o ConfigOption) Map(fn func(Config) Config) ConfigOption {
+	switch o.tag {
+	case ConfigOptionTagSome:
+		if o.some != nil {
+			return ConfigOptionSome(fn(*o.some))
+		}
+	case ConfigOptionTagNone:
+		return o
+	}
+	panic("invalid ConfigOption state")
+}
+func (o ConfigOption) AndThen(fn func(Config) ConfigOption) ConfigOption {
+	switch o.tag {
+	case ConfigOptionTagSome:
+		if o.some != nil {
+			return fn(*o.some)
+		}
+	case ConfigOptionTagNone:
+		return o
+	}
+	panic("invalid ConfigOption state")
+}
+
+type Config struct {
+	host string
+	port int
+}
+func main() {
+
+	name := StringOptionNone()
+	display := func() __INFER__ {
+		coalesce := name
+		if coalesce.IsSome() {
+			return coalesce.Unwrap()
+		}
+		return getDefaultName()
+	}()
+
+	port := IntOptionNone()
+	finalPort := (func() int {
+		if port.IsSome() {
+			return port.Unwrap()
+		}
+		return 8080
+	}()) + 1000
+
+	config := getConfig()
+	hostOpt := func() __INFER__ {
+		if config.IsNone() {
+			return __INFER___None()
+		}
+		config := config.Unwrap()
+		return config.host
+	}()
+	host := func() string {
+		coalesce1 := hostOpt
+		if coalesce1.IsSome() {
+			return coalesce1.Unwrap()
+		}
+		coalesce2 := getEnv("HOST")
+		if coalesce2.IsSome() {
+			return coalesce2.Unwrap()
+		}
+		return "localhost"
+	}()
+
+	user := findUser(42)
+	userUpper := func() __INFER__ {
+		if user.IsNone() {
+			return __INFER___None()
+		}
+		user1 := user.Unwrap()
+		return user1.toUpper()
+	}()
+	username := func() string {
+		coalesce3 := userUpper
+		if coalesce3.IsSome() {
+			return coalesce3.Unwrap()
+		}
+		coalesce4 := getGuestName()
+		if coalesce4.IsSome() {
+			return coalesce4.Unwrap()
+		}
+		return "GUEST"
+	}()
+
+	timeout := IntOptionNone()
+	finalTimeout := func() __INFER__ {
+		coalesce5 := timeout
+		if coalesce5.IsSome() {
+			return coalesce5.Unwrap()
+		}
+		coalesce6 := parseEnv("TIMEOUT")
+		if coalesce6.IsSome() {
+			return coalesce6.Unwrap()
+		}
+		return getDefaultTimeout()
+	}()
+
+	count := IntOptionNone()
+	total := (func() int {
+		if count.IsSome() {
+			return count.Unwrap()
+		}
+		return 10
+	}()) * 2
+
+	println("Display:", display)
+	println("Port:", finalPort)
+	println("Host:", host)
+	println("Username:", username)
+	println("Timeout:", finalTimeout)
+	println("Total:", total)
+}
+func getDefaultName() string {
+	return "Unknown User"
+}
+func getEnv(key string) StringOption {
+	if key == "HOST" {
+		return StringOptionSome("example.com")
+	}
+	return StringOptionNone()
+}
+func getConfig() ConfigOption {
+	return ConfigOptionNone()
+}
+func findUser(id int) StringOption {
+	return StringOptionNone()
+}
+func (s StringOption) toUpper() StringOption {
+	if s.IsNone() {
+		return StringOptionNone()
+	}
+
+	return s
+}
+func getGuestName() StringOption {
+	return StringOptionNone()
+}
+func parseEnv(key string) IntOption {
+	return IntOptionNone()
+}
+func getDefaultTimeout() int {
+	return 30
+}

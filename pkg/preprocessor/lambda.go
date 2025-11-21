@@ -87,46 +87,50 @@ func (l *LambdaProcessor) Name() string {
 	return "lambda"
 }
 
-// Process transforms lambda syntax to Go function literals based on configured style
-// TypeScript style:
-//   x => x * 2          →  func(x) { return x * 2 }
-//   (x) => x * 2        →  func(x) { return x * 2 }
-//   (x, y) => x + y     →  func(x, y) { return x + y }
-//   (x: int) => x * 2   →  func(x int) int { return x * 2 }
-//   (x) => { return x } →  func(x) { return x }
-// Rust style:
-//   |x| x * 2           →  func(x) { return x * 2 }
-//   |x, y| x + y        →  func(x, y) { return x + y }
-//   |x: int| x * 2      →  func(x int) { return x * 2 }
-//   |x: int| -> bool { x > 0 } →  func(x int) bool { return x > 0 }
-func (l *LambdaProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+// ProcessV2 implements Post-AST source map support for lambda transformations
+func (l *LambdaProcessor) ProcessV2(code string, mode PreprocessorMode) (string, []TransformMetadata, *SourceMap, error) {
 	// Reset errors for this processing run
 	l.errors = nil
 
-	lines := bytes.Split(source, []byte("\n"))
-	var result bytes.Buffer
+	var metadata []TransformMetadata
 	var mappings []Mapping
+	counter := 0
+
+	lines := bytes.Split([]byte(code), []byte("\n"))
+	var result bytes.Buffer
 
 	for lineNum, line := range lines {
 		originalLine := line
 
-		// Process based on configured style
+		// Process based on configured style (no change in logic, just tracking)
 		switch l.style {
 		case StyleTypeScript:
-			// Process multi-param arrows first (they include single param with parens)
 			line = l.processMultiParamArrow(line, lineNum+1)
-			// Then process single-param arrows (without parens)
 			line = l.processSingleParamArrow(line, lineNum+1)
-
 		case StyleRust:
-			// Process Rust pipe syntax
 			line = l.processRustPipe(line, lineNum+1)
 		}
 
 		result.Write(line)
 
+		// Add metadata if line was modified
+		if !bytes.Equal(originalLine, line) && (mode == ModePostAST || mode == ModeDual) {
+			marker := fmt.Sprintf("// dingo:l:%d", counter)
+			meta := TransformMetadata{
+				Type:            "lambda",
+				OriginalLine:    lineNum + 1,
+				OriginalColumn:  1,
+				OriginalLength:  len(originalLine),
+				OriginalText:    string(originalLine),
+				GeneratedMarker: marker,
+				ASTNodeType:     "FuncLit",
+			}
+			metadata = append(metadata, meta)
+			counter++
+		}
+
 		// Add source mapping if line was modified
-		if !bytes.Equal(originalLine, line) {
+		if !bytes.Equal(originalLine, line) && (mode == ModeLegacy || mode == ModeDual) {
 			mappings = append(mappings, Mapping{
 				OriginalLine:    lineNum + 1,
 				GeneratedLine:   lineNum + 1,
@@ -143,10 +147,24 @@ func (l *LambdaProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 
 	// If we collected errors, return them
 	if len(l.errors) > 0 {
-		return nil, nil, l.errors[0] // Return first error for now
+		return "", nil, nil, l.errors[0]
 	}
 
-	return result.Bytes(), mappings, nil
+	var sourceMap *SourceMap
+	if mode == ModeLegacy || mode == ModeDual {
+		sourceMap = &SourceMap{
+			Version:  1,
+			Mappings: mappings,
+		}
+	}
+
+	return result.String(), metadata, sourceMap, nil
+}
+
+// Process transforms lambda syntax to Go function literals (legacy mode)
+func (l *LambdaProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+	result, _, _, err := l.ProcessV2(string(source), ModeLegacy)
+	return []byte(result), nil, err
 }
 
 // extractBalancedBody extracts lambda body with balanced delimiter tracking

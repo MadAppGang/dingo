@@ -40,38 +40,68 @@ func (e *EnumProcessor) Name() string {
 	return "enum"
 }
 
-// Process transforms enum declarations to Go sum types
+// Process transforms enum declarations to Go sum types (legacy mode)
 func (e *EnumProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+	result, _, _, err := e.ProcessV2(string(source), ModeLegacy)
+	return []byte(result), nil, err
+}
+
+// ProcessV2 implements Post-AST source map support for enum transformations
+func (e *EnumProcessor) ProcessV2(code string, mode PreprocessorMode) (string, []TransformMetadata, *SourceMap, error) {
 	e.mappings = []Mapping{}
+	var metadata []TransformMetadata
+	counter := 0
 
 	// Find all enum declarations using manual parsing (handles nested braces)
-	enums := e.findEnumDeclarations(source)
+	enums := e.findEnumDeclarations([]byte(code))
 	if len(enums) == 0 {
 		// No enums found, return as-is
-		return source, nil, nil
+		return code, nil, nil, nil
 	}
 
 	// Process enums in reverse order to maintain correct offsets
-	result := source
+	result := []byte(code)
 	for i := len(enums) - 1; i >= 0; i-- {
 		enum := enums[i]
 
 		// Parse variants
 		variants, err := e.parseVariants(enum.body)
 		if err != nil {
-			// Lenient error handling - log but continue
-			// In a real implementation, we'd use a proper logger
+			// Lenient error handling - continue
 			continue
 		}
 
-		// Generate Go sum type
-		generated := e.generateSumType(enum.name, variants)
+		// Generate Go sum type with optional marker
+		generated := e.generateSumTypeV2(enum.name, variants, &counter, mode)
 
 		// Replace enum declaration with generated code
 		result = append(result[:enum.start], append([]byte(generated), result[enum.end:]...)...)
+
+		// Add metadata if in PostAST or Dual mode
+		if mode == ModePostAST || mode == ModeDual {
+			marker := fmt.Sprintf("// dingo:n:%d", counter-1)
+			meta := TransformMetadata{
+				Type:            "enum",
+				OriginalLine:    1, // Line tracking is complex for multi-line enums
+				OriginalColumn:  enum.start,
+				OriginalLength:  enum.end - enum.start,
+				OriginalText:    fmt.Sprintf("enum %s {...}", enum.name),
+				GeneratedMarker: marker,
+				ASTNodeType:     "TypeSpec",
+			}
+			metadata = append(metadata, meta)
+		}
 	}
 
-	return result, e.mappings, nil
+	var sourceMap *SourceMap
+	if mode == ModeLegacy || mode == ModeDual {
+		sourceMap = &SourceMap{
+			Version:  1,
+			Mappings: e.mappings,
+		}
+	}
+
+	return string(result), metadata, sourceMap, nil
 }
 
 // enumDecl represents a parsed enum declaration
@@ -514,6 +544,21 @@ func (e *EnumProcessor) generateSumType(enumName string, variants []Variant) str
 	e.generateHelperMethods(&buf, enumName, tagTypeName, variants)
 
 	return buf.String()
+}
+
+// generateSumTypeV2 generates Go sum type code with marker support for ProcessV2
+func (e *EnumProcessor) generateSumTypeV2(enumName string, variants []Variant, markerCounter *int, mode PreprocessorMode) string {
+	// Generate the sum type using existing method
+	generated := e.generateSumType(enumName, variants)
+
+	// Insert marker if in PostAST or Dual mode
+	if mode == ModePostAST || mode == ModeDual {
+		marker := fmt.Sprintf("// dingo:n:%d\n", *markerCounter)
+		generated = marker + generated
+		*markerCounter++
+	}
+
+	return generated
 }
 
 // generateHelperMethods generates Map and AndThen methods for Option/Result-like enums

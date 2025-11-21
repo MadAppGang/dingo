@@ -39,16 +39,25 @@ func (n *NullCoalesceProcessor) Name() string {
 	return "null_coalescing"
 }
 
-// Process transforms null coalescing operators
+// Process transforms null coalescing operators (legacy mode)
 func (n *NullCoalesceProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+	result, _, _, err := n.ProcessV2(string(source), ModeLegacy)
+	return []byte(result), nil, err
+}
+
+// ProcessV2 implements Post-AST source map support for null coalescing
+func (n *NullCoalesceProcessor) ProcessV2(code string, mode PreprocessorMode) (string, []TransformMetadata, *SourceMap, error) {
 	// Parse source for type detection
-	n.typeDetector.ParseSource(source)
+	n.typeDetector.ParseSource([]byte(code))
 
 	// Reset state
 	n.tmpCounter = 1
 	n.mappings = []Mapping{}
 
-	lines := strings.Split(string(source), "\n")
+	var metadata []TransformMetadata
+	counter := 0
+
+	lines := strings.Split(code, "\n")
 	var output bytes.Buffer
 
 	inputLineNum := 0
@@ -58,9 +67,9 @@ func (n *NullCoalesceProcessor) Process(source []byte) ([]byte, []Mapping, error
 		line := lines[inputLineNum]
 
 		// Process the line
-		transformed, newMappings, err := n.processLine(line, inputLineNum+1, outputLineNum)
+		transformed, newMappings, meta, err := n.processLineV2(line, inputLineNum+1, outputLineNum, &counter, mode)
 		if err != nil {
-			return nil, nil, fmt.Errorf("line %d: %w", inputLineNum+1, err)
+			return "", nil, nil, fmt.Errorf("line %d: %w", inputLineNum+1, err)
 		}
 
 		output.WriteString(transformed)
@@ -68,9 +77,18 @@ func (n *NullCoalesceProcessor) Process(source []byte) ([]byte, []Mapping, error
 			output.WriteByte('\n')
 		}
 
-		// Add mappings
-		if len(newMappings) > 0 {
-			n.mappings = append(n.mappings, newMappings...)
+		// Add mappings (if in Legacy or Dual mode)
+		if mode == ModeLegacy || mode == ModeDual {
+			if len(newMappings) > 0 {
+				n.mappings = append(n.mappings, newMappings...)
+			}
+		}
+
+		// Add metadata (if in PostAST or Dual mode)
+		if mode == ModePostAST || mode == ModeDual {
+			if meta != nil {
+				metadata = append(metadata, *meta)
+			}
 		}
 
 		// Update output line count
@@ -81,7 +99,15 @@ func (n *NullCoalesceProcessor) Process(source []byte) ([]byte, []Mapping, error
 		inputLineNum++
 	}
 
-	return output.Bytes(), n.mappings, nil
+	var sourceMap *SourceMap
+	if mode == ModeLegacy || mode == ModeDual {
+		sourceMap = &SourceMap{
+			Version:  1,
+			Mappings: n.mappings,
+		}
+	}
+
+	return output.String(), metadata, sourceMap, nil
 }
 
 // processLine processes a single line for null coalescing
@@ -152,6 +178,95 @@ func (n *NullCoalesceProcessor) processLine(line string, originalLineNum int, ou
 	}
 
 	return result, allMappings, nil
+}
+
+// processLineV2 processes a single line with metadata generation for Post-AST source maps
+func (n *NullCoalesceProcessor) processLineV2(line string, originalLineNum int, outputLineNum int, markerCounter *int, mode PreprocessorMode) (string, []Mapping, *TransformMetadata, error) {
+	// Check if line contains ?? operator
+	if !strings.Contains(line, "??") {
+		return line, nil, nil, nil
+	}
+
+	// Find all ?? expressions in the line
+	result := line
+	var allMappings []Mapping
+	var meta *TransformMetadata
+
+	// Process from right to left to preserve positions
+	positions := findNullCoalescePositions(line)
+	if len(positions) == 0 {
+		return line, nil, nil, nil
+	}
+
+	// Only create ONE metadata entry for the FIRST transformation
+	// (subsequent ?? on same line share same transformation context)
+	firstTransform := true
+
+	// Process in reverse order to maintain string positions
+	for i := len(positions) - 1; i >= 0; i-- {
+		pos := positions[i]
+
+		// Extract left and right operands
+		left := line[pos.leftStart:pos.leftEnd]
+		right := line[pos.rightStart:pos.rightEnd]
+		fullStart := pos.leftStart
+		fullEnd := pos.rightEnd
+
+		// Handle chained ?? (a ?? b ?? c)
+		chain := []string{left, right}
+		currentPos := i
+		chainLeftEnd := pos.leftEnd
+
+		// Look for more ?? in chain (going backwards in positions array)
+		for currentPos > 0 {
+			nextPos := positions[currentPos-1]
+			if nextPos.rightEnd == chainLeftEnd {
+				chainLeft := line[nextPos.leftStart:nextPos.leftEnd]
+				chain = append([]string{chainLeft}, chain...)
+				fullStart = nextPos.leftStart
+				chainLeftEnd = nextPos.leftEnd
+				currentPos--
+				i--
+			} else {
+				break
+			}
+		}
+
+		// Classify complexity
+		complexity := n.classifyComplexity(chain)
+
+		// Detect type of leftmost operand
+		leftType := n.typeDetector.DetectType(strings.TrimSpace(chain[0]))
+
+		// Generate replacement code with marker
+		replacement, mappings := n.generateCoalesceCodeV2(chain, complexity, leftType, markerCounter, mode, originalLineNum, outputLineNum)
+
+		// Create metadata for first transformation only
+		if firstTransform && (mode == ModePostAST || mode == ModeDual) {
+			marker := fmt.Sprintf("// dingo:c:%d", *markerCounter-1)
+			meta = &TransformMetadata{
+				Type:            "null_coalesce",
+				OriginalLine:    originalLineNum,
+				OriginalColumn:  pos.opStart + 1,
+				OriginalLength:  2, // length of ??
+				OriginalText:    "??",
+				GeneratedMarker: marker,
+				ASTNodeType:     "IfExpr",
+			}
+			firstTransform = false
+		}
+
+		// Replace in result
+		result = result[:fullStart] + replacement + result[fullEnd:]
+
+		// Adjust mappings for replacement location
+		for _, m := range mappings {
+			m.OriginalColumn += fullStart
+			allMappings = append(allMappings, m)
+		}
+	}
+
+	return result, allMappings, meta, nil
 }
 
 // nullCoalescePosition represents a ?? operator position in a line
@@ -615,12 +730,21 @@ func (n *NullCoalesceProcessor) generateInline(chain []string, leftType TypeKind
 	var buf bytes.Buffer
 	var mappings []Mapping
 
+	// Detect right operand type to determine if we should unwrap
+	rightType := n.typeDetector.DetectType(right)
+
 	// Generate based on left type (single-line IIFE to avoid indentation issues)
 	// Note: For enum-based Option types, we use __UNWRAP__ placeholder which will be resolved during AST phase
 	switch leftType {
 	case TypeOption:
-		// Option type: check IsSome() and use __UNWRAP__ for value extraction
-		buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
+		// Check if right operand is also an Option
+		if rightType == TypeOption {
+			// Option ?? Option → return Option (no unwrap needed)
+			buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return %s }; return %s }()", left, left, right))
+		} else {
+			// Option ?? Primitive → unwrap to primitive
+			buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
+		}
 
 	case TypePointer:
 		// Pointer type: check nil
@@ -628,8 +752,14 @@ func (n *NullCoalesceProcessor) generateInline(chain []string, leftType TypeKind
 
 	case TypeUnknown, TypeRegular:
 		// Unknown type: assume Option type (most common case)
-		// Generate IIFE with Option checks and __UNWRAP__ placeholder
-		buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
+		// Check right operand type
+		if rightType == TypeOption {
+			// Likely Option ?? Option → no unwrap
+			buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return %s }; return %s }()", left, left, right))
+		} else {
+			// Assume Option ?? Primitive → unwrap
+			buf.WriteString(fmt.Sprintf("func() __INFER__ { if %s.IsSome() { return __UNWRAP__(%s) }; return %s }()", left, left, right))
+		}
 	}
 
 	// Add mapping
@@ -650,6 +780,17 @@ func (n *NullCoalesceProcessor) generateInline(chain []string, leftType TypeKind
 func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, originalLine int, outputLine int) (string, []Mapping) {
 	var buf bytes.Buffer
 	var mappings []Mapping
+
+	// Check if all operands are Options (determines if we should unwrap)
+	allOptions := leftType == TypeOption
+	if allOptions {
+		// Check last operand - if it's a primitive, we need to unwrap
+		lastOperand := strings.TrimSpace(chain[len(chain)-1])
+		lastType := n.typeDetector.DetectType(lastOperand)
+		if lastType != TypeOption {
+			allOptions = false
+		}
+	}
 
 	// Build single-line IIFE
 	buf.WriteString("func() __INFER__ { ")
@@ -674,14 +815,24 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 			// Check based on type
 			switch leftType {
 			case TypeOption:
-				buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
+				if allOptions {
+					// Option ?? Option → return Option (no unwrap)
+					buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s }; ", tmpVar, tmpVar))
+				} else {
+					// Option ?? Primitive → unwrap
+					buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
+				}
 
 			case TypePointer:
 				buf.WriteString(fmt.Sprintf("if %s != nil { return *%s }; ", tmpVar, tmpVar))
 
 			case TypeUnknown, TypeRegular:
 				// Generate placeholder check
-				buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
+				if allOptions {
+					buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return %s }; ", tmpVar, tmpVar))
+				} else {
+					buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
+				}
 			}
 		} else {
 			// Subsequent operands in chain: evaluate and check
@@ -699,13 +850,23 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 			// All subsequent values treated same as first type
 			switch leftType {
 			case TypeOption:
-				buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
+				if allOptions {
+					// Option ?? Option → return Option (no unwrap)
+					buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s }; ", tmpVar, tmpVar))
+				} else {
+					// Option ?? Primitive → unwrap
+					buf.WriteString(fmt.Sprintf("if %s.IsSome() { return %s.Unwrap() }; ", tmpVar, tmpVar))
+				}
 
 			case TypePointer:
 				buf.WriteString(fmt.Sprintf("if %s != nil { return *%s }; ", tmpVar, tmpVar))
 
 			case TypeUnknown, TypeRegular:
-				buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
+				if allOptions {
+					buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return %s }; ", tmpVar, tmpVar))
+				} else {
+					buf.WriteString(fmt.Sprintf("if __IS_SOME__(%s) { return __UNWRAP__(%s) }; ", tmpVar, tmpVar))
+				}
 			}
 		}
 	}
@@ -725,4 +886,29 @@ func (n *NullCoalesceProcessor) generateIIFE(chain []string, leftType TypeKind, 
 	})
 
 	return buf.String(), mappings
+}
+
+// generateCoalesceCodeV2 generates null coalescing code with marker support for ProcessV2
+func (n *NullCoalesceProcessor) generateCoalesceCodeV2(chain []string, complexity CoalesceComplexity, leftType TypeKind, markerCounter *int, mode PreprocessorMode, originalLine int, outputLine int) (string, []Mapping) {
+	var mappings []Mapping
+	var result string
+
+	// Generate the coalesce expression
+	switch complexity {
+	case ComplexitySimple:
+		result, mappings = n.generateInline(chain, leftType, originalLine, outputLine)
+	case ComplexityComplex:
+		result, mappings = n.generateIIFE(chain, leftType, originalLine, outputLine)
+	default:
+		return "", nil
+	}
+
+	// Insert marker if in PostAST or Dual mode
+	if mode == ModePostAST || mode == ModeDual {
+		marker := fmt.Sprintf("// dingo:c:%d\n", *markerCounter)
+		result = marker + result
+		*markerCounter++
+	}
+
+	return result, mappings
 }

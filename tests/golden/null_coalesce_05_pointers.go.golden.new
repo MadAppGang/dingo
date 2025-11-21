@@ -1,0 +1,77 @@
+package main
+
+type User struct {
+	name string
+	age  int
+}
+
+func main() {
+
+	user := getUser(1)
+	nameOpt := func() __INFER__ {
+		if user == nil {
+			return nil
+		}
+		return user.name
+	}()
+	name := func() string {
+		if nameOpt.IsSome() {
+			return nameOpt.Unwrap()
+		}
+		return "Unknown"
+	}()
+
+	primary := getPrimary()
+	fallback := getFallback()
+	result := func() __INFER__ {
+		if primary != nil {
+			return *primary
+		}
+		return fallback
+	}()
+
+	userPtr := getUser(2)
+	ageOpt := func() __INFER__ {
+		if userPtr == nil {
+			return nil
+		}
+		return userPtr.age
+	}()
+	age := func() int {
+		if ageOpt.IsSome() {
+			return ageOpt.Unwrap()
+		}
+		return 0
+	}()
+
+	nilUser := nil
+	nilNameOpt := func() __INFER__ {
+		if nilUser == nil {
+			return nil
+		}
+		return nilUser.name
+	}()
+	nilName := func() string {
+		if nilNameOpt.IsSome() {
+			return nilNameOpt.Unwrap()
+		}
+		return "Default"
+	}()
+
+	println("Name:", name)
+	println("Age:", age)
+	println("Nil:", nilName)
+}
+func getUser(id int) *User {
+	if id == 1 {
+		return &User{name: "Alice", age: 30}
+	}
+	return nil
+}
+func getPrimary() *string {
+	return nil
+}
+func getFallback() *string {
+	s := "Fallback"
+	return &s
+}

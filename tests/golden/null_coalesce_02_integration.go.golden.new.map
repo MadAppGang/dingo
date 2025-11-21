@@ -1,0 +1,842 @@
+{
+  "version": 1,
+  "mappings": [
+    {
+      "generated_line": 36,
+      "generated_column": 1,
+      "original_line": 36,
+      "original_column": 20,
+      "processor_input_line": 0,
+      "length": 6,
+      "name": "safe_nav_option_7lines"
+    },
+    {
+      "generated_line": 47,
+      "generated_column": 1,
+      "original_line": 41,
+      "original_column": 19,
+      "processor_input_line": 0,
+      "length": 6,
+      "name": "safe_nav_option_7lines"
+    },
+    {
+      "generated_line": 54,
+      "generated_column": 1,
+      "original_line": 42,
+      "original_column": 16,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "safe_nav_infer"
+    },
+    {
+      "generated_line": 59,
+      "generated_column": 1,
+      "original_line": 47,
+      "original_column": 17,
+      "processor_input_line": 0,
+      "length": 9,
+      "name": "safe_nav_option_7lines"
+    },
+    {
+      "generated_line": 70,
+      "generated_column": 1,
+      "original_line": 52,
+      "original_column": 20,
+      "processor_input_line": 0,
+      "length": 7,
+      "name": "safe_nav_option_7lines"
+    },
+    {
+      "generated_line": 77,
+      "generated_column": 1,
+      "original_line": 53,
+      "original_column": 15,
+      "processor_input_line": 0,
+      "length": 13,
+      "name": "safe_nav_infer"
+    },
+    {
+      "generated_line": 78,
+      "generated_column": 1,
+      "original_line": 54,
+      "original_column": 17,
+      "processor_input_line": 0,
+      "length": 13,
+      "name": "safe_nav_infer"
+    },
+    {
+      "generated_line": 43,
+      "generated_column": 1,
+      "original_line": 43,
+      "original_column": 17,
+      "processor_input_line": 0,
+      "length": 24,
+      "name": "null_coalesce_inline"
+    },
+    {
+      "generated_line": 55,
+      "generated_column": 1,
+      "original_line": 55,
+      "original_column": 13,
+      "processor_input_line": 0,
+      "length": 22,
+      "name": "null_coalesce_inline"
+    },
+    {
+      "generated_line": 66,
+      "generated_column": 1,
+      "original_line": 66,
+      "original_column": 14,
+      "processor_input_line": 0,
+      "length": 34,
+      "name": "null_coalesce_inline"
+    },
+    {
+      "generated_line": 79,
+      "generated_column": 1,
+      "original_line": 79,
+      "original_column": 12,
+      "processor_input_line": 0,
+      "length": 17,
+      "name": "null_coalesce_inline"
+    },
+    {
+      "generated_line": 80,
+      "generated_column": 1,
+      "original_line": 80,
+      "original_column": 14,
+      "processor_input_line": 0,
+      "length": 26,
+      "name": "null_coalesce_inline"
+    },
+    {
+      "generated_line": 1,
+      "generated_column": 1,
+      "original_line": 1,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 7,
+      "generated_column": 1,
+      "original_line": 7,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 17,
+      "name": "identity"
+    },
+    {
+      "generated_line": 8,
+      "generated_column": 2,
+      "original_line": 8,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 11,
+      "name": "identity"
+    },
+    {
+      "generated_line": 9,
+      "generated_column": 2,
+      "original_line": 9,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 5,
+      "name": "identity"
+    },
+    {
+      "generated_line": 10,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 12,
+      "generated_column": 1,
+      "original_line": 12,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 20,
+      "name": "identity"
+    },
+    {
+      "generated_line": 13,
+      "generated_column": 2,
+      "original_line": 13,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 14,
+      "name": "identity"
+    },
+    {
+      "generated_line": 14,
+      "generated_column": 2,
+      "original_line": 14,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 5,
+      "name": "identity"
+    },
+    {
+      "generated_line": 15,
+      "generated_column": 1,
+      "original_line": 15,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 17,
+      "generated_column": 1,
+      "original_line": 17,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 19,
+      "name": "identity"
+    },
+    {
+      "generated_line": 18,
+      "generated_column": 2,
+      "original_line": 18,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 13,
+      "name": "identity"
+    },
+    {
+      "generated_line": 19,
+      "generated_column": 2,
+      "original_line": 19,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 5,
+      "name": "identity"
+    },
+    {
+      "generated_line": 20,
+      "generated_column": 1,
+      "original_line": 20,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 22,
+      "generated_column": 1,
+      "original_line": 22,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 18,
+      "name": "identity"
+    },
+    {
+      "generated_line": 23,
+      "generated_column": 2,
+      "original_line": 23,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 14,
+      "name": "identity"
+    },
+    {
+      "generated_line": 24,
+      "generated_column": 2,
+      "original_line": 24,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 21,
+      "name": "identity"
+    },
+    {
+      "generated_line": 25,
+      "generated_column": 1,
+      "original_line": 25,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 27,
+      "generated_column": 1,
+      "original_line": 27,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 21,
+      "name": "identity"
+    },
+    {
+      "generated_line": 28,
+      "generated_column": 2,
+      "original_line": 28,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 17,
+      "name": "identity"
+    },
+    {
+      "generated_line": 29,
+      "generated_column": 2,
+      "original_line": 29,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 11,
+      "name": "identity"
+    },
+    {
+      "generated_line": 30,
+      "generated_column": 1,
+      "original_line": 30,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 32,
+      "generated_column": 1,
+      "original_line": 32,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 13,
+      "name": "identity"
+    },
+    {
+      "generated_line": 35,
+      "generated_column": 2,
+      "original_line": 35,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 33,
+      "name": "identity"
+    },
+    {
+      "generated_line": 36,
+      "generated_column": 2,
+      "original_line": 36,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 36,
+      "name": "identity"
+    },
+    {
+      "generated_line": 37,
+      "generated_column": 2,
+      "original_line": 37,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 18,
+      "name": "identity"
+    },
+    {
+      "generated_line": 38,
+      "generated_column": 3,
+      "original_line": 38,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 39,
+      "generated_column": 2,
+      "original_line": 39,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 40,
+      "generated_column": 2,
+      "original_line": 40,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 21,
+      "name": "identity"
+    },
+    {
+      "generated_line": 41,
+      "generated_column": 2,
+      "original_line": 41,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 16,
+      "name": "identity"
+    },
+    {
+      "generated_line": 42,
+      "generated_column": 1,
+      "original_line": 42,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 3,
+      "name": "identity"
+    },
+    {
+      "generated_line": 43,
+      "generated_column": 2,
+      "original_line": 43,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 114,
+      "name": "identity"
+    },
+    {
+      "generated_line": 46,
+      "generated_column": 2,
+      "original_line": 46,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 33,
+      "name": "identity"
+    },
+    {
+      "generated_line": 47,
+      "generated_column": 2,
+      "original_line": 47,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 35,
+      "name": "identity"
+    },
+    {
+      "generated_line": 48,
+      "generated_column": 2,
+      "original_line": 48,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 18,
+      "name": "identity"
+    },
+    {
+      "generated_line": 49,
+      "generated_column": 3,
+      "original_line": 49,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 50,
+      "generated_column": 2,
+      "original_line": 50,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 51,
+      "generated_column": 2,
+      "original_line": 51,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 22,
+      "name": "identity"
+    },
+    {
+      "generated_line": 52,
+      "generated_column": 2,
+      "original_line": 52,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 20,
+      "name": "identity"
+    },
+    {
+      "generated_line": 53,
+      "generated_column": 1,
+      "original_line": 53,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 3,
+      "name": "identity"
+    },
+    {
+      "generated_line": 54,
+      "generated_column": 2,
+      "original_line": 54,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 52,
+      "name": "identity"
+    },
+    {
+      "generated_line": 55,
+      "generated_column": 2,
+      "original_line": 55,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 104,
+      "name": "identity"
+    },
+    {
+      "generated_line": 58,
+      "generated_column": 2,
+      "original_line": 58,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 40,
+      "name": "identity"
+    },
+    {
+      "generated_line": 59,
+      "generated_column": 2,
+      "original_line": 59,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 33,
+      "name": "identity"
+    },
+    {
+      "generated_line": 60,
+      "generated_column": 2,
+      "original_line": 60,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 21,
+      "name": "identity"
+    },
+    {
+      "generated_line": 61,
+      "generated_column": 3,
+      "original_line": 61,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 62,
+      "generated_column": 2,
+      "original_line": 62,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 63,
+      "generated_column": 2,
+      "original_line": 63,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 28,
+      "name": "identity"
+    },
+    {
+      "generated_line": 64,
+      "generated_column": 2,
+      "original_line": 64,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 26,
+      "name": "identity"
+    },
+    {
+      "generated_line": 65,
+      "generated_column": 1,
+      "original_line": 65,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 3,
+      "name": "identity"
+    },
+    {
+      "generated_line": 66,
+      "generated_column": 2,
+      "original_line": 66,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 118,
+      "name": "identity"
+    },
+    {
+      "generated_line": 69,
+      "generated_column": 2,
+      "original_line": 69,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 34,
+      "name": "identity"
+    },
+    {
+      "generated_line": 70,
+      "generated_column": 2,
+      "original_line": 70,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 36,
+      "name": "identity"
+    },
+    {
+      "generated_line": 71,
+      "generated_column": 2,
+      "original_line": 71,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 19,
+      "name": "identity"
+    },
+    {
+      "generated_line": 72,
+      "generated_column": 3,
+      "original_line": 72,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 73,
+      "generated_column": 2,
+      "original_line": 73,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 74,
+      "generated_column": 2,
+      "original_line": 74,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 24,
+      "name": "identity"
+    },
+    {
+      "generated_line": 75,
+      "generated_column": 2,
+      "original_line": 75,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 21,
+      "name": "identity"
+    },
+    {
+      "generated_line": 76,
+      "generated_column": 1,
+      "original_line": 76,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 3,
+      "name": "identity"
+    },
+    {
+      "generated_line": 77,
+      "generated_column": 2,
+      "original_line": 77,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 51,
+      "name": "identity"
+    },
+    {
+      "generated_line": 78,
+      "generated_column": 2,
+      "original_line": 78,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 54,
+      "name": "identity"
+    },
+    {
+      "generated_line": 79,
+      "generated_column": 2,
+      "original_line": 79,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 97,
+      "name": "identity"
+    },
+    {
+      "generated_line": 80,
+      "generated_column": 2,
+      "original_line": 80,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 110,
+      "name": "identity"
+    },
+    {
+      "generated_line": 82,
+      "generated_column": 2,
+      "original_line": 82,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 58,
+      "name": "identity"
+    },
+    {
+      "generated_line": 83,
+      "generated_column": 2,
+      "original_line": 83,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 37,
+      "name": "identity"
+    },
+    {
+      "generated_line": 84,
+      "generated_column": 1,
+      "original_line": 84,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 86,
+      "generated_column": 1,
+      "original_line": 86,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 33,
+      "name": "identity"
+    },
+    {
+      "generated_line": 87,
+      "generated_column": 2,
+      "original_line": 87,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 88,
+      "generated_column": 3,
+      "original_line": 88,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 34,
+      "name": "identity"
+    },
+    {
+      "generated_line": 89,
+      "generated_column": 4,
+      "original_line": 89,
+      "original_column": 4,
+      "processor_input_line": 0,
+      "length": 35,
+      "name": "identity"
+    },
+    {
+      "generated_line": 90,
+      "generated_column": 4,
+      "original_line": 90,
+      "original_column": 4,
+      "processor_input_line": 0,
+      "length": 14,
+      "name": "identity"
+    },
+    {
+      "generated_line": 91,
+      "generated_column": 3,
+      "original_line": 91,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 2,
+      "name": "identity"
+    },
+    {
+      "generated_line": 92,
+      "generated_column": 3,
+      "original_line": 92,
+      "original_column": 3,
+      "processor_input_line": 0,
+      "length": 57,
+      "name": "identity"
+    },
+    {
+      "generated_line": 93,
+      "generated_column": 2,
+      "original_line": 93,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 94,
+      "generated_column": 2,
+      "original_line": 94,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 95,
+      "generated_column": 1,
+      "original_line": 95,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 97,
+      "generated_column": 1,
+      "original_line": 97,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 32,
+      "name": "identity"
+    },
+    {
+      "generated_line": 98,
+      "generated_column": 2,
+      "original_line": 98,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 23,
+      "name": "identity"
+    },
+    {
+      "generated_line": 99,
+      "generated_column": 1,
+      "original_line": 99,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 101,
+      "generated_column": 1,
+      "original_line": 101,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 39,
+      "name": "identity"
+    },
+    {
+      "generated_line": 102,
+      "generated_column": 2,
+      "original_line": 102,
+      "original_column": 2,
+      "processor_input_line": 0,
+      "length": 48,
+      "name": "identity"
+    },
+    {
+      "generated_line": 103,
+      "generated_column": 1,
+      "original_line": 103,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    }
+  ]
+}

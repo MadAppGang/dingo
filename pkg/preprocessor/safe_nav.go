@@ -185,16 +185,25 @@ func (s *SafeNavProcessor) Name() string {
 	return "safe_navigation"
 }
 
-// Process transforms safe navigation operators
+// Process transforms safe navigation operators (legacy mode)
 func (s *SafeNavProcessor) Process(source []byte) ([]byte, []Mapping, error) {
+	result, _, _, err := s.ProcessV2(string(source), ModeLegacy)
+	return []byte(result), nil, err
+}
+
+// ProcessV2 implements Post-AST source map support for safe navigation
+func (s *SafeNavProcessor) ProcessV2(code string, mode PreprocessorMode) (string, []TransformMetadata, *SourceMap, error) {
 	// Parse source for type detection
-	s.typeDetector.ParseSource(source)
+	s.typeDetector.ParseSource([]byte(code))
 
 	// Reset state
 	s.tmpCounter = 1
 	s.mappings = []Mapping{}
 
-	lines := strings.Split(string(source), "\n")
+	var metadata []TransformMetadata
+	counter := 0
+
+	lines := strings.Split(code, "\n")
 	var output bytes.Buffer
 
 	inputLineNum := 0
@@ -204,9 +213,9 @@ func (s *SafeNavProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 		line := lines[inputLineNum]
 
 		// Process the line
-		transformed, newMappings, err := s.processLine(line, inputLineNum+1, outputLineNum)
+		transformed, newMappings, meta, err := s.processLineV2(line, inputLineNum+1, outputLineNum, &counter, mode)
 		if err != nil {
-			return nil, nil, fmt.Errorf("line %d: %w", inputLineNum+1, err)
+			return "", nil, nil, fmt.Errorf("line %d: %w", inputLineNum+1, err)
 		}
 
 		output.WriteString(transformed)
@@ -214,9 +223,18 @@ func (s *SafeNavProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 			output.WriteByte('\n')
 		}
 
-		// Add mappings
-		if len(newMappings) > 0 {
-			s.mappings = append(s.mappings, newMappings...)
+		// Add mappings (if in Legacy or Dual mode)
+		if mode == ModeLegacy || mode == ModeDual {
+			if len(newMappings) > 0 {
+				s.mappings = append(s.mappings, newMappings...)
+			}
+		}
+
+		// Add metadata (if in PostAST or Dual mode)
+		if mode == ModePostAST || mode == ModeDual {
+			if meta != nil {
+				metadata = append(metadata, *meta)
+			}
 		}
 
 		// Update output line count
@@ -227,7 +245,15 @@ func (s *SafeNavProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 		inputLineNum++
 	}
 
-	return output.Bytes(), s.mappings, nil
+	var sourceMap *SourceMap
+	if mode == ModeLegacy || mode == ModeDual {
+		sourceMap = &SourceMap{
+			Version:  1,
+			Mappings: s.mappings,
+		}
+	}
+
+	return output.String(), metadata, sourceMap, nil
 }
 
 // safeNavPosition represents a safe navigation chain position in a line
@@ -490,6 +516,124 @@ func (s *SafeNavProcessor) processLine(line string, originalLineNum int, outputL
 	}
 
 	return result, allMappings, nil
+}
+
+// processLineV2 processes a single line with metadata generation for Post-AST source maps
+func (s *SafeNavProcessor) processLineV2(line string, originalLineNum int, outputLineNum int, markerCounter *int, mode PreprocessorMode) (string, []Mapping, *TransformMetadata, error) {
+	// Check if line contains ?. operator
+	if !strings.Contains(line, "?.") {
+		return line, nil, nil, nil
+	}
+
+	// Check if all ?. occurrences are inside comments
+	commentStart := findCommentStart(line)
+	if commentStart != -1 {
+		firstSafeNav := strings.Index(line, "?.")
+		if firstSafeNav >= commentStart {
+			return line, nil, nil, nil
+		}
+	}
+
+	// Check for trailing ?. operator (error case)
+	trimmed := strings.TrimSpace(line)
+	if strings.HasSuffix(trimmed, "?.") {
+		if commentStart != -1 && len(trimmed) > 0 {
+			trailingPos := strings.LastIndex(line, "?.")
+			if trailingPos >= commentStart {
+				return line, nil, nil, nil
+			}
+		}
+		parts := strings.Split(strings.TrimSpace(line), "?.")
+		if len(parts) > 0 {
+			base := strings.TrimSpace(parts[0])
+			words := strings.Fields(base)
+			if len(words) > 0 {
+				lastWord := words[len(words)-1]
+				return "", nil, nil, fmt.Errorf(
+					"trailing safe navigation operator without property: %s?.\n"+
+						"  Help: Safe navigation (?.) requires a property or method after it\n"+
+						"  Example: user?.name or user?.getName()\n"+
+						"  Note: Did you mean error propagation (?) instead of safe navigation (?.)?",
+					lastWord)
+			}
+		}
+		return "", nil, nil, fmt.Errorf(
+			"trailing safe navigation operator (?.) without property\n" +
+				"  Help: Safe navigation (?.) requires a property or method after it\n" +
+				"  Note: Did you mean error propagation (?) instead?")
+	}
+
+	// Find safe navigation chains
+	result := line
+	var allMappings []Mapping
+	var meta *TransformMetadata
+
+	safeNavPositions := findSafeNavStarts(line)
+
+	// Only create ONE metadata entry for the FIRST transformation
+	firstTransform := true
+
+	// Process in reverse order to maintain string positions
+	for i := len(safeNavPositions) - 1; i >= 0; i-- {
+		pos := safeNavPositions[i]
+
+		baseStart := pos.baseStart
+		baseEnd := pos.baseEnd
+		base := line[baseStart:baseEnd]
+
+		chainStart := pos.chainStart
+		chainEnd := pos.chainEnd
+		chain := line[chainStart:chainEnd]
+
+		fullStart := baseStart
+		fullEnd := chainEnd
+
+		// Parse the chain into individual properties/methods
+		elements := parseSafeNavChain(chain)
+		if len(elements) == 0 {
+			continue
+		}
+
+		// Validate chain
+		if err := s.validateChain(base, elements); err != nil {
+			return "", nil, nil, err
+		}
+
+		// Detect base type
+		baseType := s.typeDetector.DetectType(base)
+
+		// Generate code with marker
+		replacement, mappings, err := s.generateSafeNavCodeV2(base, elements, baseType, markerCounter, mode, originalLineNum, outputLineNum)
+		if err != nil {
+			return "", nil, nil, err
+		}
+
+		// Create metadata for first transformation only
+		if firstTransform && (mode == ModePostAST || mode == ModeDual) {
+			marker := fmt.Sprintf("// dingo:s:%d", *markerCounter-1)
+			meta = &TransformMetadata{
+				Type:            "safe_nav",
+				OriginalLine:    originalLineNum,
+				OriginalColumn:  chainStart + 1,
+				OriginalLength:  2, // length of ?.
+				OriginalText:    "?.",
+				GeneratedMarker: marker,
+				ASTNodeType:     "CallExpr",
+			}
+			firstTransform = false
+		}
+
+		// Replace in result
+		result = result[:fullStart] + replacement + result[fullEnd:]
+
+		// Adjust mappings for this replacement
+		for _, m := range mappings {
+			m.OriginalColumn += fullStart
+			allMappings = append(allMappings, m)
+		}
+	}
+
+	return result, allMappings, meta, nil
 }
 
 // ChainElement represents a property or method in a safe navigation chain
@@ -892,4 +1036,37 @@ func (s *SafeNavProcessor) generateInferPlaceholder(base string, elements []Chai
 	})
 
 	return placeholder, mappings
+}
+
+// generateSafeNavCodeV2 generates safe navigation code with marker support for ProcessV2
+func (s *SafeNavProcessor) generateSafeNavCodeV2(base string, elements []ChainElement, baseType TypeKind, markerCounter *int, mode PreprocessorMode, originalLine int, outputLine int) (string, []Mapping, error) {
+	var code string
+	var mappings []Mapping
+	var err error
+
+	// Determine mode based on base type
+	switch baseType {
+	case TypeOption:
+		code, mappings = s.generateOptionMode(base, elements, originalLine, outputLine)
+	case TypePointer:
+		code, mappings = s.generatePointerMode(base, elements, originalLine, outputLine)
+	case TypeUnknown:
+		code, mappings = s.generateInferPlaceholder(base, elements, originalLine, outputLine)
+	case TypeRegular:
+		return "", nil, fmt.Errorf(
+			"safe navigation requires nullable type\n"+
+				"  Variable '%s' is not Option<T> or pointer type (*T)\n"+
+				"  Help: Use Option<T> for nullable values, or use pointer type (*T)\n"+
+				"  Note: If this is a pointer/Option, ensure type annotation is explicit",
+			base)
+	}
+
+	// Insert marker if in PostAST or Dual mode
+	if mode == ModePostAST || mode == ModeDual {
+		marker := fmt.Sprintf("// dingo:s:%d\n", *markerCounter)
+		code = marker + code
+		*markerCounter++
+	}
+
+	return code, mappings, err
 }
