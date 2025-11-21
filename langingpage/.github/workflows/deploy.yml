@@ -50,6 +50,26 @@ jobs:
           PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           PUBLIC_FIREBASE_APP_ID: ${{ secrets.PUBLIC_FIREBASE_APP_ID }}
 
+      - name: Check build size
+        run: |
+          echo "## 📦 Build Output Size" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/ >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Top 10 Largest Files" >> $GITHUB_STEP_SUMMARY
+          du -ah dist/ | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Fail if build exceeds budget (20MB is reasonable for landing page with Firebase + React + Shiki)
+          DIST_SIZE_MB=$(du -sm dist/ | cut -f1)
+          echo "Total size: ${DIST_SIZE_MB}MB"
+          if [ $DIST_SIZE_MB -gt 20 ]; then
+            echo "❌ Build size (${DIST_SIZE_MB}MB) exceeds budget (20MB)"
+            exit 1
+          else
+            echo "✅ Build size (${DIST_SIZE_MB}MB) within budget (20MB)"
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
