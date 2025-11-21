@@ -61,7 +61,6 @@ export function CodeComparison({ beforeHtml, afterHtml }: CodeComparisonProps) {
         {/* Dingo */}
         <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 pl-16 sm:pl-20 lg:pl-24">
-            <span className="text-xs uppercase tracking-wide text-gray-500">Source</span>
             <h3 className="text-lg font-semibold text-gray-800">Dingo</h3>
           </div>
           <CodeBlock
@@ -75,7 +74,6 @@ export function CodeComparison({ beforeHtml, afterHtml }: CodeComparisonProps) {
         {/* Goal (Go) */}
         <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 pl-16 sm:pl-20 lg:pl-24">
-            <span className="text-xs uppercase tracking-wide text-gray-500">Output</span>
             <h3 className="text-lg font-semibold text-gray-800">Go</h3>
           </div>
           <CodeBlock
