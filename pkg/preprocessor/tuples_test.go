@@ -27,7 +27,7 @@ func TestTupleProcessor_TupleLiterals(t *testing.T) {
 		{
 			name:      "nested_tuples",
 			input:     "let nested = ((1, 2), (3, 4))",
-			wantMatch: "__TUPLE_2__LITERAL__", // Outer tuple
+			wantMatch: "let nested = ((1, 2), (3, 4))", // SCOPE REDUCTION: Nested tuples not supported - passes through unchanged
 			wantErr:   false,
 		},
 		{
@@ -325,6 +325,10 @@ let (e, f) = getThird()`
 }
 
 func TestTupleProcessor_NestedTuples(t *testing.T) {
+	// SCOPE REDUCTION (Phase 8): Nested tuples are NOT supported
+	// They are silently ignored (not processed as tuples)
+	// This prevents generating invalid Go code from nested tuple syntax
+	// Nested tuple support will be added in a future release
 	tests := []struct {
 		name      string
 		input     string
@@ -333,17 +337,17 @@ func TestTupleProcessor_NestedTuples(t *testing.T) {
 		{
 			name:      "two_level_nesting",
 			input:     "let x = ((1, 2), (3, 4))",
-			wantCount: 1, // Only outer tuple detected (inner handled by AST phase)
+			wantCount: 0, // SCOPE REDUCTION: Nested tuples not supported - ignored
 		},
 		{
 			name:      "three_level_nesting",
 			input:     "let x = (((1, 2), (3, 4)), ((5, 6), (7, 8)))",
-			wantCount: 1, // Only outer tuple detected
+			wantCount: 0, // SCOPE REDUCTION: Nested tuples not supported - ignored
 		},
 		{
 			name:      "mixed_nesting",
 			input:     "let x = ((1, 2), 3, (4, 5))",
-			wantCount: 1, // Only outer tuple detected
+			wantCount: 0, // SCOPE REDUCTION: Nested tuples not supported - ignored
 		},
 	}
 
@@ -422,8 +426,8 @@ func TestDetectTuple(t *testing.T) {
 			name:         "nested_tuple",
 			line:         "((1, 2), 3)",
 			startIdx:     0,
-			wantIsTuple:  true,
-			wantElements: 2,
+			wantIsTuple:  false, // SCOPE REDUCTION: Nested tuples not supported in Phase 8
+			wantElements: 0,
 		},
 		{
 			name:         "tuple_in_expression",

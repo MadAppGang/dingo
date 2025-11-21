@@ -398,8 +398,15 @@ func (t *TupleProcessor) detectTuple(line string, startIdx int) (bool, []string,
 	// Filter out empty elements (e.g., from trailing comma)
 	filtered := []string{}
 	for _, elem := range elements {
-		if strings.TrimSpace(elem) != "" {
-			filtered = append(filtered, strings.TrimSpace(elem))
+		trimmed := strings.TrimSpace(elem)
+		if trimmed != "" {
+			// SCOPE REDUCTION: Detect nested tuples and reject them
+			// Check if element contains parentheses (indicates nested tuple)
+			if containsBalancedParens(trimmed) {
+				// This is a nested tuple - not supported in Phase 8
+				return false, nil, closeParen
+			}
+			filtered = append(filtered, trimmed)
 		}
 	}
 
@@ -630,6 +637,37 @@ func isMultiReturnStatement(line string, startIdx int) bool {
 	}
 
 	return false
+}
+
+// containsBalancedParens checks if a string is itself a tuple literal
+// (starts with '(' and ends with ')' with balanced parens)
+// This is used to detect nested tuples which are not supported in Phase 8
+func containsBalancedParens(s string) bool {
+	trimmed := strings.TrimSpace(s)
+	if len(trimmed) < 2 {
+		return false
+	}
+
+	// Check if element IS a tuple literal (starts and ends with parens)
+	if trimmed[0] != '(' || trimmed[len(trimmed)-1] != ')' {
+		return false
+	}
+
+	// Verify the parens are balanced and the opening matches the closing
+	depth := 0
+	for i, ch := range trimmed {
+		if ch == '(' {
+			depth++
+		} else if ch == ')' {
+			depth--
+			// If we close to zero before the end, it's not a single tuple
+			if depth == 0 && i < len(trimmed)-1 {
+				return false
+			}
+		}
+	}
+
+	return depth == 0
 }
 
 // findMatchingParen finds the index of the closing paren that matches the opening paren at startIdx

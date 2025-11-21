@@ -1656,7 +1656,7 @@ dingo/
 |-------|----------|----------|----------|--------|
 | **Phase 6** | P1 | Lambda Functions (2 syntax styles) | 2-3 weeks | ✅ Complete |
 | **Phase 7** | P1 | Null Safety Operators (`?.`, `??`) | 2 weeks | ✅ Complete |
-| **Phase 8** | P2 | Tuples (full implementation) | 1-2 weeks | 🟡 Partial (10%) |
+| **Phase 8** | P2 | Tuples (single-level, single-line) | 1-2 weeks | ✅ Complete (Scope Reduction)* |
 | **Phase 9** | P2 | Ternary Operator (`? :`) | 2-3 days | 🔴 Not Started |
 | **Phase 10** | P0 | Language Server (gopls proxy) | 8-10 weeks | ✅ Complete (2025-11-20) |
 | **Phase 11** | P0 | IDE Integration (VS Code, Neovim) | 4-6 weeks | ✅ Complete (VSCode) |
