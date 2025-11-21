@@ -14,8 +14,8 @@ const {
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
-// Open Graph image: 1200x630px PNG with Dingo mascot
-const ogImage = new URL('/og-image.png', Astro.site);
+// Open Graph image: JPEG share card
+const ogImage = new URL('/og-image.jpeg', Astro.site);
 ---
 
 <!DOCTYPE html>
@@ -38,7 +38,7 @@ const ogImage = new URL('/og-image.png', Astro.site);
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:image:height" content="1076" />
     <meta property="og:site_name" content="Dingo Lang" />
 
     <!-- Twitter Card -->
