@@ -231,3 +231,31 @@
   padding: 0.5rem;
   color: #374151;
 }
+
+@media (max-width: 640px) {
+  .shiki-code pre {
+    padding: 12px 12px 12px 42px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .shiki-code .line {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .shiki-code .line::before {
+    left: -32px;
+    width: 22px;
+  }
+
+  .markdown-content pre {
+    font-size: 0.8rem !important;
+    line-height: 1.55 !important;
+    padding: 0.9rem !important;
+  }
+
+  .markdown-content code {
+    font-size: 0.78rem !important;
+  }
+}

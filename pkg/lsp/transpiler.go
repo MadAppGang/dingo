@@ -65,15 +65,18 @@ func (at *AutoTranspiler) OnFileChange(ctx context.Context, dingoPath string) {
 	at.mapCache.Invalidate(goPath)
 	at.logger.Debugf("Source map cache invalidated: %s", goPath)
 
-	// Notify gopls of .go file change
-	if err := at.notifyGoplsFileChange(ctx, goPath); err != nil {
-		at.logger.Warnf("Failed to notify gopls of file change: %v", err)
+	// CRITICAL FIX: Synchronize gopls with new .go file content
+	// This ensures gopls has the latest transpiled content in memory
+	if err := at.syncGoplsWithGoFile(ctx, goPath); err != nil {
+		at.logger.Warnf("Failed to sync gopls with .go file: %v", err)
 	}
 }
 
-// notifyGoplsFileChange notifies gopls that a .go file changed
-func (at *AutoTranspiler) notifyGoplsFileChange(ctx context.Context, goPath string) error {
-	return at.gopls.NotifyFileChange(ctx, goPath)
+// syncGoplsWithGoFile sends the new .go file content to gopls via didChange
+// This ensures gopls has the latest transpiled content in memory
+func (at *AutoTranspiler) syncGoplsWithGoFile(ctx context.Context, goPath string) error {
+	at.logger.Debugf("Synchronizing gopls with updated .go file: %s", goPath)
+	return at.gopls.SyncFileContent(ctx, goPath)
 }
 
 // ParseTranspileError parses transpiler output into LSP diagnostic

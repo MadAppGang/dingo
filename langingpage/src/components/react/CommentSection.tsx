@@ -123,8 +123,8 @@ export default function CommentSection({ slug }: CommentSectionProps) {
     }
 
     return (
-        <div className="mt-12 border-t border-gray-800 pt-8">
-            <h2 className="text-2xl font-bold mb-6 text-white">Discussion</h2>
+        <div className="mt-12 border-t border-gray-200 pt-8">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">Discussion</h2>
 
             {/* Comment Form */}
             <div className="mb-8">
@@ -221,10 +221,10 @@ export default function CommentSection({ slug }: CommentSectionProps) {
                             />
                             <div className="flex-1">
                                 <div className="flex items-baseline gap-2 mb-1">
-                                    <span className="font-medium text-white">{comment.userName}</span>
+                                    <span className="font-medium text-gray-900">{comment.userName}</span>
                                     <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">{comment.text}</p>
+                                <p className="text-gray-700 leading-relaxed">{comment.text}</p>
                             </div>
                         </div>
                     ))

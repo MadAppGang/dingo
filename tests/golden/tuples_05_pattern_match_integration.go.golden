@@ -1,0 +1,93 @@
+package main
+
+type StatusTag uint8
+
+const (
+	StatusTagPending StatusTag = iota
+	StatusTagActive
+	StatusTagComplete
+)
+
+type Status struct {
+	tag StatusTag
+}
+
+func StatusPending() Status {
+	return Status{tag: StatusTagPending}
+}
+func StatusActive() Status {
+	return Status{tag: StatusTagActive}
+}
+func StatusComplete() Status {
+	return Status{tag: StatusTagComplete}
+}
+func (e Status) IsPending() bool {
+	return e.tag == StatusTagPending
+}
+func (e Status) IsActive() bool {
+	return e.tag == StatusTagActive
+}
+func (e Status) IsComplete() bool {
+	return e.tag == StatusTagComplete
+}
+func getStatus() (Status, int) {
+	return Status_Active(), 50
+}
+func getCoords() (int, int) {
+	return 10, 20
+}
+func analyzePoint(x int, y int) string {
+
+	if x == 0 && y == 0 {
+		return "origin"
+	}
+	if x == 0 {
+		return "on y-axis"
+	}
+	if y == 0 {
+		return "on x-axis"
+	}
+	return "general point"
+}
+func analyzeStatus(s Status, progress int) string {
+	// Simplified: use match on enum only
+	var result interface{}
+
+	scrutinee := s
+	switch scrutinee.tag {
+	case StatusTagPending:
+
+		result = "not started"
+	case StatusTagActive:
+
+		result = "in progress"
+	case StatusTagComplete:
+
+		result = "finished"
+	}
+	panic("unreachable: match is exhaustive")
+	return result
+
+}
+func main() {
+
+	location := analyzePoint(0, 5)
+	println("Location:", location)
+
+	tmp := getStatus()
+	status, progress := tmp._0, tmp._1
+	msg := analyzeStatus(status, progress)
+	println("Status:", msg)
+
+	tmp1 := getCoords()
+	cx, cy := tmp1._0, tmp1._1
+	var result string
+	if cx == 10 && cy == 20 {
+		result = "exact match"
+	} else if cx == 10 {
+		result = "x is 10"
+	} else {
+		result = "other"
+	}
+	println("Result:", result)
+}

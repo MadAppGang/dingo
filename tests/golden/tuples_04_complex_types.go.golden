@@ -1,0 +1,46 @@
+package main
+
+type User struct {
+	name string
+	age  int
+}
+
+func getPointers() (*int, *string) {
+	x := 42
+	s := "hello"
+	return &x, &s
+}
+func getCollections() ([]int, map[string]int) {
+	nums := []int{1, 2, 3}
+	counts := map[string]int{"a": 1, "b": 2}
+	return nums, counts
+}
+func getChannel() (chan int, chan string) {
+	ch1 := make(chan int)
+	ch2 := make(chan string)
+	return ch1, ch2
+}
+func getMixed() (*User, []string, map[int]bool) {
+	u := &User{name: "Alice", age: 30}
+	tags := []string{"admin", "user"}
+	flags := map[int]bool{1: true, 2: false}
+	return u, tags, flags
+}
+func main() {
+
+	tmp := getPointers()
+	pInt, pStr := tmp._0, tmp._1
+	println("Pointers:", *pInt, *pStr)
+
+	tmp1 := getCollections()
+	nums, counts := tmp1._0, tmp1._1
+	println("Collections:", len(nums), len(counts))
+
+	tmp2 := getChannel()
+	ch1, ch2 := tmp2._0, tmp2._1
+	println("Channels:", ch1, ch2)
+
+	tmp3 := getMixed()
+	user, tags, flags := tmp3._0, tmp3._1, tmp3._2
+	println("Mixed:", user.name, len(tags), len(flags))
+}

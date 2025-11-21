@@ -21,7 +21,7 @@ function CodeBlock({
   mascotAlt: string;
 }) {
   return (
-    <div className="relative overflow-visible">
+    <div className="relative overflow-visible min-w-0">
       {/* Animated Mascot - Can peek outside container */}
       <AnimatedMascot
         src={mascotSrc}
@@ -56,27 +56,35 @@ function CodeBlock({
 
 export function CodeComparison({ beforeHtml, afterHtml }: CodeComparisonProps) {
   return (
-    <div className="grid grid-cols-2 gap-8 p-8">
-      {/* Dingo */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-semibold text-gray-800 pl-24">Dingo</h3>
-        <CodeBlock
-          html={beforeHtml}
-          mascotSrc={dingoMascot1x.src}
-          mascotSrcSet={`${dingoMascot1x.src} 1x, ${dingoMascot2x.src} 2x`}
-          mascotAlt="Dingo mascot peeking"
-        />
-      </div>
+    <div className="w-full bg-gray-50">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 p-4 sm:p-6 lg:p-10">
+        {/* Dingo */}
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-2 pl-16 sm:pl-20 lg:pl-24">
+            <span className="text-xs uppercase tracking-wide text-gray-500">Source</span>
+            <h3 className="text-lg font-semibold text-gray-800">Dingo</h3>
+          </div>
+          <CodeBlock
+            html={beforeHtml}
+            mascotSrc={dingoMascot1x.src}
+            mascotSrcSet={`${dingoMascot1x.src} 1x, ${dingoMascot2x.src} 2x`}
+            mascotAlt="Dingo mascot peeking"
+          />
+        </div>
 
-      {/* Goal (Go) */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-semibold text-gray-800 pl-24">Go</h3>
-        <CodeBlock
-          html={afterHtml}
-          mascotSrc={golangMascot1x.src}
-          mascotSrcSet={`${golangMascot1x.src} 1x, ${golangMascot2x.src} 2x`}
-          mascotAlt="Go Gopher peeking"
-        />
+        {/* Goal (Go) */}
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-2 pl-16 sm:pl-20 lg:pl-24">
+            <span className="text-xs uppercase tracking-wide text-gray-500">Output</span>
+            <h3 className="text-lg font-semibold text-gray-800">Go</h3>
+          </div>
+          <CodeBlock
+            html={afterHtml}
+            mascotSrc={golangMascot1x.src}
+            mascotSrcSet={`${golangMascot1x.src} 1x, ${golangMascot2x.src} 2x`}
+            mascotAlt="Go Gopher peeking"
+          />
+        </div>
       </div>
     </div>
   );

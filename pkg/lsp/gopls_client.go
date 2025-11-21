@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -276,7 +277,45 @@ func (c *GoplsClient) DidClose(ctx context.Context, params protocol.DidCloseText
 	return c.conn.Notify(ctx, "textDocument/didClose", params)
 }
 
+// SyncFileContent synchronizes gopls with the current content of a .go file
+// This is critical for keeping gopls in sync after transpilation
+func (c *GoplsClient) SyncFileContent(ctx context.Context, goPath string) error {
+	c.logger.Debugf("Reading .go file for sync: %s", goPath)
+
+	// Read current .go file content from disk
+	content, err := os.ReadFile(goPath)
+	if err != nil {
+		return fmt.Errorf("failed to read .go file: %w", err)
+	}
+
+	// Send didChange notification with full new content
+	fileURI := protocol.DocumentURI(uri.File(goPath))
+	params := protocol.DidChangeTextDocumentParams{
+		TextDocument: protocol.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: protocol.TextDocumentIdentifier{
+				URI: fileURI,
+			},
+			Version: int32(time.Now().Unix()), // Use timestamp as version
+		},
+		ContentChanges: []protocol.TextDocumentContentChangeEvent{
+			{
+				// Full document update (no range specified)
+				Text: string(content),
+			},
+		},
+	}
+
+	c.logger.Debugf("Sending didChange to gopls with %d bytes for %s", len(content), goPath)
+	if err := c.conn.Notify(ctx, "textDocument/didChange", params); err != nil {
+		return fmt.Errorf("failed to send didChange to gopls: %w", err)
+	}
+
+	c.logger.Debugf("gopls synchronized with .go file: %s", goPath)
+	return nil
+}
+
 // NotifyFileChange notifies gopls that a .go file changed (for auto-transpile)
+// DEPRECATED: Use SyncFileContent instead for reliable synchronization
 func (c *GoplsClient) NotifyFileChange(ctx context.Context, goPath string) error {
 	fileURI := uri.File(goPath)
 	fileEvent := protocol.FileEvent{

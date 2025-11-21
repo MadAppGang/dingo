@@ -1,0 +1,25 @@
+package main
+
+// Test: Tuple error scenarios
+// Feature: Error messages for invalid tuple usage
+// Complexity: basic
+// NOTE: This file tests error conditions - it should NOT compile
+
+func main() {
+	// Error: Empty tuple (0 elements)
+	// Expected error: "Empty tuples are not supported"
+	// let empty = ()
+
+	// Error: Single element tuple (1 element)
+	// Expected error: "Single-element tuples are not supported"
+	// let single = (42,)
+
+	// Error: Too many elements (13 > 12)
+	// Expected error: "Tuple has 13 elements, maximum is 12"
+	// let huge = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+
+	// Valid: Maximum allowed arity (12 elements)
+	let max = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+	let (a, b, c, d, e, f, g, h, i, j, k, l) = max
+	println("Max arity:", a, b, c, d, e, f, g, h, i, j, k, l)
+}

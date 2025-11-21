@@ -1,0 +1,33 @@
+package main
+
+// Test: Maximum tuple arity (12 elements)
+// Feature: Tuples with maximum allowed elements
+// Complexity: intermediate
+
+func getTwelveInts() (int, int, int, int, int, int, int, int, int, int, int, int) {
+	return 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+}
+
+func getTwelveMixed() (int, string, bool, float64, *int, []string, map[string]int, chan int, error, interface{}, byte, rune) {
+	x := 42
+	return 1, "two", true, 4.0, &x, []string{"six"}, map[string]int{"seven": 7}, make(chan int), nil, interface{}(10), byte('b'), rune('r')
+}
+
+func main() {
+	// Full destructuring of 12-element tuple
+	let (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12) = getTwelveInts()
+	println("Twelve ints:", n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12)
+
+	// Partial destructuring with wildcards
+	let (first, _, _, _, _, _, _, _, _, _, _, last) = getTwelveInts()
+	println("First and last:", first, last)
+
+	// Mixed types
+	let (i, s, b, f, p, sl, m, ch, e, iface, by, r) = getTwelveMixed()
+	println("Mixed types:", i, s, b, f, *p, len(sl), len(m), ch, e, iface, by, r)
+
+	// Tuple literal with 12 elements
+	let dozen = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+	let (a, b, c, d, e, f, g, h, i, j, k, l) = dozen
+	println("Dozen:", a, b, c, d, e, f, g, h, i, j, k, l)
+}

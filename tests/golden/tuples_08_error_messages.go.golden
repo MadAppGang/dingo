@@ -1,0 +1,9 @@
+package main
+
+func main() {
+
+	max := __TUPLE_12__LITERAL__336755c5(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+	tmp := max
+	a, b, c, d, e, f, g, h, i, j, k, l := tmp._0, tmp._1, tmp._2, tmp._3, tmp._4, tmp._5, tmp._6, tmp._7, tmp._8, tmp._9, tmp._10, tmp._11
+	println("Max arity:", a, b, c, d, e, f, g, h, i, j, k, l)
+}

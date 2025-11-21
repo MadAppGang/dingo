@@ -362,8 +362,62 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 		return nil, false
 
 	case *ast.CallExpr:
-		// Function call - need go/types to determine return type
-		s.logger.Debug("InferType: function call requires go/types for return type")
+		// Special handling for tuple markers and builtin type constructors
+		if ident, ok := e.Fun.(*ast.Ident); ok {
+			// Check for tuple marker pattern: __TUPLE_{N}__LITERAL__{hash}
+			if s.isTupleMarker(ident.Name) {
+				// Recursively infer the tuple type from its elements
+				tupleTypeName := s.inferTupleType(e)
+				if tupleTypeName != "" {
+					s.logger.Debug("InferType: Tuple marker %s → %s", ident.Name, tupleTypeName)
+					return types.NewNamed(types.NewTypeName(0, nil, tupleTypeName, nil), nil, nil), true
+				}
+				s.logger.Debug("InferType: Failed to infer tuple type for %s", ident.Name)
+				return nil, false
+			}
+
+			switch ident.Name {
+			case "Ok":
+				// Ok(value) → Result<T, E> where T is inferred from value
+				if len(e.Args) == 1 {
+					if argType, ok := s.InferType(e.Args[0]); ok {
+						// Result type is Result_T_error (standard error type)
+						resultTypeName := s.resultTypeNameFromOk(argType)
+						s.logger.Debug("InferType: Ok(%s) → %s", argType, resultTypeName)
+						// Return a named type for Result
+						return types.NewNamed(types.NewTypeName(0, nil, resultTypeName, nil), nil, nil), true
+					}
+				}
+			case "Err":
+				// Err(error) → Result<T, E> where E is inferred from error
+				// For tuples, this is less common but we'll handle it
+				if len(e.Args) == 1 {
+					if argType, ok := s.InferType(e.Args[0]); ok {
+						// Result type is Result_interface{}_E (generic T)
+						resultTypeName := s.resultTypeNameFromErr(argType)
+						s.logger.Debug("InferType: Err(%s) → %s", argType, resultTypeName)
+						return types.NewNamed(types.NewTypeName(0, nil, resultTypeName, nil), nil, nil), true
+					}
+				}
+			case "Some":
+				// Some(value) → Option<T> where T is inferred from value
+				if len(e.Args) == 1 {
+					if argType, ok := s.InferType(e.Args[0]); ok {
+						optionTypeName := s.optionTypeNameFromSome(argType)
+						s.logger.Debug("InferType: Some(%s) → %s", argType, optionTypeName)
+						return types.NewNamed(types.NewTypeName(0, nil, optionTypeName, nil), nil, nil), true
+					}
+				}
+			case "None":
+				// None → Option<T> (T unknown without context)
+				// For tuples, this will fall back to interface{} which is acceptable
+				s.logger.Debug("InferType: None requires context for type inference")
+				return nil, false
+			}
+		}
+
+		// General function call - need go/types to determine return type
+		s.logger.Debug("InferType: function call %T requires go/types for return type", e.Fun)
 		return nil, false
 
 	default:
@@ -398,6 +452,54 @@ func (s *TypeInferenceService) inferBuiltinIdent(ident *ast.Ident) types.Type {
 	default:
 		return nil
 	}
+}
+
+// resultTypeNameFromOk generates Result type name from Ok(value) call
+// Ok(42) → Result_int_error
+// Ok("hello") → Result_string_error
+func (s *TypeInferenceService) resultTypeNameFromOk(valueType types.Type) string {
+	valueTypeStr := s.TypeToString(valueType)
+	// Result types use pattern: Result_T_error (standard error type)
+	return fmt.Sprintf("Result_%s_error", sanitizeTypeForName(valueTypeStr))
+}
+
+// resultTypeNameFromErr generates Result type name from Err(error) call
+// Err(fmt.Errorf(...)) → Result_interface{}_error
+func (s *TypeInferenceService) resultTypeNameFromErr(errType types.Type) string {
+	errTypeStr := s.TypeToString(errType)
+	// When only error is known, T defaults to interface{}
+	return fmt.Sprintf("Result_interface{}__%s", sanitizeTypeForName(errTypeStr))
+}
+
+// optionTypeNameFromSome generates Option type name from Some(value) call
+// Some(42) → Option_int
+// Some("hello") → Option_string
+func (s *TypeInferenceService) optionTypeNameFromSome(valueType types.Type) string {
+	valueTypeStr := s.TypeToString(valueType)
+	return fmt.Sprintf("Option_%s", sanitizeTypeForName(valueTypeStr))
+}
+
+// sanitizeTypeForName converts type string to valid identifier component
+// int → int
+// *int → ptr_int
+// []string → slice_string
+// map[string]int → map_string_int
+func sanitizeTypeForName(typeName string) string {
+	// Replace special characters with underscores
+	result := strings.ReplaceAll(typeName, "*", "ptr_")
+	result = strings.ReplaceAll(result, "[]", "slice_")
+	result = strings.ReplaceAll(result, "[", "_")
+	result = strings.ReplaceAll(result, "]", "_")
+	result = strings.ReplaceAll(result, " ", "_")
+	result = strings.ReplaceAll(result, "{", "_")
+	result = strings.ReplaceAll(result, "}", "_")
+	// Remove double underscores
+	for strings.Contains(result, "__") {
+		result = strings.ReplaceAll(result, "__", "_")
+	}
+	// Remove trailing underscore
+	result = strings.TrimSuffix(result, "_")
+	return result
 }
 
 // TypeToString converts a types.Type to its Go source representation
@@ -1012,4 +1114,124 @@ func (r *TypeRegistry) GetResultTypes() map[string]*ResultTypeInfo {
 // GetOptionTypes returns all registered Option types
 func (r *TypeRegistry) GetOptionTypes() map[string]*OptionTypeInfo {
 	return r.optionTypes
+}
+
+// isTupleMarker checks if an identifier is a tuple marker
+// Pattern: __TUPLE_{N}__LITERAL__{hash}
+func (s *TypeInferenceService) isTupleMarker(name string) bool {
+	return strings.HasPrefix(name, "__TUPLE_") && strings.Contains(name, "__LITERAL__")
+}
+
+// inferTupleType recursively infers the type of a tuple marker call
+// Returns the canonical tuple type name (e.g., "Tuple2IntString", "Tuple2Tuple2IntIntString")
+func (s *TypeInferenceService) inferTupleType(call *ast.CallExpr) string {
+	arity := len(call.Args)
+	if arity < 2 || arity > 12 {
+		return ""
+	}
+
+	// Infer each element type
+	elementTypeNames := make([]string, arity)
+	for i, arg := range call.Args {
+		inferredType, ok := s.InferType(arg)
+		if !ok {
+			s.logger.Debug("inferTupleType: Failed to infer type for element %d", i)
+			return ""
+		}
+		elementTypeNames[i] = s.TypeToString(inferredType)
+	}
+
+	// Generate tuple type name using the same logic as TuplePlugin
+	return s.generateTupleTypeName(arity, elementTypeNames)
+}
+
+// generateTupleTypeName creates canonical tuple type name
+// Must match the logic in tuples.go:generateTypeName
+func (s *TypeInferenceService) generateTupleTypeName(arity int, elementTypes []string) string {
+	parts := []string{fmt.Sprintf("Tuple%d", arity)}
+
+	for _, typeName := range elementTypes {
+		sanitized := s.sanitizeTupleTypeName(typeName)
+		capitalized := s.capitalize(sanitized)
+		parts = append(parts, capitalized)
+	}
+
+	return strings.Join(parts, "")
+}
+
+// sanitizeTupleTypeName sanitizes a type name for use in tuple type names
+// Must match the logic in tuples.go:sanitizeTupleTypeName
+func (s *TypeInferenceService) sanitizeTupleTypeName(typeName string) string {
+	// Remove package prefixes
+	if idx := strings.LastIndex(typeName, "."); idx != -1 {
+		typeName = typeName[idx+1:]
+	}
+
+	// Handle pointer types
+	if strings.HasPrefix(typeName, "*") {
+		return "Ptr" + s.sanitizeTupleTypeName(typeName[1:])
+	}
+
+	// Handle slice types
+	if strings.HasPrefix(typeName, "[]") {
+		return "Slice" + s.sanitizeTupleTypeName(typeName[2:])
+	}
+
+	// Handle map types
+	if strings.HasPrefix(typeName, "map[") {
+		inner := typeName[4:]
+		if idx := strings.Index(inner, "]"); idx != -1 {
+			keyType := inner[:idx]
+			valueType := inner[idx+1:]
+			return "Map" + s.capitalize(s.sanitizeTupleTypeName(keyType)) + s.capitalize(s.sanitizeTupleTypeName(valueType))
+		}
+	}
+
+	// Handle channel types
+	if strings.HasPrefix(typeName, "chan ") {
+		return "Chan" + s.sanitizeTupleTypeName(typeName[5:])
+	}
+	if strings.HasPrefix(typeName, "<-chan ") {
+		return "RecvChan" + s.sanitizeTupleTypeName(typeName[7:])
+	}
+	if strings.HasPrefix(typeName, "chan<- ") {
+		return "SendChan" + s.sanitizeTupleTypeName(typeName[7:])
+	}
+
+	// Handle interface{}
+	if typeName == "interface{}" {
+		return "Interface"
+	}
+
+	// Capitalize built-in types
+	switch typeName {
+	case "int", "int8", "int16", "int32", "int64":
+		return strings.Title(typeName)
+	case "uint", "uint8", "uint16", "uint32", "uint64", "uintptr":
+		return strings.Title(typeName)
+	case "float32", "float64":
+		return strings.Title(typeName)
+	case "complex64", "complex128":
+		return strings.Title(typeName)
+	case "bool":
+		return "Bool"
+	case "string":
+		return "String"
+	case "byte":
+		return "Byte"
+	case "rune":
+		return "Rune"
+	case "error":
+		return "Error"
+	default:
+		return typeName
+	}
+}
+
+// capitalize capitalizes the first letter of a string
+func (s *TypeInferenceService) capitalize(str string) string {
+	if str == "" {
+		return str
+	}
+	return strings.ToUpper(str[:1]) + str[1:]
 }

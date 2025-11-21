@@ -65,7 +65,7 @@ export function SignInButton({ className = "" }: SignInButtonProps) {
 
   if (!user) {
     return (
-      <div className={`fixed top-6 right-6 z-50 ${className}`}>
+      <div className={`fixed top-6 right-6 z-50 hidden lg:block ${className}`}>
         <Button
           onClick={() => setIsOpen(!isOpen)}
           variant="outline"
@@ -151,7 +151,7 @@ export function SignInButton({ className = "" }: SignInButtonProps) {
   }
 
   return (
-    <div className={`fixed top-6 right-6 z-50 ${className}`}>
+    <div className={`fixed top-6 right-6 z-50 hidden lg:block ${className}`}>
       <Button
         onClick={() => setIsOpen(!isOpen)}
         variant="outline"

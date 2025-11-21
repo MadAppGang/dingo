@@ -1,0 +1,28 @@
+package main
+
+func getTwelveInts() (int, int, int, int, int, int, int, int, int, int, int, int) {
+	return 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+}
+func getTwelveMixed() (int, string, bool, float64, *int, []string, map[string]int, chan int, error, interface{}, byte, rune) {
+	x := 42
+	return 1, "two", true, 4.0, &x, []string{"six"}, map[string]int{"seven": 7}, make(chan int), nil, interface{}(10), byte('b'), rune('r')
+}
+func main() {
+
+	tmp := getTwelveInts()
+	n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12 := tmp._0, tmp._1, tmp._2, tmp._3, tmp._4, tmp._5, tmp._6, tmp._7, tmp._8, tmp._9, tmp._10, tmp._11
+	println("Twelve ints:", n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12)
+
+	tmp1 := getTwelveInts()
+	first, _, _, _, _, _, _, _, _, _, _, last := tmp1._0, tmp1._1, tmp1._2, tmp1._3, tmp1._4, tmp1._5, tmp1._6, tmp1._7, tmp1._8, tmp1._9, tmp1._10, tmp1._11
+	println("First and last:", first, last)
+
+	tmp2 := getTwelveMixed()
+	i, s, b, f, p, sl, m, ch, e, iface, by, r := tmp2._0, tmp2._1, tmp2._2, tmp2._3, tmp2._4, tmp2._5, tmp2._6, tmp2._7, tmp2._8, tmp2._9, tmp2._10, tmp2._11
+	println("Mixed types:", i, s, b, f, *p, len(sl), len(m), ch, e, iface, by, r)
+
+	dozen := __TUPLE_12__LITERAL__336755c5(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+	tmp3 := dozen
+	a, b, c, d, e, f, g, h, i, j, k, l := tmp3._0, tmp3._1, tmp3._2, tmp3._3, tmp3._4, tmp3._5, tmp3._6, tmp3._7, tmp3._8, tmp3._9, tmp3._10, tmp3._11
+	println("Dozen:", a, b, c, d, e, f, g, h, i, j, k, l)
+}

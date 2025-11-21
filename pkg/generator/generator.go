@@ -71,6 +71,10 @@ func NewWithPlugins(fset *token.FileSet, registry *plugin.Registry, logger plugi
 	optionPlugin := builtin.NewOptionTypePlugin()
 	pipeline.RegisterPlugin(optionPlugin)
 
+	// Tuple plugin for tuple literals and type generation (Phase 8)
+	tuplePlugin := builtin.NewTuplePlugin()
+	pipeline.RegisterPlugin(tuplePlugin)
+
 	// Lambda type inference plugin (infers lambda parameter types from context)
 	lambdaTypeInferencePlugin := builtin.NewLambdaTypeInferencePlugin()
 	pipeline.RegisterPlugin(lambdaTypeInferencePlugin)

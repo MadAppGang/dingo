@@ -2,34 +2,34 @@
   "version": 1,
   "mappings": [
     {
-      "generated_line": 6,
-      "generated_column": 20,
-      "original_line": 4,
-      "original_column": 13,
-      "length": 14,
-      "name": "expr_mapping"
-    },
-    {
-      "generated_line": 6,
+      "generated_line": 1,
       "generated_column": 1,
-      "original_line": 4,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
+      "original_line": 1,
+      "original_column": 1,
+      "length": 12,
+      "name": "identity"
     },
     {
       "generated_line": 7,
       "generated_column": 1,
+      "original_line": 3,
+      "original_column": 1,
+      "length": 46,
+      "name": "identity"
+    },
+    {
+      "generated_line": 8,
+      "generated_column": 16,
       "original_line": 4,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
+      "original_column": 13,
+      "length": 17,
+      "name": "expr_mapping"
     },
     {
       "generated_line": 8,
       "generated_column": 1,
       "original_line": 4,
-      "original_column": 27,
+      "original_column": 30,
       "length": 1,
       "name": "error_prop"
     },
@@ -37,7 +37,7 @@
       "generated_line": 9,
       "generated_column": 1,
       "original_line": 4,
-      "original_column": 27,
+      "original_column": 30,
       "length": 1,
       "name": "error_prop"
     },
@@ -45,7 +45,7 @@
       "generated_line": 10,
       "generated_column": 1,
       "original_line": 4,
-      "original_column": 27,
+      "original_column": 30,
       "length": 1,
       "name": "error_prop"
     },
@@ -53,7 +53,7 @@
       "generated_line": 11,
       "generated_column": 1,
       "original_line": 4,
-      "original_column": 27,
+      "original_column": 30,
       "length": 1,
       "name": "error_prop"
     },
@@ -61,17 +61,145 @@
       "generated_line": 12,
       "generated_column": 1,
       "original_line": 4,
-      "original_column": 27,
+      "original_column": 30,
       "length": 1,
       "name": "error_prop"
     },
     {
-      "generated_line": 6,
-      "generated_column": 20,
+      "generated_line": 13,
+      "generated_column": 1,
       "original_line": 4,
-      "original_column": 20,
-      "length": 11,
-      "name": "unqualified:ReadFile"
+      "original_column": 30,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 14,
+      "generated_column": 6,
+      "original_line": 4,
+      "original_column": 6,
+      "length": 4,
+      "name": "var_name"
+    },
+    {
+      "generated_line": 14,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 30,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 15,
+      "generated_column": 2,
+      "original_line": 5,
+      "original_column": 2,
+      "length": 16,
+      "name": "identity"
+    },
+    {
+      "generated_line": 16,
+      "generated_column": 1,
+      "original_line": 6,
+      "original_column": 1,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 19,
+      "generated_column": 1,
+      "original_line": 9,
+      "original_column": 1,
+      "length": 13,
+      "name": "identity"
+    },
+    {
+      "generated_line": 20,
+      "generated_column": 16,
+      "original_line": 10,
+      "original_column": 10,
+      "length": 25,
+      "name": "expr_mapping"
+    },
+    {
+      "generated_line": 20,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 21,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 22,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 23,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 24,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 25,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 26,
+      "generated_column": 6,
+      "original_line": 10,
+      "original_column": 6,
+      "length": 1,
+      "name": "var_name"
+    },
+    {
+      "generated_line": 26,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 35,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
+      "generated_line": 27,
+      "generated_column": 2,
+      "original_line": 11,
+      "original_column": 2,
+      "length": 18,
+      "name": "identity"
+    },
+    {
+      "generated_line": 28,
+      "generated_column": 1,
+      "original_line": 12,
+      "original_column": 1,
+      "length": 1,
+      "name": "identity"
     }
   ]
 }

@@ -2,7 +2,6 @@
 // Fetch real Dingo examples and pass to React App
 import App from '../components/react/App';
 import AuthStateListener from '../components/react/AuthStateListener';
-import { SignInButton } from '../components/react/SignInButton';
 import AuthError from '../components/react/AuthError';
 import '../styles/global.css';
 import '../styles/nav-classes.css'; // Explicit navigation classes for Tailwind v4
@@ -112,10 +111,6 @@ const formattedExamples = await Promise.all(
   <!-- Auth State Listener: client:load (CRITICAL - must run immediately) -->
   <!-- Reference: ai-docs/02-islands-architecture.md - Critical island -->
   <AuthStateListener client:load />
-
-  <!-- Authentication Button - Fixed top-right corner, always floating on top -->
-  <!-- Following ai-docs/02-islands-architecture.md: client:load for critical, above-fold UI -->
-  <SignInButton client:load />
 
   <!-- Auth Error Display - Fixed top-center for visibility -->
   <div class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50">

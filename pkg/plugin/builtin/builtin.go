@@ -12,11 +12,16 @@ import (
 func NewDefaultRegistry() (*plugin.Registry, error) {
 	registry := plugin.NewRegistry()
 
-	// Register Result type plugin
-	// Note: Plugin registration will be enhanced in later tasks
-	// For now, plugins can be created via NewResultTypePlugin()
+	// Note: Plugins are registered in NewPipeline, not here
+	// This registry is just a placeholder for future plugin discovery
 
 	return registry, nil
+}
+
+// RegisterDefaultPlugins registers default plugins to the pipeline
+func RegisterDefaultPlugins(pipeline *plugin.Pipeline) {
+	// Register tuple plugin for tuple literal and type generation
+	pipeline.RegisterPlugin(NewTuplePlugin())
 }
 
 // NewTypeInferenceServiceStub creates a type inference service (stub, deprecated)

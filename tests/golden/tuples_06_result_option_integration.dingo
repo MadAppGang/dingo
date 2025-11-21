@@ -1,0 +1,53 @@
+package main
+
+// Test: Tuples with Result and Option types
+// Feature: Integration with Result<T,E> and Option<T>
+// Complexity: intermediate
+
+// Tuple of Options
+func findUser(id int) (Option<string>, Option<int>) {
+	if id > 0 {
+		return Some("User"), Some(id)
+	}
+	return Option_string_None(), Option_int_None()
+}
+
+// Tuple of Results
+func getIntResult() Result<int, string> {
+	return Ok(42)
+}
+
+func getStringResult() Result<string, string> {
+	return Ok("hello")
+}
+
+// Tuple with mixed Option types
+func getOptions() (Option<int>, Option<string>, Option<bool>) {
+	return Some(10), Option_string_None(), Some(true)
+}
+
+func main() {
+	// Tuple of Options - destructure and check separately
+	let (nameOpt, idOpt) = findUser(1)
+	if nameOpt.IsSome() && idOpt.IsSome() {
+		println("User:", nameOpt.Unwrap(), idOpt.Unwrap())
+	} else {
+		println("Not found")
+	}
+
+	// Create tuple of Results manually
+	let r1 = getIntResult()
+	let r2 = getStringResult()
+	let results = (r1, r2)
+	let (res1, res2) = results
+
+	if res1.IsOk() && res2.IsOk() {
+		println("Both ok:", res1.Unwrap(), res2.Unwrap())
+	} else {
+		println("At least one failed")
+	}
+
+	// Tuple of mixed Options
+	let (numOpt, strOpt, boolOpt) = getOptions()
+	println("Options:", numOpt.IsSome(), strOpt.IsSome(), boolOpt.IsSome())
+}

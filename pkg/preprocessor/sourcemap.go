@@ -5,6 +5,7 @@ package preprocessor
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 // SourceMap tracks position mappings between original Dingo source
@@ -200,6 +201,8 @@ func abs(x int) int {
 // MapToGenerated maps an original Dingo position to the preprocessed position
 // Returns the mapped position or the input position if no mapping found
 func (sm *SourceMap) MapToGenerated(line, col int) (int, int) {
+	log.Printf("DEBUG MapToGenerated: input line=%d, col=%d, total mappings=%d\n", line, col, len(sm.Mappings))
+
 	// Find the mapping that contains this position
 	for _, m := range sm.Mappings {
 		if m.OriginalLine == line &&
@@ -207,6 +210,7 @@ func (sm *SourceMap) MapToGenerated(line, col int) (int, int) {
 		   col < m.OriginalColumn+m.Length {
 			// Calculate offset within the mapping
 			offset := col - m.OriginalColumn
+			log.Printf("DEBUG MapToGenerated: EXACT MATCH, returning line=%d, col=%d\n", m.GeneratedLine, m.GeneratedColumn+offset)
 			return m.GeneratedLine, m.GeneratedColumn + offset
 		}
 	}
@@ -214,39 +218,69 @@ func (sm *SourceMap) MapToGenerated(line, col int) (int, int) {
 	// CRITICAL FIX: No exact mapping found, calculate line offset from existing mappings
 	// This handles cases where untransformed code needs to account for added imports, etc.
 
-	// Strategy: Find the earliest mapping to determine the line offset
-	// Example: If .dingo line 4 maps to .go line 8, then lines 1-3 have +4 offset
+	// Strategy: Find the closest mapping (before OR after) to determine the line offset
+	// Example: If .dingo line 4 maps to .go line 8, then lines 1-3 also have ~+4 offset
 	var lineOffset int = 0
 	var foundOffset bool = false
 
-	// Find any mapping on the same line to get the offset
+	// PRIORITY 1: Find any mapping on the same line to get the offset
 	for _, m := range sm.Mappings {
 		if m.OriginalLine == line {
 			lineOffset = m.GeneratedLine - m.OriginalLine
 			foundOffset = true
+			log.Printf("DEBUG MapToGenerated: PRIORITY 1 (same line), lineOffset=%d\n", lineOffset)
 			break
 		}
 	}
 
-	// If no mapping on this line, find the closest earlier mapping
+	// PRIORITY 2: Find the closest earlier mapping
 	if !foundOffset {
-		for _, m := range sm.Mappings {
+		var closestBefore *Mapping = nil
+		for i := range sm.Mappings {
+			m := &sm.Mappings[i]
 			if m.OriginalLine < line {
-				candidateOffset := m.GeneratedLine - m.OriginalLine
-				if !foundOffset || m.OriginalLine > line-lineOffset {
-					lineOffset = candidateOffset
-					foundOffset = true
+				if closestBefore == nil || m.OriginalLine > closestBefore.OriginalLine {
+					closestBefore = m
 				}
 			}
+		}
+		if closestBefore != nil {
+			lineOffset = closestBefore.GeneratedLine - closestBefore.OriginalLine
+			foundOffset = true
+			log.Printf("DEBUG MapToGenerated: PRIORITY 2 (closest before), orig=%d, gen=%d, lineOffset=%d\n",
+				closestBefore.OriginalLine, closestBefore.GeneratedLine, lineOffset)
+		}
+	}
+
+	// PRIORITY 3: If no mapping before, look for closest mapping AFTER current line
+	// This handles lines before any transformations (e.g., package, imports, func decl before error prop)
+	if !foundOffset {
+		var closestAfter *Mapping = nil
+		for i := range sm.Mappings {
+			m := &sm.Mappings[i]
+			if m.OriginalLine > line {
+				if closestAfter == nil || m.OriginalLine < closestAfter.OriginalLine {
+					closestAfter = m
+				}
+			}
+		}
+		if closestAfter != nil {
+			// Use the offset from the next mapping, assuming structural changes apply to all lines
+			lineOffset = closestAfter.GeneratedLine - closestAfter.OriginalLine
+			foundOffset = true
+			log.Printf("DEBUG MapToGenerated: PRIORITY 3 (closest after), orig=%d, gen=%d, lineOffset=%d\n",
+				closestAfter.OriginalLine, closestAfter.GeneratedLine, lineOffset)
 		}
 	}
 
 	// Apply offset to line, keep column as-is
 	if foundOffset {
+		log.Printf("DEBUG MapToGenerated: RETURNING line=%d (input %d + offset %d), col=%d\n", line+lineOffset, line, lineOffset, col)
 		return line + lineOffset, col
 	}
 
 	// Final fallback: return as-is (identity mapping)
+	log.Printf("DEBUG MapToGenerated: FALLBACK identity mapping, returning line=%d, col=%d\n", line, col)
 	return line, col
 }
 

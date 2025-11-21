@@ -1,0 +1,45 @@
+package main
+
+// Minimum arity: 2 elements
+func getMinimum() (int, int) {
+	return 1, 2
+}
+
+// Wildcard destructuring
+func processData() (int, int, int, int, int) {
+	return 1, 2, 3, 4, 5
+}
+
+// Complex expression in tuple
+func getComplex() (int, int) {
+	x := 10
+	y := 20
+	return x + y, x * y
+}
+func main() {
+
+	tmp := getMinimum()
+	a, b := tmp._0, tmp._1
+	println("Minimum:", a, b)
+
+	tmp1 := processData()
+	first, _, _, _, last := tmp1._0, tmp1._1, tmp1._2, tmp1._3, tmp1._4
+	println("Wildcards:", first, last)
+
+	tmp2 := getComplex()
+	sum, product := tmp2._0, tmp2._1
+	println("Complex:", sum, product)
+
+	coords := __TUPLE_2__LITERAL__d6d4feef(100, 200)
+	tmp3 := coords
+	x, y := tmp3._0, tmp3._1
+	println("Assignment:", x, y)
+
+	data1 := __TUPLE_2__LITERAL__cf4dabed(1, 2)
+	data2 := __TUPLE_2__LITERAL__ae993a9d(3, 4)
+	tmp4 := data1
+	p1, p2 := tmp4._0, tmp4._1
+	tmp5 := data2
+	p3, p4 := tmp5._0, tmp5._1
+	println("Multiple:", p1, p2, p3, p4)
+}

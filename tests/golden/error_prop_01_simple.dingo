@@ -1,7 +1,12 @@
 package main
 
 func readConfig(path string) ([]byte, error) {
-	let data = ReadFile(path)?
+	let data = os.ReadFile(path)?
 	return data, nil
+}
 
+
+func test() {
+	let a = readConfig("config.yaml")?
+	println(string(a)) 
 }

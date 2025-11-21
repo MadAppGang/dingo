@@ -68,8 +68,11 @@ func (t *Translator) TranslatePosition(
 			goURI := lspuri.File(goPath)
 			return goURI, pos, fmt.Errorf("source map not found: %s (file not transpiled)", goPath)
 		}
-		// For Go->Dingo without map, return error with original URI
-		return uri, pos, fmt.Errorf("source map not found: %s", goPath)
+		// CRITICAL FIX: For Go->Dingo without map, return location unchanged
+		// This handles standard library and external package definitions
+		// No source map = not a transpiled file, so return the .go location as-is
+		log.Printf("[LSP Translator] No source map for %s, returning location unchanged (likely stdlib/external package)", goPath)
+		return uri, pos, nil
 	}
 
 	// Translate position
@@ -77,7 +80,9 @@ func (t *Translator) TranslatePosition(
 	var newURI protocol.DocumentURI
 
 	if dir == DingoToGo {
+		log.Printf("[LSP Translator] BEFORE MapToGenerated: line=%d, col=%d", line, col)
 		newLine, newCol = sm.MapToGenerated(line, col)
+		log.Printf("[LSP Translator] AFTER MapToGenerated: newLine=%d, newCol=%d", newLine, newCol)
 		newURI = lspuri.File(goPath)
 	} else {
 		newLine, newCol = sm.MapToOriginal(line, col)

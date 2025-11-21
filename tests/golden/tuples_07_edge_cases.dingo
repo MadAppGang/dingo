@@ -1,0 +1,48 @@
+package main
+
+// Test: Tuple edge cases and boundary conditions
+// Feature: Boundary conditions, special cases
+// Complexity: intermediate
+
+// Minimum arity: 2 elements
+func getMinimum() (int, int) {
+	return 1, 2
+}
+
+// Wildcard destructuring
+func processData() (int, int, int, int, int) {
+	return 1, 2, 3, 4, 5
+}
+
+// Complex expression in tuple
+func getComplex() (int, int) {
+	x := 10
+	y := 20
+	return x + y, x * y
+}
+
+func main() {
+	// Minimum arity
+	let (a, b) = getMinimum()
+	println("Minimum:", a, b)
+
+	// Wildcard destructuring - ignore middle elements
+	let (first, _, _, _, last) = processData()
+	println("Wildcards:", first, last)
+
+	// Complex expressions in tuple
+	let (sum, product) = getComplex()
+	println("Complex:", sum, product)
+
+	// Tuple in assignment
+	let coords = (100, 200)
+	let (x, y) = coords
+	println("Assignment:", x, y)
+
+	// Multiple tuple assignments
+	let data1 = (1, 2)
+	let data2 = (3, 4)
+	let (p1, p2) = data1
+	let (p3, p4) = data2
+	println("Multiple:", p1, p2, p3, p4)
+}

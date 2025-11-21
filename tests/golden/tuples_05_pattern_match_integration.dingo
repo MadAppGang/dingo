@@ -1,0 +1,65 @@
+package main
+
+// Test: Tuples with pattern matching
+// Feature: Integration with match expressions
+// Complexity: advanced
+
+enum Status {
+	Pending,
+	Active,
+	Complete,
+}
+
+func getStatus() (Status, int) {
+	return Status_Active(), 50
+}
+
+func getCoords() (int, int) {
+	return 10, 20
+}
+
+func analyzePoint(x int, y int) string {
+	// Pattern matching on individual values instead of tuple literals
+	if x == 0 && y == 0 {
+		return "origin"
+	}
+	if x == 0 {
+		return "on y-axis"
+	}
+	if y == 0 {
+		return "on x-axis"
+	}
+	return "general point"
+}
+
+func analyzeStatus(s Status, progress int) string {
+	// Simplified: use match on enum only
+	return match s {
+		Status_Pending() => "not started",
+		Status_Active() => "in progress",
+		Status_Complete() => "finished",
+	}
+}
+
+func main() {
+	// Pattern match with tuple literals
+	location := analyzePoint(0, 5)
+	println("Location:", location)
+
+	// Pattern match with tuple destructuring
+	let (status, progress) = getStatus()
+	msg := analyzeStatus(status, progress)
+	println("Status:", msg)
+
+	// Tuple destructuring with value checks
+	let (cx, cy) = getCoords()
+	var result string
+	if cx == 10 && cy == 20 {
+		result = "exact match"
+	} else if cx == 10 {
+		result = "x is 10"
+	} else {
+		result = "other"
+	}
+	println("Result:", result)
+}
