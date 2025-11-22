@@ -4,6 +4,8 @@
 > **Date**: 2025-11-18
 > **Decision**: Hybrid Markers + AST Metadata (Strategy F)
 > **Timeline**: 5-6 weeks for context-aware preprocessing foundation
+>
+> **Update (2025-11-22)**: Architecture evolved to **three-stage pipeline** with addition of Stage 3: Post-AST Source Maps. See [post-ast-sourcemaps.md](./post-ast-sourcemaps.md) for details. This document describes Stages 1-2 planning.
 
 ## Table of Contents
 

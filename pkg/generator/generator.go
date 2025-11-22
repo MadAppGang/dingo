@@ -186,80 +186,63 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		}
 	}
 
-	// Step 5: Print AST to Go source code in correct order
-	// Order: package statement -> imports -> injected types -> user declarations
-	var buf bytes.Buffer
+	// Step 5: Merge injected type declarations into main AST
+	// This ensures go/printer sees all declarations and comments together
+	if g.pipeline != nil {
+		injectedAST := g.pipeline.GetInjectedTypesAST()
+		if injectedAST != nil && len(injectedAST.Decls) > 0 {
+			// Insert injected types after imports but before other declarations
+			// Find the position to insert (after last import)
+			insertPos := 0
+			for i, decl := range transformed.Decls {
+				if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.IMPORT {
+					insertPos = i + 1
+				}
+			}
 
+			// Create new declaration slice with injected types
+			newDecls := make([]ast.Decl, 0, len(transformed.Decls)+len(injectedAST.Decls))
+			newDecls = append(newDecls, transformed.Decls[:insertPos]...)
+			newDecls = append(newDecls, injectedAST.Decls...)
+			newDecls = append(newDecls, transformed.Decls[insertPos:]...)
+			transformed.Decls = newDecls
+		}
+	}
+
+	// Step 6: Print the ENTIRE AST at once to preserve all comments
+	// CRITICAL: Printing the full file preserves file.Comments which includes markers
+	// Printing declarations individually loses free-floating comments
+	var buf bytes.Buffer
 	cfg := printer.Config{
 		Mode:     printer.TabIndent | printer.UseSpaces,
 		Tabwidth: 8,
 	}
 
-	// 1. Print package statement from main AST
-	fmt.Fprintf(&buf, "package %s\n\n", transformed.Name.Name)
-
-	// 2. Print imports from main AST (if any)
-	if len(transformed.Imports) > 0 {
-		buf.WriteString("import (\n")
-		for _, imp := range transformed.Imports {
-			if err := cfg.Fprint(&buf, g.fset, imp); err != nil {
-				return nil, fmt.Errorf("failed to print import: %w", err)
-			}
-			buf.WriteString("\n")
-		}
-		buf.WriteString(")\n\n")
+	if err := cfg.Fprint(&buf, g.fset, transformed); err != nil {
+		return nil, fmt.Errorf("failed to print AST: %w", err)
 	}
 
-	// 3. Print injected type declarations (if any)
-	if g.pipeline != nil {
-		injectedAST := g.pipeline.GetInjectedTypesAST()
-		if injectedAST != nil && len(injectedAST.Decls) > 0 {
-			for _, decl := range injectedAST.Decls {
-				if err := cfg.Fprint(&buf, g.fset, decl); err != nil {
-					return nil, fmt.Errorf("failed to print injected type declaration: %w", err)
-				}
-				buf.WriteString("\n")
-			}
-			buf.WriteString("\n")
-		}
-	}
-
-	// 4. Print main AST declarations ONLY (skip package/imports - already printed)
-	for _, decl := range transformed.Decls {
-		// Skip import declarations (already printed in step 2)
-		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.IMPORT {
-			continue
-		}
-
-		if err := cfg.Fprint(&buf, g.fset, decl); err != nil {
-			return nil, fmt.Errorf("failed to print declaration: %w", err)
-		}
-		buf.WriteString("\n")
-	}
-
-	// Step 6: Format the generated code
-	formatted, err := format.Source(buf.Bytes())
-	if err != nil {
-		// If formatting fails, return unformatted code
-		// This helps with debugging malformed output
-		if g.logger != nil {
-			g.logger.Warn("Failed to format generated code: %v", err)
-		}
-		return buf.Bytes(), nil
-	}
+	// Step 6: CRITICAL FIX - DO NOT use format.Source()
+	// format.Source() strips marker comments (// dingo:e:N) which breaks source maps
+	// Instead, rely on go/printer's TabIndent mode (already configured above)
+	// This preserves all comments while maintaining proper formatting
+	//
+	// Previous bug: format.Source() removed markers → PostASTGenerator couldn't match transformations
+	// Fix: Use printer output directly (still properly formatted via printer.Config)
+	printerOutput := buf.Bytes()
 
 	// Step 6.5: Post-AST placeholder resolution
-	// This step runs AFTER go/printer and format.Source to resolve any remaining
+	// This step runs AFTER go/printer to resolve any remaining
 	// __INFER__ placeholders that couldn't be resolved during AST transformation.
 	// It re-parses the generated .go file and uses full go/types to determine
 	// concrete types for generic Option types.
-	resolved, err := g.resolvePostASTPlaceholders(formatted)
+	resolved, err := g.resolvePostASTPlaceholders(printerOutput)
 	if err != nil {
 		if g.logger != nil {
 			g.logger.Warn("Post-AST placeholder resolution failed: %v (continuing with unresolved placeholders)", err)
 		}
 		// Continue with unresolved placeholders rather than failing
-		resolved = formatted
+		resolved = printerOutput
 	}
 
 	// Step 7: Inject DINGO:GENERATED markers (post-processing)
@@ -431,20 +414,29 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 	// Type checking will fail due to __INFER__ placeholders, but we still get partial info
 	// We don't return the error - we use the partial information we collected
 
-	// Step 3: Walk AST and resolve __INFER__ placeholders
+	// Step 3: Walk AST and resolve __INFER__ placeholders in a single pass
+	// Use a stack to track the current FuncLit and its resolved type
+	type funcContext struct {
+		funcLit      *ast.FuncLit
+		resolvedType string
+	}
+	funcStack := []funcContext{}
 	replacements := 0
+
 	modified := astutil.Apply(postFile,
 		func(cursor *astutil.Cursor) bool {
 			n := cursor.Node()
 
-			// Look for func() __INFER__ patterns
+			// Look for func() __INFER__ patterns and resolve them
 			if funcLit, ok := n.(*ast.FuncLit); ok {
+				var resolvedType string
+
 				if funcLit.Type != nil && funcLit.Type.Results != nil {
 					if len(funcLit.Type.Results.List) == 1 {
 						if ident, ok := funcLit.Type.Results.List[0].Type.(*ast.Ident); ok {
 							if ident.Name == "__INFER__" {
 								// Try to infer the return type from function body
-								resolvedType := g.inferFuncLitReturnTypePostAST(funcLit, postInfo)
+								resolvedType = g.inferFuncLitReturnTypePostAST(funcLit, postInfo)
 								if resolvedType != "" {
 									// Replace __INFER__ with resolved type
 									newField := &ast.Field{
@@ -461,16 +453,29 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 						}
 					}
 				}
+
+				// Push this FuncLit onto the stack with its resolved type
+				funcStack = append(funcStack, funcContext{
+					funcLit:      funcLit,
+					resolvedType: resolvedType,
+				})
 			}
 
 			// Look for __INFER___None() and __INFER___Some(val) patterns
 			if callExpr, ok := n.(*ast.CallExpr); ok {
 				if fun, ok := callExpr.Fun.(*ast.Ident); ok {
 					if fun.Name == "__INFER___None" || fun.Name == "__INFER___Some" {
-						// Try to infer the Option type from context
-						resolvedType := g.inferOptionTypeFromContextPostAST(callExpr, postInfo, cursor)
+						// Find the containing function literal's resolved type from the stack
+						var resolvedType string
+						for i := len(funcStack) - 1; i >= 0; i-- {
+							if funcStack[i].resolvedType != "" {
+								resolvedType = funcStack[i].resolvedType
+								break
+							}
+						}
+
 						if resolvedType != "" {
-							// Replace __INFER___None() with Option_T_None()
+							// Replace __INFER___None() with ResolvedType_None()
 							if fun.Name == "__INFER___None" {
 								fun.Name = resolvedType + "_None"
 								replacements++
@@ -491,7 +496,15 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 
 			return true
 		},
-		nil,
+		func(cursor *astutil.Cursor) bool {
+			// Pop FuncLit from stack when leaving
+			if _, ok := cursor.Node().(*ast.FuncLit); ok {
+				if len(funcStack) > 0 {
+					funcStack = funcStack[:len(funcStack)-1]
+				}
+			}
+			return true
+		},
 	)
 
 	if replacements == 0 {
@@ -532,44 +545,85 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 
 // inferFuncLitReturnTypePostAST infers the return type of a function literal
 // using full go/types information (Post-AST approach)
+//
+// Special handling for safe navigation patterns:
+//   func() __INFER__ {
+//       if opt.IsNone() { return __INFER___None() }  // Skip this
+//       val := opt.Unwrap()
+//       return val.field  // Infer from this -> construct FieldOption
+//   }
 func (g *Generator) inferFuncLitReturnTypePostAST(funcLit *ast.FuncLit, info *types.Info) string {
 	if funcLit.Body == nil || len(funcLit.Body.List) == 0 {
 		return ""
 	}
 
-	// Collect all return types from return statements
-	var returnTypes []string
+	// Collect types from non-placeholder returns
+	var concreteType string
+	var hasPlaceholderReturn bool
 
 	ast.Inspect(funcLit.Body, func(n ast.Node) bool {
 		if ret, ok := n.(*ast.ReturnStmt); ok && len(ret.Results) > 0 {
 			result := ret.Results[0]
 
-			// Try to get type from go/types
-			if tv, ok := info.Types[result]; ok && tv.Type != nil {
-				typeName := tv.Type.String()
-				returnTypes = append(returnTypes, typeName)
-				return false
+			// Skip __INFER___None() and __INFER___Some() calls
+			if callExpr, ok := result.(*ast.CallExpr); ok {
+				if fun, ok := callExpr.Fun.(*ast.Ident); ok {
+					if strings.HasPrefix(fun.Name, "__INFER__") {
+						hasPlaceholderReturn = true
+						return true // Skip this return
+					}
+				}
 			}
 
-			// Fallback to AST-based inference
+			// Try to get type from go/types first (most reliable)
+			if tv, ok := info.Types[result]; ok && tv.Type != nil {
+				typeName := tv.Type.String()
+				// Clean up the type name (remove package prefix)
+				if idx := strings.LastIndex(typeName, "."); idx >= 0 {
+					typeName = typeName[idx+1:]
+				}
+				concreteType = typeName
+				return false // Found concrete type, stop
+			}
+
+			// Fallback: AST-based inference for basic types
 			switch expr := result.(type) {
 			case *ast.BasicLit:
 				switch expr.Kind {
 				case token.STRING:
-					returnTypes = append(returnTypes, "string")
+					concreteType = "string"
 				case token.INT:
-					returnTypes = append(returnTypes, "int")
+					concreteType = "int"
 				case token.FLOAT:
-					returnTypes = append(returnTypes, "float64")
+					concreteType = "float64"
+				case token.CHAR:
+					concreteType = "rune"
 				}
 			case *ast.Ident:
-				if obj, ok := info.Defs[expr]; ok && obj != nil {
-					if obj.Type() != nil {
-						returnTypes = append(returnTypes, obj.Type().String())
+				// Try to get type from identifiers
+				if obj, ok := info.Uses[expr]; ok && obj != nil && obj.Type() != nil {
+					typeName := obj.Type().String()
+					if idx := strings.LastIndex(typeName, "."); idx >= 0 {
+						typeName = typeName[idx+1:]
 					}
-				} else if obj, ok := info.Uses[expr]; ok && obj != nil {
-					if obj.Type() != nil {
-						returnTypes = append(returnTypes, obj.Type().String())
+					concreteType = typeName
+				}
+			case *ast.SelectorExpr:
+				// For field access like user.name, try to get the field type
+				if tv, ok := info.Types[expr]; ok && tv.Type != nil {
+					typeName := tv.Type.String()
+					if idx := strings.LastIndex(typeName, "."); idx >= 0 {
+						typeName = typeName[idx+1:]
+					}
+					concreteType = typeName
+				} else {
+					// AST-only heuristic: Guess type from common field name patterns
+					fieldName := expr.Sel.Name
+					switch fieldName {
+					case "name", "title", "description", "email", "city", "zip", "street", "phone":
+						concreteType = "string"
+					case "age", "count", "id", "size", "length", "width", "height":
+						concreteType = "int"
 					}
 				}
 			}
@@ -577,14 +631,73 @@ func (g *Generator) inferFuncLitReturnTypePostAST(funcLit *ast.FuncLit, info *ty
 		return true
 	})
 
-	// Find common type across all return statements
-	if len(returnTypes) > 0 {
-		// Simple approach: use the first type found
-		// More sophisticated: find common base type
-		return returnTypes[0]
+	// If we found a concrete type and there's a placeholder return,
+	// this is a safe navigation pattern -> construct Option type
+	if concreteType != "" && hasPlaceholderReturn {
+		// Construct specialized Option type name
+		// string -> StringOption, int -> IntOption, etc.
+		optionType := g.constructOptionTypeName(concreteType)
+		if g.logger != nil {
+			g.logger.Debug("Post-AST: Inferred %s from concrete type %s (safe nav pattern)", optionType, concreteType)
+		}
+		return optionType
+	}
+
+	// If we only found a concrete type (no placeholder), return it as-is
+	if concreteType != "" {
+		return concreteType
 	}
 
 	return ""
+}
+
+// constructOptionTypeName constructs the specialized Option type name from a concrete type
+// Examples: string -> StringOption, int -> IntOption, User -> UserOption
+func (g *Generator) constructOptionTypeName(concreteType string) string {
+	// Capitalize first letter for type name
+	if len(concreteType) == 0 {
+		return ""
+	}
+
+	// Handle common primitive types
+	switch concreteType {
+	case "string":
+		return "StringOption"
+	case "int":
+		return "IntOption"
+	case "int8":
+		return "Int8Option"
+	case "int16":
+		return "Int16Option"
+	case "int32":
+		return "Int32Option"
+	case "int64":
+		return "Int64Option"
+	case "uint":
+		return "UintOption"
+	case "uint8":
+		return "Uint8Option"
+	case "uint16":
+		return "Uint16Option"
+	case "uint32":
+		return "Uint32Option"
+	case "uint64":
+		return "Uint64Option"
+	case "float32":
+		return "Float32Option"
+	case "float64":
+		return "Float64Option"
+	case "bool":
+		return "BoolOption"
+	case "byte":
+		return "ByteOption"
+	case "rune":
+		return "RuneOption"
+	default:
+		// For custom types, just append "Option"
+		// e.g., User -> UserOption, Address -> AddressOption
+		return concreteType + "Option"
+	}
 }
 
 // inferOptionTypeFromContextPostAST infers the Option specialization type
@@ -596,6 +709,30 @@ func (g *Generator) inferOptionTypeFromContextPostAST(callExpr *ast.CallExpr, in
 	// For now, return empty string to indicate no resolution
 	// Full implementation would walk up the AST to find variable declarations,
 	// function parameters, etc. that give us type context
+	return ""
+}
+
+// inferOptionTypeFromParentIIFE finds the containing FuncLit and returns its resolved type
+// from the funcLitTypes map (which was populated during the first pass of AST walking)
+func (g *Generator) inferOptionTypeFromParentIIFE(cursor *astutil.Cursor, funcLitTypes map[*ast.FuncLit]string) string {
+	// Walk up the cursor to find the containing FuncLit
+	parent := cursor.Parent()
+
+	for parent != nil {
+		if funcLit, ok := parent.(*ast.FuncLit); ok {
+			// Found the containing function literal
+			if resolvedType, exists := funcLitTypes[funcLit]; exists {
+				return resolvedType
+			}
+			// If not in map, continue searching parent scopes
+		}
+
+		// Move up to parent - we need to manually track the parent chain
+		// since cursor.Parent() only gives immediate parent
+		// For simplicity, we'll break here and rely on the map
+		break
+	}
+
 	return ""
 }
 

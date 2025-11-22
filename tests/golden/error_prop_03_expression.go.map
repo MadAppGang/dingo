@@ -1,77 +1,61 @@
 {
   "version": 1,
+  "dingo_file": "tests/golden/error_prop_03_expression.dingo",
+  "go_file": "tests/golden/error_prop_03_expression.go",
   "mappings": [
     {
-      "generated_line": 6,
-      "generated_column": 16,
+      "generated_line": 1,
+      "generated_column": 1,
+      "original_line": 1,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 2,
+      "generated_column": 1,
+      "original_line": 2,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 3,
+      "generated_column": 1,
+      "original_line": 3,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 39,
+      "name": "identity"
+    },
+    {
+      "generated_line": 4,
+      "generated_column": 1,
       "original_line": 4,
-      "original_column": 9,
-      "length": 7,
-      "name": "expr_mapping"
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 16,
+      "name": "identity"
     },
     {
       "generated_line": 6,
       "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 7,
-      "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 8,
-      "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 9,
-      "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
+      "original_line": 6,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
     },
     {
       "generated_line": 10,
-      "generated_column": 1,
-      "original_line": 4,
+      "generated_column": 2,
+      "original_line": 5,
       "original_column": 16,
+      "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
-    },
-    {
-      "generated_line": 11,
-      "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 12,
-      "generated_column": 1,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 6,
-      "generated_column": 16,
-      "original_line": 4,
-      "original_column": 16,
-      "length": 12,
-      "name": "unqualified:Atoi"
     }
   ]
 }

@@ -186,6 +186,20 @@ func (e *ErrorPropProcessor) Process(source []byte) ([]byte, []Mapping, error) {
 	return []byte(result), nil, err
 }
 
+// ProcessV2 implements FeatureProcessorV2 interface with metadata support
+func (e *ErrorPropProcessor) ProcessV2(source []byte) (ProcessResult, error) {
+	transformed, metadata, err := e.ProcessInternal(string(source))
+	if err != nil {
+		return ProcessResult{}, err
+	}
+
+	return ProcessResult{
+		Source:   []byte(transformed),
+		Mappings: nil, // We use metadata instead of legacy mappings
+		Metadata: metadata,
+	}, nil
+}
+
 // ProcessInternal transforms error propagation operators with metadata support
 // Emits TransformMetadata with unique markers for each error propagation transformation
 func (e *ErrorPropProcessor) ProcessInternal(code string) (string, []TransformMetadata, error) {
@@ -234,7 +248,10 @@ func (e *ErrorPropProcessor) ProcessInternal(code string) (string, []TransformMe
 		inputLineNum++
 	}
 
-	return output.String(), metadata, nil
+	result := output.String()
+
+	// DEBUG: Check if markers are in output
+	return result, metadata, nil
 }
 
 // GetNeededImports implements the ImportProvider interface

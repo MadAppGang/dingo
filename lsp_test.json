@@ -1,1 +1,0 @@
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "clientInfo": {"name": "test", "version": "1.0"}, "rootUri": "file:///tmp", "capabilities": { "textDocument": { "completion": { "completionItem": { "snippetSupport": true } } } } }}

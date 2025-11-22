@@ -84,8 +84,11 @@ Golden tests compare the transpiler's output against known-good reference files:
 error_prop_01_simple.dingo        # Dingo source
 error_prop_01_simple.go.golden    # Expected Go output
 error_prop_01_simple.go.actual    # Generated output (temporary)
+error_prop_01_simple.go.map       # Source map (auto-generated, not compared)
 error_prop_01_simple.reasoning.md # Optional: design notes
 ```
+
+**Note on Source Maps**: The transpiler automatically generates `.go.map` files using the Post-AST source map architecture (Stage 3). These source maps provide 100% accurate position mapping between `.dingo` and `.go` files for IDE integration. Golden tests verify Go code output only; source map files are generated but not compared against golden files.
 
 ## Documentation
 

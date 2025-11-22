@@ -1,4 +1,79 @@
 {
   "version": 1,
-  "mappings": []
+  "dingo_file": "tests/golden/sum_types_01_simple.dingo",
+  "go_file": "tests/golden/sum_types_01_simple.go",
+  "mappings": [
+    {
+      "generated_line": 1,
+      "generated_column": 1,
+      "original_line": 1,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 2,
+      "generated_column": 1,
+      "original_line": 2,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 3,
+      "generated_column": 1,
+      "original_line": 3,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 13,
+      "name": "identity"
+    },
+    {
+      "generated_line": 4,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 9,
+      "name": "identity"
+    },
+    {
+      "generated_line": 5,
+      "generated_column": 1,
+      "original_line": 5,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 8,
+      "name": "identity"
+    },
+    {
+      "generated_line": 6,
+      "generated_column": 1,
+      "original_line": 6,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 10,
+      "name": "identity"
+    },
+    {
+      "generated_line": 7,
+      "generated_column": 1,
+      "original_line": 7,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 8,
+      "generated_column": 1,
+      "original_line": 8,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    }
+  ]
 }

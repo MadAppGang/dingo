@@ -269,7 +269,6 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 		Duration: prepDuration,
 	})
 
-
 	// Step 3: Parse preprocessed Go
 	parseStart := time.Now()
 	fset := token.NewFileSet()
@@ -291,6 +290,7 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 		Duration: parseDuration,
 	})
 
+	// DEBUG: Check if markers are in AST
 	// Step 2: Setup plugins
 	registry, err := builtin.NewDefaultRegistry()
 	if err != nil {
@@ -345,10 +345,10 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 	}
 
 	// Phase 3: Generate source map AFTER go/printer using PostASTGenerator
-	// This uses actual FileSet positions as ground truth (no predictions)
+	// CRITICAL: Parse the WRITTEN .go file to get accurate FileSet positions
+	// (The in-memory version may have different line numbers after go/printer formatting)
 	sourceMapPath := outputPath + ".map"
-	postASTGen := sourcemap.NewPostASTGenerator(inputPath, outputPath, fset, file.File, metadata)
-	sourceMap, err := postASTGen.Generate()
+	sourceMap, err := sourcemap.GenerateFromFiles(inputPath, outputPath, metadata)
 	if err != nil {
 		// Non-fatal: just log warning
 		buildUI.PrintInfo(fmt.Sprintf("Warning: source map generation failed: %v", err))

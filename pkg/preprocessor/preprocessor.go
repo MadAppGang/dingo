@@ -2,17 +2,11 @@
 package preprocessor
 
 import (
-	"bytes"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/printer"
-	"go/token"
 	"sort"
 	"strings"
 
 	"github.com/MadAppGang/dingo/pkg/config"
-	"golang.org/x/tools/go/ast/astutil"
 )
 
 // Preprocessor orchestrates multiple feature processors to transform
@@ -353,15 +347,13 @@ func (p *Preprocessor) HasCache() bool {
 	return p.cache != nil
 }
 
-// injectImportsWithPosition adds needed imports to the source code and returns the insertion line and end line
-// CRITICAL FIX: Now returns both start and end lines of import block for accurate source map adjustment
+// injectImportsWithPosition adds needed imports using TEXT-BASED manipulation
+// CRITICAL: This preserves ALL comments including free-floating markers (// dingo:E:N)
+// AST-based approaches strip comments, breaking source map generation
 // Returns: modified source, import block start line (1-based), import block end line (1-based), and error
 func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, int, error) {
-	// Parse the source
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "", source, parser.ParseComments)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to parse source for import injection: %w", err)
+	if len(needed) == 0 {
+		return source, 0, 0, nil
 	}
 
 	// Deduplicate and sort needed imports
@@ -370,10 +362,38 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, int
 		importMap[pkg] = true
 	}
 
-	// Remove packages that are already imported
-	for _, imp := range node.Imports {
-		path := strings.Trim(imp.Path.Value, `"`)
-		delete(importMap, path)
+	code := string(source)
+	lines := strings.Split(code, "\n")
+
+	// Find package declaration
+	packageLineIdx := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "package ") {
+			packageLineIdx = i
+			break
+		}
+	}
+	if packageLineIdx == -1 {
+		return nil, 0, 0, fmt.Errorf("no package declaration found")
+	}
+
+	// Find existing import block (if any)
+	importBlockStart, importBlockEnd := findImportBlock(lines)
+
+	// Parse existing imports to avoid duplicates
+	if importBlockStart >= 0 {
+		for i := importBlockStart + 1; i < importBlockEnd; i++ {
+			trimmed := strings.TrimSpace(lines[i])
+			if trimmed == "" || trimmed == ")" {
+				continue
+			}
+			// Extract import path: "path" or _ "path" or alias "path"
+			importPath := extractImportPath(trimmed)
+			if importPath != "" {
+				delete(importMap, importPath)
+			}
+		}
 	}
 
 	// If no new imports needed, return original
@@ -381,100 +401,112 @@ func injectImportsWithPosition(source []byte, needed []string) ([]byte, int, int
 		return source, 0, 0, nil
 	}
 
-	// Determine import insertion line (after package declaration, before first decl)
-	importInsertLine := 1
-	if node.Name != nil {
-		// Line after package declaration (typically line 1 or 2)
-		importInsertLine = fset.Position(node.Name.End()).Line + 1
-	}
-
-	// Convert map to sorted slice
+	// Convert to sorted slice
 	finalImports := make([]string, 0, len(importMap))
 	for pkg := range importMap {
 		finalImports = append(finalImports, pkg)
 	}
 	sort.Strings(finalImports)
 
-	// Add each import using astutil
-	for _, pkg := range finalImports {
-		astutil.AddImport(fset, node, pkg)
+	var result string
+	var insertLine, endLine int
+
+	if importBlockStart >= 0 {
+		// Merge with existing import block
+		result, insertLine, endLine = mergeImports(lines, finalImports, importBlockStart, importBlockEnd)
+	} else {
+		// Create new import block after package
+		result, insertLine, endLine = insertImports(lines, finalImports, packageLineIdx)
 	}
 
-	// CRITICAL FIX: Print imports in multi-line format to match generator output
-	// The generator always uses "import (\n\t...\n)" format, so we must do the same
-	// to ensure source map line numbers are correct
-	var buf bytes.Buffer
-	cfg := printer.Config{
-		Mode:     printer.TabIndent | printer.UseSpaces,
-		Tabwidth: 8,
-	}
+	return []byte(result), insertLine, endLine, nil
+}
 
-	// Print package statement
-	fmt.Fprintf(&buf, "package %s\n\n", node.Name.Name)
-
-	// Print imports in multi-line format (matching generator behavior)
-	if len(node.Imports) > 0 {
-		buf.WriteString("import (\n")
-		for _, imp := range node.Imports {
-			if err := cfg.Fprint(&buf, fset, imp); err != nil {
-				return nil, 0, 0, fmt.Errorf("failed to print import: %w", err)
-			}
-			buf.WriteString("\n")
-		}
-		buf.WriteString(")\n\n")
-	}
-
-	// Print the rest of declarations (skip imports - already printed)
-	for _, decl := range node.Decls {
-		// Skip import declarations (already printed above)
-		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.IMPORT {
-			continue
-		}
-
-		if err := cfg.Fprint(&buf, fset, decl); err != nil {
-			return nil, 0, 0, fmt.Errorf("failed to print declaration: %w", err)
-		}
-		buf.WriteString("\n")
-	}
-
-	formatted := buf.Bytes()
-
-	// CRITICAL FIX: Determine import block end line by scanning the FORMATTED output
-	// This ensures line numbers match the final generated code
-	resultStr := string(formatted)
-	lines := strings.Split(resultStr, "\n")
-
-	// Find the last import line by looking for import declarations
-	importBlockEndLine := importInsertLine
-	inImportBlock := false
+// findImportBlock locates an existing import block in the source
+// Returns start and end line indices (0-based), or -1, -1 if not found
+func findImportBlock(lines []string) (start, end int) {
+	inImport := false
 	for i, line := range lines {
-		lineNum := i + 1 // 1-based line number
 		trimmed := strings.TrimSpace(line)
-
-		// Check if we're entering the import block
-		if strings.HasPrefix(trimmed, "import") {
-			inImportBlock = true
-			importBlockEndLine = lineNum
-			continue
-		}
-
-		// If we're in import block, check if we've reached the end
-		if inImportBlock {
-			// Check if we reached a declaration (end of import section)
-			if strings.HasPrefix(trimmed, "func") || strings.HasPrefix(trimmed, "type") ||
-				strings.HasPrefix(trimmed, "const") || strings.HasPrefix(trimmed, "var") {
-				// Reached first declaration. Import block has ended.
-				break
-			}
-
-			// Update end line for any non-blank line in import block
-			if trimmed != "" {
-				importBlockEndLine = lineNum
-			}
+		if strings.HasPrefix(trimmed, "import (") {
+			start = i
+			inImport = true
+		} else if inImport && trimmed == ")" {
+			end = i
+			return start, end
+		} else if strings.HasPrefix(trimmed, "import ") && !strings.Contains(trimmed, "(") {
+			// Single import: import "path"
+			return i, i
 		}
 	}
+	return -1, -1
+}
 
-	return formatted, importInsertLine, importBlockEndLine, nil
+// extractImportPath extracts the import path from an import line
+// Handles: "path", _ "path", alias "path"
+func extractImportPath(line string) string {
+	// Remove leading/trailing whitespace
+	line = strings.TrimSpace(line)
+
+	// Find the quoted string
+	startQuote := strings.Index(line, `"`)
+	if startQuote == -1 {
+		return ""
+	}
+	endQuote := strings.LastIndex(line, `"`)
+	if endQuote <= startQuote {
+		return ""
+	}
+
+	return line[startQuote+1 : endQuote]
+}
+
+// mergeImports adds new imports to an existing import block
+func mergeImports(lines []string, newImports []string, start, end int) (string, int, int) {
+	// Build new lines with merged imports
+	result := make([]string, 0, len(lines)+len(newImports))
+
+	// Copy lines before import block
+	result = append(result, lines[:end]...)
+
+	// Add new imports before closing )
+	for _, imp := range newImports {
+		result = append(result, fmt.Sprintf("\t\"%s\"", imp))
+	}
+
+	// Copy lines from closing ) onward
+	result = append(result, lines[end:]...)
+
+	// Calculate positions (1-based for return)
+	insertLine := start + 2      // Line after "import ("
+	endLine := end + len(newImports) + 1 // Adjusted closing )
+
+	return strings.Join(result, "\n"), insertLine, endLine
+}
+
+// insertImports creates a new import block after the package declaration
+func insertImports(lines []string, imports []string, packageLine int) (string, int, int) {
+	// Build import block
+	importBlock := []string{
+		"",
+		"import (",
+	}
+	for _, imp := range imports {
+		importBlock = append(importBlock, fmt.Sprintf("\t\"%s\"", imp))
+	}
+	importBlock = append(importBlock, ")")
+
+	// Insert after package line
+	result := make([]string, 0, len(lines)+len(importBlock))
+	result = append(result, lines[:packageLine+1]...)
+	result = append(result, importBlock...)
+	result = append(result, lines[packageLine+1:]...)
+
+	// Calculate positions (1-based for return)
+	insertLine := packageLine + 2        // Line after package declaration
+	endLine := packageLine + 1 + len(importBlock) // Last line of import block
+
+	return strings.Join(result, "\n"), insertLine, endLine
 }
 
 // adjustMappingsForImports shifts mapping line numbers to account for added imports

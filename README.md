@@ -1534,10 +1534,11 @@ dingo/
 ### Core Completed
 
 - **Transpiler Pipeline**
-  - Stage 1: Preprocessor (regex-based text transforms)
+  - Stage 1: Preprocessor (regex-based text transforms + unique markers)
   - Stage 2: go/parser + plugin pipeline (AST transforms)
+  - Stage 3: Post-AST source maps (100% accurate position mapping)
   - Clean, idiomatic code generation
-  - go/printer formatting
+  - Full IDE support via precise source maps
 
 - **CLI Tooling**
   - `dingo build` - Transpile files

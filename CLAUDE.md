@@ -328,6 +328,135 @@ All code generators MUST follow these naming rules:
 - Prioritize end-to-end functionality over completeness
 - Generate idiomatic, readable Go code
 
+### Testing Best Practices & Regression Prevention
+
+**CRITICAL RULE**: If manual testing fails but automated tests pass, the tests are likely wrong or incomplete.
+
+#### The Test Validation Problem
+
+**Scenario**: You implement a feature, write tests, all tests pass ✅, but manual testing shows it's broken ❌.
+
+**Root Causes**:
+1. **Tests validate buggy behavior as "correct"**
+   - Example: Test expects line 9 (wrong) instead of line 8 (correct)
+   - Test passes because it's checking for the bug!
+   - Manual testing reveals the actual bug
+
+2. **Test infrastructure has bugs**
+   - Example: Tests use stale AST instead of written file
+   - Tests compare against wrong baseline
+   - Tests can't detect the real issue
+
+3. **Tests don't simulate real usage**
+   - Example: LSP hover test doesn't check if symbol exists at position
+   - Test checks data structure but not actual behavior
+   - Manual testing reveals missing functionality
+
+#### Required Actions When This Happens
+
+**IMMEDIATELY when manual testing contradicts passing tests:**
+
+1. **Stop and Review Test Implementation**
+   - Don't assume tests are correct just because they pass
+   - Question test expectations: "Why do we expect line 9? Is that actually correct?"
+   - Check test infrastructure: "Are we testing the right thing?"
+
+2. **Create Regression Tests**
+   - Write a test that captures the manual testing scenario
+   - Test should FAIL with the bug, PASS with the fix
+   - Include negative tests (verify what should NOT happen)
+
+3. **Verify Test Quality**
+   - Would this test catch the bug if we broke the code?
+   - Does the test check the actual user-facing behavior?
+   - Are test expectations based on correct understanding?
+
+#### Example: Source Map Position Bug (2025-11-22)
+
+**Bug**: LSP hover showed nothing when hovering on `ReadFile`
+
+**Tests**: All passing ✅ (but tests were wrong!)
+
+**Root Cause Investigation**:
+```go
+// TEST WAS WRONG - Expected buggy behavior as "correct"
+expectedGoLine: 9,  // Marker comment line ❌
+expectedSymbol: "dingo:e:0",  // Marker text ❌
+
+// SHOULD HAVE BEEN
+expectedGoLine: 8,  // Actual code line ✅
+expectedSymbol: "ReadFile",  // Actual function ✅
+```
+
+**Infrastructure Bug**:
+```go
+// WRONG - Used preprocessor AST (stale line numbers)
+mapGen := NewPostASTGenerator(..., preprocessorAST, ...)
+
+// CORRECT - Re-parse written file (accurate line numbers)
+sourceMap := GenerateFromFiles(dingoPath, goPath, metadata)
+```
+
+**Regression Tests Added**:
+1. `TestSymbolAtTranslatedPosition` - Verifies symbols exist at translated positions
+2. `TestNoMappingsToComments` - Ensures mappings never point to comment lines
+3. Updated `TestPositionTranslationAccuracy` - Fixed expected values
+
+**Lesson**: Manual testing revealed the bug; automated tests were validating buggy behavior as correct.
+
+#### Test Design Checklist
+
+When writing tests, always verify:
+
+✅ **Correct Expectations**
+- Are expected values based on correct understanding?
+- Did you verify expectations against actual working behavior?
+- Are you testing what SHOULD happen, not what DOES happen?
+
+✅ **Real Behavior Testing**
+- Does test simulate actual user workflow?
+- For LSP: Does test verify symbols exist at translated positions?
+- For transpiler: Does test verify generated code compiles and runs?
+
+✅ **Negative Cases**
+- Test what should NOT happen (e.g., no mappings to comments)
+- Test error conditions and edge cases
+- Verify invalid inputs are rejected
+
+✅ **Test Infrastructure**
+- Are you testing against the right artifacts? (written files vs in-memory)
+- Does test data match production data?
+- Are mocks/fixtures realistic?
+
+✅ **Regression Prevention**
+- Would test FAIL if we introduced the bug?
+- Can you break the code and see test fail?
+- Does test catch the specific bug scenario?
+
+#### When to Distrust Passing Tests
+
+**Red flags that tests might be wrong:**
+
+🚩 Manual testing consistently contradicts test results
+🚩 Tests pass but feature doesn't work in real usage
+🚩 Test expectations were copied from buggy output
+🚩 Tests haven't been updated after major refactoring
+🚩 Tests use mocks/fixtures that don't match reality
+🚩 Tests check data structures but not actual behavior
+
+**Action**: Review and rewrite tests, don't just add more tests on broken foundation.
+
+#### Manual Testing Remains Critical
+
+**Automated tests are necessary but not sufficient:**
+
+- LSP features: Test in real editor (VSCode, Neovim, etc.)
+- Code generation: Inspect actual generated Go code
+- Error messages: Verify they're helpful to actual users
+- Performance: Measure with realistic workloads
+
+**Best Practice**: After tests pass, always do quick manual smoke test before claiming "done".
+
 ### Agent Usage Guidelines
 
 **CRITICAL**: This project has TWO separate development areas with different agents:
@@ -610,7 +739,7 @@ claudish --model ... &
 
 ### Implementation Architecture (Actual)
 
-**Two-Stage Transpilation Pipeline**:
+**Three-Stage Transpilation Pipeline**:
 
 ```
 .dingo file
@@ -622,8 +751,11 @@ claudish --model ... &
 │ • ErrorPropProcessor                │  x? → if err != nil...
 │ • EnumProcessor                     │  enum Name {} → structs
 │ • KeywordProcessor                  │  Other Dingo keywords
+│                                     │
+│ NEW: Emits TransformMetadata        │  ← Unique markers!
+│      with unique markers            │
 └─────────────────────────────────────┘
-    ↓ (Valid Go syntax)
+    ↓ (Valid Go syntax + markers)
 ┌─────────────────────────────────────┐
 │ Stage 2: AST Processing             │
 ├─────────────────────────────────────┤
@@ -634,14 +766,31 @@ claudish --model ... &
 │   - Inject phase                    │  Add type declarations
 └─────────────────────────────────────┘
     ↓
-.go file + .sourcemap
+┌─────────────────────────────────────┐
+│ Stage 3: Post-AST Source Maps       │  ← NEW STAGE!
+├─────────────────────────────────────┤
+│ • go/printer outputs final .go      │
+│ • PostASTGenerator:                 │
+│   - Reads .go file                  │
+│   - Uses FileSet positions          │
+│   - Matches unique markers          │
+│   - Generates accurate mappings     │
+└─────────────────────────────────────┘
+    ↓
+.go file + .sourcemap (100% accurate)
 ```
 
 **Why This Approach?**
-- Preprocessors transform Dingo syntax (not valid Go) to valid Go
-- Then go/parser handles all parsing (no custom parser needed)
-- Plugins transform AST for features that need Go semantics
-- Simpler, leverages Go's own parser, easier to maintain
+- **Stage 1**: Preprocessors transform Dingo syntax to valid Go, emitting TransformMetadata with unique markers
+- **Stage 2**: go/parser handles parsing (no custom parser needed), plugins transform AST for semantic features
+- **Stage 3**: PostASTGenerator uses go/token.FileSet for ground truth positions, matching markers for 100% accuracy
+- **Result**: Simpler architecture, leverages Go's own parser, zero position drift in source maps
+
+**Key Innovation - Unique Marker System**:
+- Format: `// dingo:X:N` (X=transform type, N=unique counter)
+- Example: `tmp, err := readFile() // dingo:E:1` (error propagation marker)
+- PostASTGenerator matches these markers in final .go file for precise position mapping
+- No line offset math, no cumulative tracking, no drift from go/printer reformatting
 
 ## Important References
 
@@ -657,6 +806,7 @@ claudish --model ... &
 ### Essential Go Tools (Actually Used)
 - `go/parser` - Native Go parser for preprocessed code
 - `go/ast`, `go/printer` - Standard library AST manipulation
+- `go/token` - FileSet for ground truth position tracking in Post-AST source maps
 - `golang.org/x/tools/go/ast/astutil` - Advanced AST utilities
 - `regexp` - Preprocessor pattern matching
 - `go.lsp.dev/protocol` - LSP implementation (future)

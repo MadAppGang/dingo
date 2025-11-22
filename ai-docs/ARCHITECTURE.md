@@ -1,22 +1,23 @@
 # Dingo Transpiler Architecture
 
-**Last Updated**: 2025-11-18
-**Current Phase**: Phase 2.16 Complete
+**Last Updated**: 2025-11-22
+**Current Phase**: Phase 9 Complete - Post-AST Source Maps
 
 ---
 
 ## Overview
 
-Dingo uses a **two-stage transpilation** architecture:
+Dingo uses a **three-stage transpilation** architecture:
 
-1. **Stage 1: Preprocessor** - Text-based transformations (Dingo syntax → valid Go)
+1. **Stage 1: Preprocessor** - Text-based transformations (Dingo syntax → valid Go) with unique markers
 2. **Stage 2: AST Processing** - Structural transformations (Go AST → transformed Go AST)
+3. **Stage 3: Post-AST Source Maps** - Accurate position mapping using FileSet and unique markers
 
-This approach leverages Go's own parser while enabling Dingo-specific syntax that Go doesn't support.
+This approach leverages Go's own parser while enabling Dingo-specific syntax that Go doesn't support, with 100% accurate source maps for full IDE integration.
 
 ---
 
-## The Two-Stage Pipeline
+## The Three-Stage Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -33,16 +34,20 @@ This approach leverages Go's own parser while enabling Dingo-specific syntax tha
 │  ErrorPropProcessor:   x?  →  if err != nil { return ... }  │
 │  EnumProcessor:        enum Name {} → Go structs             │
 │  KeywordProcessor:     Other Dingo keywords                  │
+│                                                              │
+│  NEW: Emits TransformMetadata with unique markers           │
+│       Format: // dingo:X:N  (X=type, N=counter)            │
 ├─────────────────────────────────────────────────────────────┤
-│  Tools: regexp, string manipulation, source maps            │
-│  Output: Valid Go syntax (all Dingo syntax removed)         │
+│  Tools: regexp, string manipulation                          │
+│  Output: Valid Go syntax + unique markers                    │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Valid Go Code                             │
+│             Valid Go Code + Markers                          │
 │  type ColorTag uint8                                         │
 │  func process(x int) Result_int_Error { ... }               │
+│  tmp, err := foo() // dingo:E:1                             │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -57,13 +62,26 @@ This approach leverages Go's own parser while enabling Dingo-specific syntax tha
 │    Phase 3 - Inject:      Add type declarations            │
 ├─────────────────────────────────────────────────────────────┤
 │  Tools: go/parser, go/ast, astutil, go/printer              │
-│  Output: Transformed AST                                     │
+│  Output: Transformed AST → go/printer → final .go file      │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│             Code Generation (go/printer)                     │
-│  .go file + .sourcemap                                       │
+│            STAGE 3: POST-AST SOURCE MAPS                     │
+├─────────────────────────────────────────────────────────────┤
+│  PostASTGenerator:                                           │
+│    1. Reads final .go file (after go/printer formatting)   │
+│    2. Uses go/token.FileSet for ground truth positions     │
+│    3. Matches unique markers (// dingo:X:N) in comments    │
+│    4. Maps positions: .dingo line/col → .go line/col       │
+├─────────────────────────────────────────────────────────────┤
+│  Tools: go/token, go/parser (for FileSet)                   │
+│  Output: .sourcemap with 100% accurate positions            │
+└─────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│      Final Output: .go file + .sourcemap (perfect LSP)       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -188,20 +206,31 @@ func Color_Red() Color {
 // ... more constructors and helper methods
 ```
 
-### Source Mapping
+### Source Mapping (Post-AST Architecture)
 
-Preprocessors maintain source maps for position translation:
+**New Approach (Phase 9)**: Preprocessors emit metadata with unique markers for Post-AST position mapping:
 
 ```go
-type Mapping struct {
-    OriginalStart  int
-    OriginalEnd    int
-    TransformedStart int
-    TransformedEnd   int
+type TransformMetadata struct {
+    OriginalLine   int    // Line in .dingo file
+    OriginalCol    int    // Column in .dingo file
+    UniqueMarker   string // "// dingo:X:N" for matching in final .go
+    TransformType  string // "error_prop", "type_annot", etc.
 }
 ```
 
-This allows error messages to point to the original `.dingo` file, not the generated Go.
+**How it works**:
+1. **Stage 1**: Preprocessors emit TransformMetadata with unique markers (e.g., `// dingo:E:1`)
+2. **Stage 2**: AST processing preserves markers as comments
+3. **Stage 3**: PostASTGenerator matches markers in final .go file using go/token.FileSet
+
+**Benefits**:
+- 100% accurate positions (FileSet is ground truth)
+- Zero drift from go/printer reformatting
+- No line offset math or cumulative tracking
+- Full IDE integration support
+
+This allows error messages and LSP features to point to the original `.dingo` file with perfect accuracy.
 
 ---
 

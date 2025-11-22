@@ -628,6 +628,15 @@ func (e *EnumProcessor) generateOptionHelpers(buf *bytes.Buffer, enumName, tagTy
 	buf.WriteString("\t}\n")
 	buf.WriteString(fmt.Sprintf("\tpanic(\"invalid %s state\")\n", enumName))
 	buf.WriteString("}\n")
+
+	// Unwrap() T - panics if None
+	buf.WriteString("\n")
+	buf.WriteString(fmt.Sprintf("func (o %s) Unwrap() %s {\n", enumName, valueType))
+	buf.WriteString(fmt.Sprintf("\tif o.tag != %sSome {\n", tagTypeName))
+	buf.WriteString("\t\tpanic(\"called Unwrap on None\")\n")
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\treturn *o.%s\n", fieldName))
+	buf.WriteString("}\n")
 }
 
 // generateResultHelpers generates Map and AndThen for Result types

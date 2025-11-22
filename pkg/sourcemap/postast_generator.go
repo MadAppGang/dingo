@@ -104,30 +104,95 @@ func (g *PostASTGenerator) matchTransformations() []preprocessor.Mapping {
 }
 
 // findMarkerPosition searches for a marker comment in the AST
-// Returns the position of the node associated with the marker
+// Returns the position of the ACTUAL CODE LINE before the marker, not the marker itself
 func (g *PostASTGenerator) findMarkerPosition(marker string) token.Pos {
 	if marker == "" {
 		return token.NoPos
 	}
 
-	var foundPos token.Pos
+	var markerPos token.Pos
 
-	// Search through all comment groups
+	// Search through all comment groups to find the marker
 	for _, cg := range g.goAST.Comments {
 		for _, c := range cg.List {
 			if strings.Contains(c.Text, marker) {
-				// Found the marker comment
-				// Return the position of the comment itself
-				foundPos = c.Pos()
+				markerPos = c.Pos()
 				break
 			}
 		}
-		if foundPos != token.NoPos {
+		if markerPos != token.NoPos {
 			break
 		}
 	}
 
-	return foundPos
+	if markerPos == token.NoPos {
+		return token.NoPos
+	}
+
+	// CRITICAL FIX: The marker comment is AFTER the actual code
+	// We need to find the statement BEFORE the marker
+	markerLine := g.fset.Position(markerPos).Line
+	targetLine := markerLine - 1
+
+	// Find the statement on the line before the marker
+	// Priority: AssignStmt > ExprStmt > other statements
+	// (Because error propagation typically transforms assignments)
+	var assignPos, exprPos, otherPos token.Pos
+
+	ast.Inspect(g.goAST, func(n ast.Node) bool {
+		if n == nil {
+			return true
+		}
+
+		// Get position and check if it's on our target line
+		nodePos := n.Pos()
+		nodeLine := g.fset.Position(nodePos).Line
+
+		if nodeLine != targetLine {
+			return true // Keep searching
+		}
+
+		// Check statement types in priority order
+		switch n.(type) {
+		case *ast.AssignStmt:
+			if assignPos == token.NoPos {
+				assignPos = nodePos
+			}
+		case *ast.ExprStmt:
+			if exprPos == token.NoPos {
+				exprPos = nodePos
+			}
+		case *ast.ReturnStmt, *ast.IfStmt, *ast.ForStmt, *ast.DeferStmt:
+			if otherPos == token.NoPos {
+				otherPos = nodePos
+			}
+		}
+
+		return true
+	})
+
+	// Return best match in priority order
+	if assignPos != token.NoPos {
+		return assignPos
+	}
+	if exprPos != token.NoPos {
+		return exprPos
+	}
+	if otherPos != token.NoPos {
+		return otherPos
+	}
+
+	// Fallback: If we can't find the exact statement, return position
+	// on the line before the marker (column 1)
+	// This handles edge cases where AST inspection might miss something
+	file := g.fset.File(markerPos)
+	if file != nil && markerLine > 1 {
+		// Get position at start of previous line
+		lineStart := file.LineStart(markerLine - 1)
+		return lineStart
+	}
+
+	return token.NoPos
 }
 
 // matchIdentity matches unchanged code line-by-line (heuristics)

@@ -1,10 +1,8 @@
 package lsp
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"go.lsp.dev/protocol"
@@ -96,10 +94,6 @@ func (t *Translator) TranslatePosition(
 		Character: uint32(newCol - 1),
 	}
 
-	// PHASE 1 FIX: Add bounds checking to prevent "column beyond end of line" errors
-	// This clamps the column to the line length, providing graceful degradation
-	newPos = clampPositionToLine(newPos, newURI.Filename())
-
 	log.Printf("[LSP Translator] TranslatePosition END: returning uri=%s, line=%d, col=%d",
 		newURI.Filename(), newPos.Line, newPos.Character)
 
@@ -170,69 +164,4 @@ func goToDingoPath(goPath string) string {
 		return goPath
 	}
 	return strings.TrimSuffix(goPath, ".go") + ".dingo"
-}
-
-// clampPositionToLine ensures the column doesn't exceed the line length
-// This prevents "column is beyond end of line" errors from gopls
-// PHASE 1 FIX: Graceful degradation for inaccurate source map mappings
-func clampPositionToLine(pos protocol.Position, filePath string) protocol.Position {
-	log.Printf("[LSP Translator] clampPositionToLine called: file=%s, line=%d, col=%d",
-		filePath, pos.Line, pos.Character)
-
-	// Read the file and get the line length
-	lineLength, err := getLineLength(filePath, int(pos.Line))
-	if err != nil {
-		// CRITICAL: Log the error so we can diagnose why clamping isn't working
-		log.Printf("[LSP Translator] ERROR: Failed to get line length: %v (file: %s, line: %d) - RETURNING UNCLAMPED POSITION",
-			err, filePath, pos.Line)
-		// We MUST clamp to 0 if we can't read the file, otherwise gopls will fail
-		// Return column 0 as safest fallback
-		log.Printf("[LSP Translator] EMERGENCY FALLBACK: Clamping column to 0 to prevent gopls crash")
-		pos.Character = 0
-		return pos
-	}
-
-	// LSP positions are 0-based, so valid range is [0, lineLength]
-	// lineLength is the number of characters, so max valid column is lineLength
-	maxCol := uint32(lineLength)
-
-	log.Printf("[LSP Translator] Line length: %d, max valid column: %d", lineLength, maxCol)
-
-	if pos.Character > maxCol {
-		log.Printf("[LSP Translator] WARNING: Column %d exceeds line length %d (file: %s, line: %d), clamping to %d",
-			pos.Character, lineLength, filePath, pos.Line, maxCol)
-		pos.Character = maxCol
-	} else {
-		log.Printf("[LSP Translator] Column %d is within bounds (max: %d), no clamping needed",
-			pos.Character, maxCol)
-	}
-
-	return pos
-}
-
-// getLineLength returns the length of a specific line in a file (0-based line number)
-func getLineLength(filePath string, lineNum int) (int, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	currentLine := 0
-
-	for scanner.Scan() {
-		if currentLine == lineNum {
-			// Return the length of this line
-			return len(scanner.Text()), nil
-		}
-		currentLine++
-	}
-
-	if err := scanner.Err(); err != nil {
-		return 0, fmt.Errorf("error reading file: %w", err)
-	}
-
-	// Line number is beyond file length
-	return 0, fmt.Errorf("line %d not found in file (file has %d lines)", lineNum, currentLine)
 }

@@ -36,6 +36,10 @@ type SafeNavTypePlugin struct {
 	// Type inference service for accurate type resolution
 	typeInference *TypeInferenceService
 
+	// AST-based type maps for fallback inference (when go/types fails)
+	structFields  map[string]map[string]string // struct → field → type
+	methodReturns map[string]map[string]string // receiver → method → return type
+
 	// Errors encountered during type inference
 	errors []string
 }
@@ -110,6 +114,16 @@ func (p *SafeNavTypePlugin) Process(node ast.Node) error {
 	if p.ctx.GetParentMap() == nil {
 		if file, ok := node.(*ast.File); ok {
 			p.ctx.BuildParentMap(file)
+		}
+	}
+
+	// Build AST-based type maps for fallback inference (once per file)
+	if p.structFields == nil && p.methodReturns == nil {
+		if file, ok := node.(*ast.File); ok {
+			p.structFields = p.buildStructFieldTypeMap(file)
+			p.methodReturns = p.buildMethodReturnTypeMap(file)
+			p.ctx.Logger.Debug("SafeNavTypePlugin: Built type maps - %d structs, %d method receivers",
+				len(p.structFields), len(p.methodReturns))
 		}
 	}
 
@@ -875,6 +889,103 @@ func (p *SafeNavTypePlugin) resolveOptionTypeFromContext(call *ast.CallExpr) str
 	return optionType
 }
 
+// buildStructFieldTypeMap extracts struct type definitions from the AST and builds a map
+// of struct names to their field types. This allows field type lookup without go/types.
+func (p *SafeNavTypePlugin) buildStructFieldTypeMap(file *ast.File) map[string]map[string]string {
+	structFields := make(map[string]map[string]string)
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		// Look for type declarations
+		if genDecl, ok := n.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+			for _, spec := range genDecl.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					// Check if it's a struct type
+					if structType, ok := typeSpec.Type.(*ast.StructType); ok {
+						structName := typeSpec.Name.Name
+						fields := make(map[string]string)
+
+						// Extract field names and types
+						for _, field := range structType.Fields.List {
+							fieldType := ""
+							switch ft := field.Type.(type) {
+							case *ast.Ident:
+								fieldType = ft.Name
+							case *ast.SelectorExpr:
+								// Handle qualified types like pkg.Type
+								if x, ok := ft.X.(*ast.Ident); ok {
+									fieldType = x.Name + "." + ft.Sel.Name
+								}
+							}
+
+							// Each field can have multiple names (e.g., x, y int)
+							for _, name := range field.Names {
+								fields[name.Name] = fieldType
+							}
+						}
+
+						structFields[structName] = fields
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	return structFields
+}
+
+// buildMethodReturnTypeMap extracts method declarations from the AST and builds a map
+// of receiver types to method names to return types.
+func (p *SafeNavTypePlugin) buildMethodReturnTypeMap(file *ast.File) map[string]map[string]string {
+	methodReturns := make(map[string]map[string]string)
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		// Look for function declarations (methods have receivers)
+		if funcDecl, ok := n.(*ast.FuncDecl); ok {
+			if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
+				// This is a method
+				receiverType := ""
+				switch rt := funcDecl.Recv.List[0].Type.(type) {
+				case *ast.Ident:
+					receiverType = rt.Name
+				case *ast.StarExpr:
+					// Pointer receiver
+					if ident, ok := rt.X.(*ast.Ident); ok {
+						receiverType = ident.Name
+					}
+				}
+
+				if receiverType != "" {
+					methodName := funcDecl.Name.Name
+
+					// Extract return type
+					var returnType string
+					if funcDecl.Type.Results != nil && len(funcDecl.Type.Results.List) > 0 {
+						switch rt := funcDecl.Type.Results.List[0].Type.(type) {
+						case *ast.Ident:
+							returnType = rt.Name
+						case *ast.SelectorExpr:
+							if x, ok := rt.X.(*ast.Ident); ok {
+								returnType = x.Name + "." + rt.Sel.Name
+							}
+						}
+					}
+
+					if returnType != "" {
+						if methodReturns[receiverType] == nil {
+							methodReturns[receiverType] = make(map[string]string)
+						}
+						methodReturns[receiverType][methodName] = returnType
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	return methodReturns
+}
+
 // resolveReturnTypeFromFunc attempts to determine the return type for func() __INFER__
 //
 // Strategy:
@@ -989,8 +1100,273 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 		}
 	}
 
+	p.ctx.Logger.Debug("SafeNavTypePlugin: Trying AST-based type resolution (Strategy 3)...")
+
+	// Strategy 3: Use AST-based type maps to resolve field/method types
+	// This handles:
+	// - return user1.address (struct field access)
+	// - return profile2.getEmail() (method call)
+	if p.structFields != nil || p.methodReturns != nil {
+		ast.Inspect(funcLit.Body, func(n ast.Node) bool {
+			// Look for return statements
+			if retStmt, ok := n.(*ast.ReturnStmt); ok {
+				if len(retStmt.Results) == 1 {
+					// Check if it's a selector expression (field or method access)
+					if sel, ok := retStmt.Results[0].(*ast.SelectorExpr); ok {
+						// Get the base variable
+						if baseIdent, ok := sel.X.(*ast.Ident); ok {
+							fieldName := sel.Sel.Name
+							varName := baseIdent.Name
+
+							p.ctx.Logger.Debug("SafeNavTypePlugin: Found return %s.%s", varName, fieldName)
+
+							// Try to find the type of the base variable
+							var baseType string
+
+							// Look for variable declaration in the function body
+							ast.Inspect(funcLit.Body, func(inner ast.Node) bool {
+								if assignStmt, ok := inner.(*ast.AssignStmt); ok {
+									for i, lhs := range assignStmt.Lhs {
+										if ident, ok := lhs.(*ast.Ident); ok && ident.Name == varName {
+											// Found the declaration, try to determine its type
+											if i < len(assignStmt.Rhs) {
+												rhs := assignStmt.Rhs[i]
+
+												// Handle call expression (e.g., user.Unwrap())
+												if call, ok := rhs.(*ast.CallExpr); ok {
+													if callSel, ok := call.Fun.(*ast.SelectorExpr); ok {
+														if callSel.Sel.Name == "Unwrap" {
+															if unwrapBase, ok := callSel.X.(*ast.Ident); ok {
+																// Extract type from Option_T → T
+																// If user is UserOption, then user.Unwrap() returns User
+																p.ctx.Logger.Debug("SafeNavTypePlugin: Found %s := %s.Unwrap()", varName, unwrapBase.Name)
+
+																// Trace the unwrapBase variable to find its Option type
+																baseType = p.extractUnwrappedTypeFromVar(funcLit, unwrapBase.Name)
+																if baseType != "" {
+																	p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type: %s", baseType)
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+								return true
+							})
+
+							if baseType != "" {
+								p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved base type: %s", baseType)
+
+								// Check if it's a field access
+								if p.structFields != nil {
+									if fields, ok := p.structFields[baseType]; ok {
+										if fieldType, ok := fields[fieldName]; ok {
+											p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved field type: %s.%s = %s", baseType, fieldName, fieldType)
+											optionType = fieldType
+											return false
+										}
+									}
+								}
+
+								// Check if it's a method call
+								// Note: method calls would have CallExpr parent, so check for that
+							} else {
+								p.ctx.Logger.Debug("SafeNavTypePlugin: Could not resolve base type for %s", varName)
+							}
+						}
+					}
+
+					// Check if it's a method call (CallExpr with selector)
+					if call, ok := retStmt.Results[0].(*ast.CallExpr); ok {
+						if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+							if baseIdent, ok := sel.X.(*ast.Ident); ok {
+								methodName := sel.Sel.Name
+								varName := baseIdent.Name
+
+								p.ctx.Logger.Debug("SafeNavTypePlugin: Found return %s.%s()", varName, methodName)
+
+								// Try to find the type of the base variable
+								var baseType string
+
+								// Similar logic as above to find the base type
+								ast.Inspect(funcLit.Body, func(inner ast.Node) bool {
+									if assignStmt, ok := inner.(*ast.AssignStmt); ok {
+										for i, lhs := range assignStmt.Lhs {
+											if ident, ok := lhs.(*ast.Ident); ok && ident.Name == varName {
+												if i < len(assignStmt.Rhs) {
+													rhs := assignStmt.Rhs[i]
+													if unwrapCall, ok := rhs.(*ast.CallExpr); ok {
+														if unwrapSel, ok := unwrapCall.Fun.(*ast.SelectorExpr); ok {
+															if unwrapSel.Sel.Name == "Unwrap" {
+																if unwrapBaseIdent, ok := unwrapSel.X.(*ast.Ident); ok {
+																	// Trace the unwrapBase variable to find its Option type
+																	baseType = p.extractUnwrappedTypeFromVar(funcLit, unwrapBaseIdent.Name)
+																	if baseType != "" {
+																		p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type for method call: %s", baseType)
+																	}
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+									return true
+								})
+
+								if baseType != "" {
+									p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved base type for method call: %s", baseType)
+
+									// Check if we have method return type info
+									if p.methodReturns != nil {
+										if methods, ok := p.methodReturns[baseType]; ok {
+											if returnType, ok := methods[methodName]; ok {
+												p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved method return type: %s.%s() = %s", baseType, methodName, returnType)
+												optionType = returnType
+												return false
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return true
+		})
+
+		if optionType != "" {
+			p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved type using AST-based type maps: %s", optionType)
+			return optionType
+		}
+	}
+
 	p.ctx.Logger.Debug("SafeNavTypePlugin: Failed to resolve type")
 	return ""
+}
+
+// extractUnwrappedTypeFromVar traces a variable to find its Option type and returns the unwrapped type
+// For example, if varName is "user" and it's of type "UserOption", returns "User"
+// This function searches both the current scope and parent scopes to find the variable declaration
+func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varName string) string {
+	var optionTypeName string
+
+	// Helper function to search for variable in a block statement
+	findVarInBlock := func(block *ast.BlockStmt) bool {
+		found := false
+		ast.Inspect(block, func(n ast.Node) bool {
+			if assignStmt, ok := n.(*ast.AssignStmt); ok {
+				for i, lhs := range assignStmt.Lhs {
+					if ident, ok := lhs.(*ast.Ident); ok && ident.Name == varName {
+						// Found the variable declaration
+						if i < len(assignStmt.Rhs) {
+							rhs := assignStmt.Rhs[i]
+
+							// Check if it's a function call (e.g., getUser(1))
+							if call, ok := rhs.(*ast.CallExpr); ok {
+								if funcIdent, ok := call.Fun.(*ast.Ident); ok {
+									funcName := funcIdent.Name
+									p.ctx.Logger.Debug("SafeNavTypePlugin: Variable %s is assigned from function %s()", varName, funcName)
+
+									// Look up the function's return type in method returns map
+									// Note: For top-level functions, we'd need a function return type map
+									// For now, try to infer from the function name pattern
+									// e.g., getUser -> UserOption, fetchProfile -> UserOption
+									if strings.HasPrefix(funcName, "get") || strings.HasPrefix(funcName, "fetch") {
+										// Extract the type name from the function name
+										// getUser -> User, fetchProfile -> Profile
+										typeName := strings.TrimPrefix(funcName, "get")
+										typeName = strings.TrimPrefix(typeName, "fetch")
+										optionTypeName = typeName + "Option"
+										p.ctx.Logger.Debug("SafeNavTypePlugin: Inferred option type from function name: %s", optionTypeName)
+										found = true
+										return false
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return true
+		})
+		return found
+	}
+
+	// First, try to find the variable in the current block
+	if block, ok := startNode.(*ast.BlockStmt); ok {
+		if findVarInBlock(block) {
+			p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in current scope", varName)
+		}
+	} else if funcLit, ok := startNode.(*ast.FuncLit); ok {
+		if findVarInBlock(funcLit.Body) {
+			p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in current IIFE scope", varName)
+		}
+	}
+
+	// If not found in current scope, traverse up to parent scopes
+	if optionTypeName == "" {
+		p.ctx.Logger.Debug("SafeNavTypePlugin: Variable %s not found in current scope, searching parent scopes...", varName)
+
+		currentNode := startNode
+		for optionTypeName == "" {
+			// Get parent node
+			parentNode := p.ctx.GetParent(currentNode)
+			if parentNode == nil {
+				p.ctx.Logger.Debug("SafeNavTypePlugin: Reached root, no parent found")
+				break
+			}
+
+			p.ctx.Logger.Debug("SafeNavTypePlugin: Checking parent node type: %T", parentNode)
+
+			// Check if parent is a function declaration with a body
+			if funcDecl, ok := parentNode.(*ast.FuncDecl); ok && funcDecl.Body != nil {
+				p.ctx.Logger.Debug("SafeNavTypePlugin: Searching in parent function %s", funcDecl.Name.Name)
+				if findVarInBlock(funcDecl.Body) {
+					p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in parent function %s", varName, funcDecl.Name.Name)
+					break
+				}
+			}
+
+			// Check if parent is a block statement
+			if block, ok := parentNode.(*ast.BlockStmt); ok {
+				p.ctx.Logger.Debug("SafeNavTypePlugin: Searching in parent block")
+				if findVarInBlock(block) {
+					p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in parent block", varName)
+					break
+				}
+			}
+
+			// Move up to the next parent
+			currentNode = parentNode
+		}
+	}
+
+	if optionTypeName == "" {
+		p.ctx.Logger.Debug("SafeNavTypePlugin: Could not determine option type for variable %s in any scope", varName)
+		return ""
+	}
+
+	// Extract the unwrapped type from the Option type name
+	// UserOption -> User, AddressOption -> Address, StringOption -> string
+	unwrappedType := strings.TrimSuffix(optionTypeName, "Option")
+
+	// Handle built-in types (StringOption -> string)
+	if unwrappedType == "String" {
+		unwrappedType = "string"
+	} else if unwrappedType == "Int" {
+		unwrappedType = "int"
+	} else if unwrappedType == "Bool" {
+		unwrappedType = "bool"
+	}
+
+	p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type %s from option type %s", unwrappedType, optionTypeName)
+	return unwrappedType
 }
 
 // GetErrors returns all accumulated errors
