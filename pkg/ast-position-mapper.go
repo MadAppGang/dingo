@@ -2,6 +2,7 @@
 package astpositionmapper
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 )
@@ -196,6 +197,6 @@ func nodeHash(n ast.Node) string {
 	default:
 		// For other node types, use position as a unique identifier
 		// This assumes positions don't overlap, which is generally true
-		return "node:" + n.Pos().String()
+		return fmt.Sprintf("node:%d", n.Pos())
 	}
 }
