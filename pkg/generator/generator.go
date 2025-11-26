@@ -19,6 +19,12 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
+const (
+	typeString  = "string"
+	typeInt     = "int"
+	typeFloat64 = "float64"
+)
+
 // Generator generates Go source code from a Dingo AST
 type Generator struct {
 	fset     *token.FileSet
@@ -137,7 +143,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 	if g.pipeline != nil && g.pipeline.Ctx != nil {
 		g.pipeline.Ctx.BuildParentMap(file.File)
 		if g.logger != nil {
-			g.logger.Debug("Parent map built successfully")
+			g.logger.Debugf("Parent map built successfully")
 		}
 	}
 
@@ -148,14 +154,14 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 		// Type checking failure is not fatal - we can still generate code
 		// but type inference will be limited to structural analysis
 		if g.logger != nil {
-			g.logger.Warn("Type checker failed: %v (continuing with limited type inference)", err)
+			g.logger.Warnf("Type checker failed: %v (continuing with limited type inference)", err)
 		}
 	} else {
 		// Make types.Info available to the pipeline context
 		if g.pipeline != nil && g.pipeline.Ctx != nil {
 			g.pipeline.Ctx.TypeInfo = typesInfo
 			if g.logger != nil {
-				g.logger.Debug("Type checker completed successfully")
+				g.logger.Debugf("Type checker completed successfully")
 			}
 		}
 	}
@@ -171,7 +177,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 
 		if g.logger != nil {
 			stats := g.pipeline.GetStats()
-			g.logger.Debug("Transformation complete: %d/%d plugins executed",
+			g.logger.Debugf("Transformation complete: %d/%d plugins executed",
 				stats.EnabledPlugins, stats.TotalPlugins)
 		}
 
@@ -243,7 +249,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 	resolved, err := g.resolvePostASTPlaceholders(printerOutput)
 	if err != nil {
 		if g.logger != nil {
-			g.logger.Warn("Post-AST placeholder resolution failed: %v (continuing with unresolved placeholders)", err)
+			g.logger.Warnf("Post-AST placeholder resolution failed: %v (continuing with unresolved placeholders)", err)
 		}
 		// Continue with unresolved placeholders rather than failing
 		resolved = printerOutput
@@ -259,7 +265,7 @@ func (g *Generator) Generate(file *dingoast.File) ([]byte, error) {
 	withMarkers, err := injector.InjectMarkers(resolved)
 	if err != nil {
 		if g.logger != nil {
-			g.logger.Warn("Failed to inject markers: %v", err)
+			g.logger.Warnf("Failed to inject markers: %v", err)
 		}
 		return resolved, nil // Return without markers on error
 	}
@@ -312,7 +318,7 @@ func (g *Generator) runTypeChecker(file *ast.File) (*types.Info, error) {
 		// We want partial type information even if there are errors
 		Error: func(err error) {
 			if g.logger != nil {
-				g.logger.Debug("Type checker: %v", err)
+				g.logger.Debugf("Type checker: %v", err)
 			}
 		},
 
@@ -333,14 +339,14 @@ func (g *Generator) runTypeChecker(file *ast.File) (*types.Info, error) {
 		// Type checking may fail for incomplete code
 		// But we still want the partial type information we collected
 		if g.logger != nil {
-			g.logger.Debug("Type checking completed with errors: %v", err)
+			g.logger.Debugf("Type checking completed with errors: %v", err)
 		}
 		// Return the info even if there were errors - partial information is useful
 		return info, nil
 	}
 
 	if g.logger != nil && pkg != nil {
-		g.logger.Debug("Type checker: package %q checked successfully", pkg.Name())
+		g.logger.Debugf("Type checker: package %q checked successfully", pkg.Name())
 	}
 
 	return info, nil
@@ -378,7 +384,7 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 	}
 
 	if g.logger != nil {
-		g.logger.Debug("Post-AST resolution: Found %d __INFER__ placeholders", placeholderCount)
+		g.logger.Debugf("Post-AST resolution: Found %d __INFER__ placeholders", placeholderCount)
 	}
 
 	// Step 1: Parse the generated .go file
@@ -403,7 +409,7 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 			// Ignore errors - __INFER__ placeholders will cause type errors
 			// We want partial type information even with errors
 			if g.logger != nil {
-				g.logger.Debug("Post-AST type checker: %v", err)
+				g.logger.Debugf("Post-AST type checker: %v", err)
 			}
 		},
 		DisableUnusedImportCheck: true,
@@ -414,7 +420,7 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 		pkgName = postFile.Name.Name
 	}
 
-	_, err = postConf.Check(pkgName, postFset, []*ast.File{postFile}, postInfo)
+	_, _ = postConf.Check(pkgName, postFset, []*ast.File{postFile}, postInfo)
 	// Type checking will fail due to __INFER__ placeholders, but we still get partial info
 	// We don't return the error - we use the partial information we collected
 
@@ -450,7 +456,7 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 									replacements++
 
 									if g.logger != nil {
-										g.logger.Debug("Post-AST resolution: Resolved func() __INFER__ → func() %s", resolvedType)
+										g.logger.Debugf("Post-AST resolution: Resolved func() __INFER__ → func() %s", resolvedType)
 									}
 								}
 							}
@@ -484,13 +490,13 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 								fun.Name = resolvedType + "_None"
 								replacements++
 								if g.logger != nil {
-									g.logger.Debug("Post-AST resolution: Resolved __INFER___None() → %s_None()", resolvedType)
+									g.logger.Debugf("Post-AST resolution: Resolved __INFER___None() → %s_None()", resolvedType)
 								}
 							} else {
 								fun.Name = resolvedType + "_Some"
 								replacements++
 								if g.logger != nil {
-									g.logger.Debug("Post-AST resolution: Resolved __INFER___Some() → %s_Some()", resolvedType)
+									g.logger.Debugf("Post-AST resolution: Resolved __INFER___Some() → %s_Some()", resolvedType)
 								}
 							}
 						}
@@ -514,13 +520,13 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 	if replacements == 0 {
 		// No replacements made - return original code
 		if g.logger != nil {
-			g.logger.Warn("Post-AST resolution: Could not resolve any of %d __INFER__ placeholders", placeholderCount)
+			g.logger.Warnf("Post-AST resolution: Could not resolve any of %d __INFER__ placeholders", placeholderCount)
 		}
 		return goCode, nil
 	}
 
 	if g.logger != nil {
-		g.logger.Debug("Post-AST resolution: Resolved %d/%d placeholders", replacements, placeholderCount)
+		g.logger.Debugf("Post-AST resolution: Resolved %d/%d placeholders", replacements, placeholderCount)
 	}
 
 	// Step 4: Regenerate .go code with resolved types
@@ -539,7 +545,7 @@ func (g *Generator) resolvePostASTPlaceholders(goCode []byte) ([]byte, error) {
 	if err != nil {
 		// Return unformatted if formatting fails
 		if g.logger != nil {
-			g.logger.Warn("Post-AST resolution: Failed to format resolved code: %v", err)
+			g.logger.Warnf("Post-AST resolution: Failed to format resolved code: %v", err)
 		}
 		return buf.Bytes(), nil
 	}
@@ -595,11 +601,11 @@ func (g *Generator) inferFuncLitReturnTypePostAST(funcLit *ast.FuncLit, info *ty
 			case *ast.BasicLit:
 				switch expr.Kind {
 				case token.STRING:
-					concreteType = "string"
+					concreteType = typeString
 				case token.INT:
-					concreteType = "int"
+					concreteType = typeInt
 				case token.FLOAT:
-					concreteType = "float64"
+					concreteType = typeFloat64
 				case token.CHAR:
 					concreteType = "rune"
 				}
@@ -642,7 +648,7 @@ func (g *Generator) inferFuncLitReturnTypePostAST(funcLit *ast.FuncLit, info *ty
 		// string -> StringOption, int -> IntOption, etc.
 		optionType := g.constructOptionTypeName(concreteType)
 		if g.logger != nil {
-			g.logger.Debug("Post-AST: Inferred %s from concrete type %s (safe nav pattern)", optionType, concreteType)
+			g.logger.Debugf("Post-AST: Inferred %s from concrete type %s (safe nav pattern)", optionType, concreteType)
 		}
 		return optionType
 	}
@@ -659,7 +665,7 @@ func (g *Generator) inferFuncLitReturnTypePostAST(funcLit *ast.FuncLit, info *ty
 // Examples: string -> StringOption, int -> IntOption, User -> UserOption
 func (g *Generator) constructOptionTypeName(concreteType string) string {
 	// Capitalize first letter for type name
-	if len(concreteType) == 0 {
+	if concreteType == "" {
 		return ""
 	}
 
@@ -704,41 +710,6 @@ func (g *Generator) constructOptionTypeName(concreteType string) string {
 	}
 }
 
-// inferOptionTypeFromContextPostAST infers the Option specialization type
-// from the surrounding context using go/types
-func (g *Generator) inferOptionTypeFromContextPostAST(callExpr *ast.CallExpr, info *types.Info, cursor *astutil.Cursor) string {
-	// Look at parent context to determine expected type
-	// This is a simplified implementation - can be enhanced with more context analysis
-
-	// For now, return empty string to indicate no resolution
-	// Full implementation would walk up the AST to find variable declarations,
-	// function parameters, etc. that give us type context
-	return ""
-}
-
-// inferOptionTypeFromParentIIFE finds the containing FuncLit and returns its resolved type
-// from the funcLitTypes map (which was populated during the first pass of AST walking)
-func (g *Generator) inferOptionTypeFromParentIIFE(cursor *astutil.Cursor, funcLitTypes map[*ast.FuncLit]string) string {
-	// Walk up the cursor to find the containing FuncLit
-	parent := cursor.Parent()
-
-	for parent != nil {
-		if funcLit, ok := parent.(*ast.FuncLit); ok {
-			// Found the containing function literal
-			if resolvedType, exists := funcLitTypes[funcLit]; exists {
-				return resolvedType
-			}
-			// If not in map, continue searching parent scopes
-		}
-
-		// Move up to parent - we need to manually track the parent chain
-		// since cursor.Parent() only gives immediate parent
-		// For simplicity, we'll break here and rely on the map
-		break
-	}
-
-	return ""
-}
 
 // removeBlankLinesAroundDingoMarkers removes extra blank lines before/after // dingo: markers
 // The Go formatter (format.Source) tends to add blank lines around comments for readability,

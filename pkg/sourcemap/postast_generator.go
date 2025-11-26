@@ -344,8 +344,8 @@ func (g *PostASTGenerator) buildOffsetMap(dingoLines, goLines []string) map[int]
 
 		// Search for matching line in .go file (within reasonable range)
 		// Start from same line number, search within ±20 lines
-		searchStart := max(0, i-5)
-		searchEnd := min(len(goLines), i+20)
+		searchStart := maxInt(0, i-5)
+		searchEnd := minInt(len(goLines), i+20)
 
 		// Find first unused matching line
 		for j := searchStart; j < searchEnd; j++ {
@@ -371,16 +371,16 @@ func (g *PostASTGenerator) buildOffsetMap(dingoLines, goLines []string) map[int]
 	return offsetMap
 }
 
-// max returns the maximum of two integers
-func max(a, b int) int {
+// maxInt returns the maximum of two integers
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-// min returns the minimum of two integers
-func min(a, b int) int {
+// minInt returns the minimum of two integers
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

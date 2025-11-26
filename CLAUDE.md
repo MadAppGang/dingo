@@ -526,7 +526,7 @@ When writing tests, always verify:
 **CRITICAL**: This project has TWO separate development areas with different agents:
 
 #### 1. **Dingo Transpiler/Language** (This Directory)
-**Working Directory**: `/Users/jack/mag/dingo/` (root)
+**Working Directory**: Project root
 **Code**: `cmd/`, `pkg/`, `internal/`, `tests/golden/`
 **Language**: Go
 
@@ -540,7 +540,7 @@ When writing tests, always verify:
 - ✅ `/dev` - Development orchestrator for Dingo language
 
 #### 2. **Landing Page** (Separate Directory)
-**Working Directory**: `/Users/jack/mag/dingo/langingpage/`
+**Working Directory**: `langingpage/`
 **Code**: `src/`, Astro components, React components
 **Language**: TypeScript, Astro, React
 
@@ -571,8 +571,8 @@ When writing tests, always verify:
 - Parser, AST, transpiler, language features → Use golang-* agents
 - Landing page, components, styling, UI → Use astro-* agents
 - In doubt? Check your working directory:
-  - Root (`/Users/jack/mag/dingo/`) → golang-* agents
-  - Langingpage (`/Users/jack/mag/dingo/langingpage/`) → astro-* agents
+  - Root (project root) → golang-* agents
+  - Langingpage (`langingpage/`) → astro-* agents
 
 ### Common Delegation Patterns (Skills)
 

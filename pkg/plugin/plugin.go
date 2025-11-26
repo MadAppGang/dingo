@@ -265,8 +265,8 @@ type Config struct {
 type Logger interface {
 	Info(msg string)
 	Error(msg string)
-	Debug(format string, args ...interface{})
-	Warn(format string, args ...interface{})
+	Debugf(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
 }
 
 // NoOpLogger does nothing
@@ -277,10 +277,10 @@ func NewNoOpLogger() Logger {
 	return &NoOpLogger{}
 }
 
-func (n *NoOpLogger) Info(msg string)                          {}
-func (n *NoOpLogger) Error(msg string)                         {}
-func (n *NoOpLogger) Debug(format string, args ...interface{}) {}
-func (n *NoOpLogger) Warn(format string, args ...interface{})  {}
+func (n *NoOpLogger) Info(msg string)                           {}
+func (n *NoOpLogger) Error(msg string)                          {}
+func (n *NoOpLogger) Debugf(format string, args ...interface{}) {}
+func (n *NoOpLogger) Warnf(format string, args ...interface{})  {}
 
 // Plugin interface
 type Plugin interface {

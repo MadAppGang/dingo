@@ -94,7 +94,8 @@ Example:
 
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Output file path (default: replace .dingo with .go)")
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for file changes and rebuild")
-	cmd.Flags().StringVar(&multiValueReturnMode, "multi-value-return", "full", "Multi-value return propagation mode: 'full' (default, supports (A,B,error)) or 'single' (restricts to (T,error))")
+	cmd.Flags().StringVar(&multiValueReturnMode, "multi-value-return", "full",
+		"Multi-value return propagation mode: 'full' (default, supports (A,B,error)) or 'single' (restricts to (T,error))")
 
 	return cmd
 }
@@ -133,7 +134,8 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVar(&multiValueReturnMode, "multi-value-return", "full", "Multi-value return propagation mode: 'full' (default, supports (A,B,error)) or 'single' (restricts to (T,error))")
+	cmd.Flags().StringVar(&multiValueReturnMode, "multi-value-return", "full",
+		"Multi-value return propagation mode: 'full' (default, supports (A,B,error)) or 'single' (restricts to (T,error))")
 
 	return cmd
 }
@@ -148,7 +150,7 @@ func versionCmd() *cobra.Command {
 	}
 }
 
-func runBuild(files []string, output string, watch bool, multiValueReturnMode string) error {
+func runBuild(files []string, output string, watch bool, _ string) error {
 	// Load main Dingo configuration (C1: Config Integration)
 	//
 	// Priority order:
@@ -199,7 +201,7 @@ func runBuild(files []string, output string, watch bool, multiValueReturnMode st
 	return nil
 }
 
-func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg *config.Config) error {
+func buildFile(inputPath, outputPath string, buildUI *ui.BuildOutput, cfg *config.Config) error {
 	if outputPath == "" {
 		// Default: replace .dingo with .go
 		if len(inputPath) > 6 && inputPath[len(inputPath)-6:] == ".dingo" {
@@ -334,7 +336,7 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 
 	// Step 4: Write .go file
 	writeStart := time.Now()
-	if err := os.WriteFile(outputPath, outputCode, 0644); err != nil {
+	if err := os.WriteFile(outputPath, outputCode, 0o644); err != nil {
 		writeDuration := time.Since(writeStart)
 		buildUI.PrintStep(ui.Step{
 			Name:     "Write",
@@ -355,7 +357,7 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 	} else {
 		// Write source map
 		sourceMapJSON, _ := json.MarshalIndent(sourceMap, "", "  ")
-		if err := os.WriteFile(sourceMapPath, sourceMapJSON, 0644); err != nil {
+		if err := os.WriteFile(sourceMapPath, sourceMapJSON, 0o644); err != nil {
 			// Non-fatal: just log warning
 			buildUI.PrintInfo(fmt.Sprintf("Warning: failed to write source map: %v", err))
 		}
@@ -373,7 +375,7 @@ func buildFile(inputPath string, outputPath string, buildUI *ui.BuildOutput, cfg
 	return nil
 }
 
-func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode string) error {
+func runDingoFile(inputPath string, programArgs []string, _ string) error {
 	// Create beautiful output
 	buildUI := ui.NewBuildOutput()
 
@@ -456,7 +458,7 @@ func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode s
 	}
 
 	// Write
-	if err := os.WriteFile(outputPath, goCode, 0644); err != nil {
+	if err := os.WriteFile(outputPath, goCode, 0o644); err != nil {
 		buildUI.PrintError(fmt.Sprintf("Failed to write %s: %v", outputPath, err))
 		return err
 	}
@@ -502,13 +504,14 @@ func runDingoFile(inputPath string, programArgs []string, multiValueReturnMode s
 }
 
 func formatDuration(d time.Duration) string {
-	if d < time.Microsecond {
+	switch {
+	case d < time.Microsecond:
 		return fmt.Sprintf("%dns", d.Nanoseconds())
-	} else if d < time.Millisecond {
+	case d < time.Millisecond:
 		return fmt.Sprintf("%dµs", d.Microseconds())
-	} else if d < time.Second {
+	case d < time.Second:
 		return fmt.Sprintf("%dms", d.Milliseconds())
-	} else {
+	default:
 		return fmt.Sprintf("%.2fs", d.Seconds())
 	}
 }

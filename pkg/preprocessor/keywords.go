@@ -15,11 +15,12 @@ var (
 	// Captures identifiers and optional type annotation
 	letPattern = regexp.MustCompile(`\blet\s+([\w\s,]+?)(?:\s*:\s*[^=]+?)?\s*=`)
 
-	// Match: let identifier Type (declaration without initialization)
-	// Handles: let action Action
-	// Transform to: var action Action
+	// Match: let identifier Type or let identifier: Type (declaration without initialization)
+	// Handles: let action Action, let x: int
+	// Transform to: var action Action, var x int
 	// Captures trailing whitespace to preserve formatting
-	letDeclPattern = regexp.MustCompile(`\blet\s+([\w]+)\s+([\w\[\]*<>]+)(\s|$)`)
+	// Pattern matches: let + identifier + optional colon + type + (space or end)
+	letDeclPattern = regexp.MustCompile(`\blet\s+([\w]+)\s*:?\s*([\w\[\]*<>]+)(\s|$)`)
 )
 
 // KeywordProcessor converts Dingo keywords to Go keywords

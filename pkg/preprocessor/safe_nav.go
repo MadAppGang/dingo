@@ -755,15 +755,15 @@ func parseMethodArgs(argsStr string) []string {
 			continue
 		}
 
-		// Handle string literals (including raw strings and rune literals)
+		// Handle string literals (including raw strings and single-quoted strings)
 		switch ch {
-		case '"', '`': // Regular strings and raw strings
+		case '"', '`', '\'': // Regular strings, raw strings, and single-quoted strings
 			if !inString {
 				inString = true
 				stringChar = ch
 			} else if ch == stringChar {
 				// Check if escaped (but raw strings ` can't be escaped)
-				if ch == '"' && i > 0 && argsStr[i-1] == '\\' {
+				if (ch == '"' || ch == '\'') && i > 0 && argsStr[i-1] == '\\' {
 					// Escaped quote - include it
 					currentArg.WriteByte(ch)
 					continue
@@ -772,34 +772,6 @@ func parseMethodArgs(argsStr string) []string {
 				stringChar = 0
 			}
 			currentArg.WriteByte(ch)
-
-		case '\'': // Rune literals
-			if !inString {
-				// Start of rune literal - consume entire rune
-				currentArg.WriteByte(ch)
-				i++
-				// Handle escaped rune like '\n' or '\''
-				if i < len(argsStr) && argsStr[i] == '\\' {
-					currentArg.WriteByte(argsStr[i])
-					i++
-				}
-				// Add the character
-				if i < len(argsStr) {
-					currentArg.WriteByte(argsStr[i])
-					i++
-				}
-				// Add closing quote
-				if i < len(argsStr) && argsStr[i] == '\'' {
-					currentArg.WriteByte(argsStr[i])
-				}
-			} else if ch == stringChar {
-				// End of string that started with '
-				inString = false
-				stringChar = 0
-				currentArg.WriteByte(ch)
-			} else {
-				currentArg.WriteByte(ch)
-			}
 
 		case '(':
 			if !inString {

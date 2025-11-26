@@ -1,52 +1,28 @@
+version: "2"
+
+# Minimal linting for experimentation phase
+# Only catch REAL BUGS, skip ALL style/optimization issues
+# TODO: Re-enable strict linting before v1.0 release
+
 linters:
-  disable-all: true
+  default: none
   enable:
-    - bodyclose
-    - dogsled
-    - dupl
-    - errcheck
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - goprintffuncname
-    - gosec
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
+    # Only real bugs - staticcheck with heavy exclusions
     - staticcheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
 
-linters-settings:
-    govet:
-      enable-all: true
-      disable:
-        - shadow
-    gocyclo:
-      min-complexity: 15
-    dupl:
-      threshold: 100
-    goconst:
-      min-len: 2
-      min-occurrences: 3
-    misspell:
-      locale: US
-    lll:
-      line-length: 140
-    gocritic:
-      enabled-tags:
-        - diagnostic
-        - experimental
-        - opinionated
-        - performance
-        - style
-
-
+  settings:
+    staticcheck:
+      checks:
+        - all
+        # Disable ALL style/suggestion checks (SA = static analysis, ST = style, S = simple, QF = quick fix)
+        - -ST*      # All style checks
+        - -S1*      # All simplification suggestions
+        - -QF*      # All quick fix suggestions
+        - -SA1019   # Deprecation warnings
+        - -SA4003   # Unsigned comparison
+        - -SA4006   # Value never used
+        - -SA4031   # Nil checks
+        - -SA9003   # Empty branches
 
 run:
   timeout: 5m

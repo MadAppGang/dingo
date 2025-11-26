@@ -58,7 +58,7 @@ func (p *NoneContextPlugin) SetContext(ctx *plugin.Context) {
 	if ctx != nil && ctx.FileSet != nil {
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("Failed to create type inference service: %v", err)
 		} else {
 			p.typeInference = service
 
@@ -66,14 +66,14 @@ func (p *NoneContextPlugin) SetContext(ctx *plugin.Context) {
 			if ctx.TypeInfo != nil {
 				if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 					service.SetTypesInfo(typesInfo)
-					ctx.Logger.Debug("None context plugin: go/types integration enabled")
+					ctx.Logger.Debugf("None context plugin: go/types integration enabled")
 				}
 			}
 
 			// Inject parent map for context-based inference
 			if ctx.GetParentMap() != nil {
 				service.SetParentMap(ctx.GetParentMap())
-				ctx.Logger.Debug("None context plugin: parent map integration enabled")
+				ctx.Logger.Debugf("None context plugin: parent map integration enabled")
 			}
 		}
 	}
@@ -218,17 +218,17 @@ func (p *NoneContextPlugin) inferNoneType(noneIdent *ast.Ident) (string, error) 
 			// Context: case OptionTagNone: None (in match expression)
 			// Infer from other arms in the same switch statement
 			if p.ctx.Logger != nil {
-				p.ctx.Logger.Debug("NoneContextPlugin: Found CaseClause parent, attempting match arm type inference")
+				p.ctx.Logger.Debugf("NoneContextPlugin: Found CaseClause parent, attempting match arm type inference")
 			}
 			if typ, err := p.findMatchArmType(noneIdent, parentNode); err == nil && typ != "" {
 				if p.ctx.Logger != nil {
-					p.ctx.Logger.Debug("NoneContextPlugin: Inferred type %s from match arms", typ)
+					p.ctx.Logger.Debugf("NoneContextPlugin: Inferred type %s from match arms", typ)
 				}
 				inferredType = typ
 				foundContext = true
 				return false
 			} else if p.ctx.Logger != nil {
-				p.ctx.Logger.Debug("NoneContextPlugin: Match arm type inference failed: %v", err)
+				p.ctx.Logger.Debugf("NoneContextPlugin: Match arm type inference failed: %v", err)
 			}
 		}
 
@@ -427,7 +427,7 @@ func (p *NoneContextPlugin) findMatchArmType(noneIdent *ast.Ident, caseClause *a
 			foundCompLits++
 			if ident, ok := compLit.Type.(*ast.Ident); ok {
 				if p.ctx.Logger != nil {
-					p.ctx.Logger.Debug("NoneContextPlugin: Found CompositeLit with type %s", ident.Name)
+					p.ctx.Logger.Debugf("NoneContextPlugin: Found CompositeLit with type %s", ident.Name)
 				}
 				if strings.HasPrefix(ident.Name, "Option_") {
 					optionType = ident.Name
@@ -443,7 +443,7 @@ func (p *NoneContextPlugin) findMatchArmType(noneIdent *ast.Ident, caseClause *a
 				if funcIdent.Name == "Some" {
 					foundSomeCalls++
 					if p.ctx.Logger != nil {
-						p.ctx.Logger.Debug("NoneContextPlugin: Found Some() call with %d args", len(callExpr.Args))
+						p.ctx.Logger.Debugf("NoneContextPlugin: Found Some() call with %d args", len(callExpr.Args))
 					}
 
 					// Strategy 1: Try go/types inference if available
@@ -453,7 +453,7 @@ func (p *NoneContextPlugin) findMatchArmType(noneIdent *ast.Ident, caseClause *a
 							typeName := p.typeNameFromGoType(tv.Type)
 							if typeName != "" {
 								if p.ctx.Logger != nil {
-									p.ctx.Logger.Debug("NoneContextPlugin: Inferred %s from Some() argument via go/types", typeName)
+									p.ctx.Logger.Debugf("NoneContextPlugin: Inferred %s from Some() argument via go/types", typeName)
 								}
 								optionType = "Option_" + typeName
 								return false
@@ -466,7 +466,7 @@ func (p *NoneContextPlugin) findMatchArmType(noneIdent *ast.Ident, caseClause *a
 						argType := p.inferTypeFromExpr(callExpr.Args[0])
 						if argType != "" {
 							if p.ctx.Logger != nil {
-								p.ctx.Logger.Debug("NoneContextPlugin: Inferred %s from Some() argument via heuristic", argType)
+								p.ctx.Logger.Debugf("NoneContextPlugin: Inferred %s from Some() argument via heuristic", argType)
 							}
 							optionType = "Option_" + argType
 							return false
@@ -480,7 +480,7 @@ func (p *NoneContextPlugin) findMatchArmType(noneIdent *ast.Ident, caseClause *a
 	})
 
 	if p.ctx.Logger != nil {
-		p.ctx.Logger.Debug("NoneContextPlugin: Match arm inspection: %d Some() calls, %d CompositeLits, inferred type: %s", foundSomeCalls, foundCompLits, optionType)
+		p.ctx.Logger.Debugf("NoneContextPlugin: Match arm inspection: %d Some() calls, %d CompositeLits, inferred type: %s", foundSomeCalls, foundCompLits, optionType)
 	}
 
 	if optionType == "" {

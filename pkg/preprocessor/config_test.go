@@ -203,15 +203,17 @@ func complexOperation() (string, int, bool, error) {
 	}
 
 	// Verify the transformation generated multiple temporary variables
+	// For 4 return values (string, int, bool, error), error prop generates:
+	// tmp, tmp1, tmp2, err
 	resultStr := string(result)
+	if !strings.Contains(resultStr, "tmp") {
+		t.Error("Expected tmp in output")
+	}
 	if !strings.Contains(resultStr, "tmp1") {
 		t.Error("Expected tmp1 in output")
 	}
 	if !strings.Contains(resultStr, "tmp2") {
 		t.Error("Expected tmp2 in output")
-	}
-	if !strings.Contains(resultStr, "tmp3") {
-		t.Error("Expected tmp3 in output")
 	}
 }
 

@@ -21,7 +21,6 @@ Before testing, ensure you have:
 
 ```bash
 # From the dingo project root
-cd /Users/jack/mag/dingo
 
 # Build dingo-lsp
 go build -o dingo-lsp cmd/dingo-lsp/main.go
@@ -54,7 +53,7 @@ $GOPATH/bin/dingo-lsp  # Should start (will error about gopls, that's ok)
 
 ```bash
 # From the dingo project root
-cd /Users/jack/mag/dingo/editors/vscode
+cd editors/vscode
 
 # Install the extension
 code --install-extension dingo-0.2.0.vsix
@@ -80,7 +79,7 @@ Open VSCode settings (Cmd+, or Code → Preferences → Settings) and add:
 
 ```json
 {
-  "dingo.lsp.path": "/Users/jack/mag/dingo/dingo-lsp",
+  "dingo.lsp.path": "<your-dingo-project-path>/dingo-lsp",
   "dingo.transpileOnSave": true,
   "dingo.lsp.logLevel": "debug"
 }
@@ -101,7 +100,7 @@ Open VSCode settings (Cmd+, or Code → Preferences → Settings) and add:
 
 1. **Open the dingo project folder:**
    ```bash
-   code /Users/jack/mag/dingo
+   code <your-dingo-project-path>
    ```
 
 2. **Open the LSP demo folder in the file explorer:**
@@ -374,7 +373,7 @@ After completing all tests, verify:
 
 **Terminal 1: Start LSP with debug logs**
 ```bash
-cd /Users/jack/mag/dingo
+cd <your-dingo-project-path>
 DINGO_LSP_LOG=debug ./dingo-lsp
 ```
 

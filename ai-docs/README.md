@@ -48,7 +48,7 @@ ai-docs/
 ## Source of Truth
 
 For current project status, always defer to:
-1. **`/Users/jack/mag/dingo/CLAUDE.md`** - Current phase, test results, implementation status
+1. **`CLAUDE.md`** (project root) - Current phase, test results, implementation status
 2. **`features/INDEX.md`** - Feature-by-feature status
 3. **`CHANGELOG.md`** - Historical timeline
 

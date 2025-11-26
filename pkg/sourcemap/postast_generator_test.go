@@ -10,6 +10,11 @@ import (
 	"github.com/MadAppGang/dingo/pkg/preprocessor"
 )
 
+const (
+	markerErrorProp = "error_prop"
+	markerIdentity  = "identity"
+)
+
 // TestPostASTGenerator_SimpleTransformation tests a single error propagation
 func TestPostASTGenerator_SimpleTransformation(t *testing.T) {
 	// Create temp directory for test files
@@ -83,7 +88,7 @@ func readConfig(path string) ([]byte, error) {
 	// Find the error_prop mapping
 	var errorPropMapping *preprocessor.Mapping
 	for i := range sm.Mappings {
-		if sm.Mappings[i].Name == "error_prop" {
+		if sm.Mappings[i].Name == markerErrorProp {
 			errorPropMapping = &sm.Mappings[i]
 			break
 		}
@@ -306,7 +311,7 @@ func withError(path string) ([]byte, error) {
 	identityMappings := 0
 	errorPropMappings := 0
 	for _, m := range sm.Mappings {
-		if m.Name == "identity" {
+		if m.Name == markerIdentity {
 			identityMappings++
 		}
 		if m.Name == "error_prop" {
@@ -533,7 +538,7 @@ func test() error {
 	// Find the mapping
 	var mapping *preprocessor.Mapping
 	for i := range sm.Mappings {
-		if sm.Mappings[i].Name == "error_prop" {
+		if sm.Mappings[i].Name == markerErrorProp {
 			mapping = &sm.Mappings[i]
 			break
 		}

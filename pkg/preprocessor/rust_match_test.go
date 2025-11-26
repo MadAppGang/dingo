@@ -33,7 +33,7 @@ func TestRustMatchProcessor_SimpleResult(t *testing.T) {
 		"x * 2",
 		"case ResultTagErr:",
 		"// DINGO_PATTERN: Err(e)",
-		"e := scrutinee.err",
+		"e := *scrutinee.err",
 		"// DINGO_MATCH_END",
 	}
 
@@ -74,7 +74,7 @@ func TestRustMatchProcessor_SimpleOption(t *testing.T) {
 		"v := *scrutinee.some",
 		"case OptionTagNone:",
 		"// DINGO_PATTERN: None",
-		"\t\"default\"",
+		"return \"default\"",
 		"// DINGO_MATCH_END",
 	}
 
@@ -339,7 +339,7 @@ func TestRustMatchProcessor_GenerateBinding(t *testing.T) {
 		want    string
 	}{
 		{"Ok", "x", "x := *scrutinee.ok"},
-		{"Err", "e", "e := scrutinee.err"},
+		{"Err", "e", "e := *scrutinee.err"},
 		{"Some", "v", "v := *scrutinee.some"},
 		{"Active", "id", "id := *scrutinee.active"},
 	}

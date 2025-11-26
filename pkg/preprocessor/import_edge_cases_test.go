@@ -26,8 +26,8 @@ func process(path1 string, path2 string) ([]byte, error) {
 }`,
 			expectedImports: []string{"os"},
 			checkDetails: func(t *testing.T, result string, sourceMap *SourceMap) {
-				// Count occurrences of "os" import
-				importCount := strings.Count(result, `import "os"`)
+				// Count occurrences of "os" import (check for the package path, not specific format)
+				importCount := strings.Count(result, `"os"`)
 				if importCount != 1 {
 					t.Errorf("Expected exactly 1 os import (deduplication), got %d:\n%s", importCount, result)
 				}

@@ -150,7 +150,7 @@ func (e *EnhancedError) Format() string {
 				fmt.Fprintf(&buf, "  %4d | %s\n", lineNum, line)
 
 				// Caret line:     |     ^^^^^^^ <annotation>
-				caretIndent := utf8.RuneCountInString(line[:min(e.Column-1, len(line))])
+				caretIndent := utf8.RuneCountInString(line[:minInt(e.Column-1, len(line))])
 				caretLen := e.Length
 				if caretLen < 1 {
 					caretLen = 1
@@ -236,8 +236,8 @@ func extractSourceLines(filename string, targetLine, contextLines int) ([]string
 		return nil, 0, fmt.Errorf("line %d out of range (1-%d)", targetLine, len(allLines))
 	}
 
-	start := max(0, targetIdx-contextLines)
-	end := min(len(allLines), targetIdx+contextLines+1)
+	start := maxInt(0, targetIdx-contextLines)
+	end := minInt(len(allLines), targetIdx+contextLines+1)
 
 	// Return slice and highlight index within slice
 	highlightIdx := targetIdx - start
@@ -285,14 +285,14 @@ func ClearCache() {
 	ClearSourceCache()
 }
 
-func max(a, b int) int {
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

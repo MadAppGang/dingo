@@ -83,7 +83,7 @@ func NewWithConfig(source []byte, legacyConfig *Config) *Preprocessor {
 	if legacyConfig != nil && legacyConfig.MultiValueReturnMode == "single" {
 		// Map legacy mode to main config (feature not in main config yet)
 	}
-	return NewWithMainConfig(source, cfg)
+	return newWithConfigAndCacheAndLegacy(source, cfg, nil, legacyConfig)
 }
 
 // NewWithMainConfig creates a new preprocessor with main Dingo configuration
@@ -93,6 +93,11 @@ func NewWithMainConfig(source []byte, cfg *config.Config) *Preprocessor {
 
 // newWithConfigAndCache is the internal constructor that accepts an optional cache
 func newWithConfigAndCache(source []byte, cfg *config.Config, cache *FunctionExclusionCache) *Preprocessor {
+	return newWithConfigAndCacheAndLegacy(source, cfg, cache, nil)
+}
+
+// newWithConfigAndCacheAndLegacy is the internal constructor with legacy config support
+func newWithConfigAndCacheAndLegacy(source []byte, cfg *config.Config, cache *FunctionExclusionCache, legacyConfig *Config) *Preprocessor {
 	if cfg == nil {
 		cfg = config.DefaultConfig()
 	}
@@ -120,7 +125,7 @@ func newWithConfigAndCache(source []byte, cfg *config.Config, cache *FunctionExc
 		//    Process ternary BEFORE error prop to cleanly separate ? : from single ?
 		NewTernaryProcessor(),
 		// 8. Error propagation (expr?) - AFTER ternary (handles remaining ?)
-		NewErrorPropProcessor(),
+		NewErrorPropProcessorWithConfig(legacyConfig),
 	}
 
 	// 9. Enums (enum Name { ... }) - after error prop, before keywords
@@ -199,6 +204,16 @@ func (p *Preprocessor) ProcessWithMetadata() (string, *SourceMap, []TransformMet
 		if importProvider, ok := proc.(ImportProvider); ok {
 			imports := importProvider.GetNeededImports()
 			neededImports = append(neededImports, imports...)
+		}
+	}
+
+	// Convert metadata to legacy mappings for backward compatibility
+	// This allows tests and tools that expect mappings to continue working
+	// while we migrate to the new metadata-based approach
+	if len(allMetadata) > 0 {
+		legacyMappings := convertMetadataToMappings(allMetadata, result)
+		for _, m := range legacyMappings {
+			sourceMap.AddMapping(m)
 		}
 	}
 
@@ -463,6 +478,53 @@ func extractImportPath(line string) string {
 
 // mergeImports adds new imports to an existing import block
 func mergeImports(lines []string, newImports []string, start, end int) (string, int, int) {
+	// Special case: single-line import (start == end)
+	// Convert: import "path" → import ( "path" "new" )
+	if start == end {
+		// Extract existing import path from the single-line import
+		existingImportLine := strings.TrimSpace(lines[start])
+		existingPath := extractImportPath(existingImportLine)
+
+		// Build new import block with existing + new imports (deduplicate)
+		importSet := make(map[string]bool)
+		if existingPath != "" {
+			importSet[existingPath] = true
+		}
+		for _, imp := range newImports {
+			importSet[imp] = true
+		}
+
+		// Convert to sorted slice
+		allImports := make([]string, 0, len(importSet))
+		for imp := range importSet {
+			allImports = append(allImports, imp)
+		}
+		sort.Strings(allImports)
+
+		// Build result
+		result := make([]string, 0, len(lines)+len(allImports)+1)
+
+		// Copy lines before single import
+		result = append(result, lines[:start]...)
+
+		// Replace single import with import block
+		result = append(result, "import (")
+		for _, imp := range allImports {
+			result = append(result, fmt.Sprintf("\t\"%s\"", imp))
+		}
+		result = append(result, ")")
+
+		// Copy lines after single import
+		result = append(result, lines[start+1:]...)
+
+		// Calculate positions (1-based for return)
+		insertLine := start + 2 // Line after "import ("
+		endLine := start + 1 + len(allImports) + 1 // Closing )
+
+		return strings.Join(result, "\n"), insertLine, endLine
+	}
+
+	// Normal case: multi-line import block
 	// Build new lines with merged imports
 	result := make([]string, 0, len(lines)+len(newImports))
 
@@ -533,4 +595,65 @@ func adjustMappingsForImports(sourceMap *SourceMap, numImportLines int, importIn
 			sourceMap.Mappings[i].GeneratedLine += numImportLines
 		}
 	}
+}
+
+// convertMetadataToMappings converts TransformMetadata to legacy Mapping structs
+// for backward compatibility with tests and tools that expect source mappings.
+//
+// Strategy:
+// - Scan generated source to find marker line numbers (e.g., "// dingo:e:0")
+// - For each metadata entry, create a mapping from original to generated line
+// - Metadata contains: OriginalLine, GeneratedMarker
+// - We need to find: GeneratedLine (by scanning for marker)
+func convertMetadataToMappings(metadata []TransformMetadata, generatedSource []byte) []Mapping {
+	if len(metadata) == 0 {
+		return nil
+	}
+
+	// Build marker-to-line-number map by scanning generated source
+	markerLines := make(map[string]int)
+	lines := strings.Split(string(generatedSource), "\n")
+	for lineNum, line := range lines {
+		// Look for markers like "// dingo:e:0", "// dingo:s:1", etc.
+		if idx := strings.Index(line, "// dingo:"); idx != -1 {
+			marker := strings.TrimSpace(line[idx:])
+			markerLines[marker] = lineNum + 1 // Convert to 1-based line number
+		}
+	}
+
+	// Convert metadata to mappings
+	var mappings []Mapping
+	for _, meta := range metadata {
+		if meta.GeneratedMarker == "" {
+			// No marker, can't create mapping
+			continue
+		}
+
+		generatedLine, found := markerLines[meta.GeneratedMarker]
+		if !found {
+			// Marker not found in source, skip
+			continue
+		}
+
+		// Create mapping from original line to generated line
+		mapping := Mapping{
+			OriginalLine:    meta.OriginalLine,
+			OriginalColumn:  meta.OriginalColumn,
+			GeneratedLine:   generatedLine,
+			GeneratedColumn: 1, // Column info not preserved in markers, use 1
+			Length:          meta.OriginalLength,
+			Name:            meta.Type, // Use Type as Name for debugging
+		}
+		mappings = append(mappings, mapping)
+	}
+
+	// Sort mappings by generated line for consistency
+	sort.Slice(mappings, func(i, j int) bool {
+		if mappings[i].GeneratedLine == mappings[j].GeneratedLine {
+			return mappings[i].OriginalLine < mappings[j].OriginalLine
+		}
+		return mappings[i].GeneratedLine < mappings[j].GeneratedLine
+	})
+
+	return mappings
 }

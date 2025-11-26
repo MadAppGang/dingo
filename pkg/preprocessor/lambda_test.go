@@ -16,27 +16,27 @@ func TestLambdaProcessor_SingleParamNoParens(t *testing.T) {
 		{
 			name:   "simple expression",
 			input:  `x => x * 2`,
-			expect: `func(x) { return x * 2 }`,
+			expect: `func(x __TYPE_INFERENCE_NEEDED) { return x * 2 }`,
 		},
 		{
 			name:   "in slice map",
 			input:  `numbers.map(x => x * 2)`,
-			expect: `numbers.map(func(x) { return x * 2 })`,
+			expect: `numbers.map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 })`,
 		},
 		{
 			name:   "in filter",
 			input:  `users.filter(u => u.age > 18)`,
-			expect: `users.filter(func(u) { return u.age > 18 })`,
+			expect: `users.filter(func(u __TYPE_INFERENCE_NEEDED) { return u.age > 18 })`,
 		},
 		{
 			name:   "multiple lambdas on same line",
 			input:  `a.map(x => x * 2).filter(y => y > 10)`,
-			expect: `a.map(func(x) { return x * 2 }).filter(func(y) { return y > 10 })`,
+			expect: `a.map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 }).filter(func(y __TYPE_INFERENCE_NEEDED) { return y > 10 })`,
 		},
 		{
 			name:   "underscore-prefixed identifier",
 			input:  `numbers.map(_x => _x * 2)`,
-			expect: `numbers.map(func(_x) { return _x * 2 })`,
+			expect: `numbers.map(func(_x __TYPE_INFERENCE_NEEDED) { return _x * 2 })`,
 		},
 	}
 
@@ -66,12 +66,12 @@ func TestLambdaProcessor_SingleParamWithParens(t *testing.T) {
 		{
 			name:   "single param with parens",
 			input:  `(x) => x * 2`,
-			expect: `func(x) { return x * 2 }`,
+			expect: `func(x __TYPE_INFERENCE_NEEDED) { return x * 2 }`,
 		},
 		{
 			name:   "in method call",
 			input:  `numbers.map((x) => x * 2)`,
-			expect: `numbers.map(func(x) { return x * 2 })`,
+			expect: `numbers.map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 })`,
 		},
 	}
 
@@ -101,17 +101,17 @@ func TestLambdaProcessor_MultiParam(t *testing.T) {
 		{
 			name:   "two params",
 			input:  `(x, y) => x + y`,
-			expect: `func(x, y) { return x + y }`,
+			expect: `func(x __TYPE_INFERENCE_NEEDED, y __TYPE_INFERENCE_NEEDED) { return x + y }`,
 		},
 		{
 			name:   "three params",
 			input:  `(a, b, c) => a + b + c`,
-			expect: `func(a, b, c) { return a + b + c }`,
+			expect: `func(a __TYPE_INFERENCE_NEEDED, b __TYPE_INFERENCE_NEEDED, c __TYPE_INFERENCE_NEEDED) { return a + b + c }`,
 		},
 		{
 			name:   "in reduce",
 			input:  `reduce((acc, x) => acc + x, 0)`,
-			expect: `reduce(func(acc, x) { return acc + x }, 0)`,
+			expect: `reduce(func(acc __TYPE_INFERENCE_NEEDED, x __TYPE_INFERENCE_NEEDED) { return acc + x }, 0)`,
 		},
 	}
 
@@ -220,7 +220,7 @@ func TestLambdaProcessor_MultiLineWithBraces(t *testing.T) {
 			}
 
 			got := string(result)
-			if !strings.Contains(got, "func(x)") {
+			if !strings.Contains(got, "func(x __TYPE_INFERENCE_NEEDED)") {
 				t.Errorf("expected func literal, got:\n%s", got)
 			}
 		})
@@ -237,13 +237,13 @@ func TestLambdaProcessor_EdgeCases(t *testing.T) {
 		{
 			name:        "nested in function call",
 			input:       `arr.map(x => x * 2).filter(y => y > 10)`,
-			shouldMatch: `func(x)`,
+			shouldMatch: `func(x __TYPE_INFERENCE_NEEDED)`,
 			shouldNot:   "",
 		},
 		{
 			name:        "in assignment",
 			input:       `let double = x => x * 2`,
-			shouldMatch: `func(x)`,
+			shouldMatch: `func(x __TYPE_INFERENCE_NEEDED)`,
 			shouldNot:   "",
 		},
 		{
@@ -326,21 +326,23 @@ func TestLambdaProcessor_SourceMappings(t *testing.T) {
 let add = (x, y) => x + y`
 
 	proc := NewLambdaProcessor()
-	_, mappings, err := proc.Process([]byte(input))
+	_, metadata, err := proc.ProcessInternal(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should have mappings for transformed lines
-	if len(mappings) == 0 {
+	// Should have metadata for transformed lines
+	if len(metadata) == 0 {
 		t.Error("expected source mappings, got none")
 	}
 
-	// Verify mappings are for correct lines
-	for _, m := range mappings {
-		if m.OriginalLine != m.GeneratedLine {
-			t.Errorf("expected same line mapping, got original=%d, generated=%d",
-				m.OriginalLine, m.GeneratedLine)
+	// Verify metadata contains lambda transformations
+	for _, m := range metadata {
+		if m.Type != "lambda" {
+			t.Errorf("expected lambda metadata, got type=%s", m.Type)
+		}
+		if m.ASTNodeType != "FuncLit" {
+			t.Errorf("expected FuncLit AST node, got %s", m.ASTNodeType)
 		}
 	}
 }
@@ -357,7 +359,7 @@ func TestLambdaProcessor_RealWorldExamples(t *testing.T) {
 				.filter(x => x > 0)
 				.map(x => x * 2)
 				.reduce((acc, x) => acc + x, 0)`,
-			expect: "func(x)",
+			expect: "func(x __TYPE_INFERENCE_NEEDED)",
 		},
 		{
 			name:   "callback assignment",
@@ -367,7 +369,7 @@ func TestLambdaProcessor_RealWorldExamples(t *testing.T) {
 		{
 			name:   "inline sort comparator",
 			input:  `sort.Slice(users, (i, j) => users[i].Age < users[j].Age)`,
-			expect: `func(i, j)`,
+			expect: `func(i __TYPE_INFERENCE_NEEDED, j __TYPE_INFERENCE_NEEDED)`,
 		},
 	}
 
@@ -398,17 +400,17 @@ func TestLambdaProcessor_RustPipe_SingleParam(t *testing.T) {
 		{
 			name:   "simple expression",
 			input:  `|x| x * 2`,
-			expect: `func(x) { return x * 2 }`,
+			expect: `func(x __TYPE_INFERENCE_NEEDED) { return x * 2 }`,
 		},
 		{
 			name:   "in slice map",
 			input:  `numbers.map(|x| x * 2)`,
-			expect: `numbers.map(func(x) { return x * 2 })`,
+			expect: `numbers.map(func(x __TYPE_INFERENCE_NEEDED) { return x * 2 })`,
 		},
 		{
 			name:   "in filter",
 			input:  `users.filter(|u| u.age > 18)`,
-			expect: `users.filter(func(u) { return u.age > 18 })`,
+			expect: `users.filter(func(u __TYPE_INFERENCE_NEEDED) { return u.age > 18 })`,
 		},
 	}
 
@@ -443,17 +445,17 @@ func TestLambdaProcessor_RustPipe_MultiParam(t *testing.T) {
 		{
 			name:   "two params",
 			input:  `|x, y| x + y`,
-			expect: `func(x, y) { return x + y }`,
+			expect: `func(x __TYPE_INFERENCE_NEEDED, y __TYPE_INFERENCE_NEEDED) { return x + y }`,
 		},
 		{
 			name:   "three params",
 			input:  `|a, b, c| a + b + c`,
-			expect: `func(a, b, c) { return a + b + c }`,
+			expect: `func(a __TYPE_INFERENCE_NEEDED, b __TYPE_INFERENCE_NEEDED, c __TYPE_INFERENCE_NEEDED) { return a + b + c }`,
 		},
 		{
 			name:   "in reduce",
 			input:  `reduce(|acc, x| acc + x, 0)`,
-			expect: `reduce(func(acc, x) { return acc + x }, 0)`,
+			expect: `reduce(func(acc __TYPE_INFERENCE_NEEDED, x __TYPE_INFERENCE_NEEDED) { return acc + x }, 0)`,
 		},
 	}
 
@@ -556,7 +558,7 @@ func TestLambdaProcessor_ConfigSwitching(t *testing.T) {
 				},
 			},
 			input:       `x => x * 2`,
-			shouldMatch: "func(x)",
+			shouldMatch: "func(x __TYPE_INFERENCE_NEEDED)",
 			shouldNot:   "=>",
 		},
 		{
@@ -578,7 +580,7 @@ func TestLambdaProcessor_ConfigSwitching(t *testing.T) {
 				},
 			},
 			input:       `|x| x * 2`,
-			shouldMatch: "func(x)",
+			shouldMatch: "func(x __TYPE_INFERENCE_NEEDED)",
 			shouldNot:   "|x|",
 		},
 	}
@@ -661,7 +663,7 @@ func TestLambdaProcessor_RustPipe_RealWorldExamples(t *testing.T) {
 				.filter(|x| x > 0)
 				.map(|x| x * 2)
 				.reduce(|acc, x| acc + x, 0)`,
-			expect: "func(x)",
+			expect: "func(x __TYPE_INFERENCE_NEEDED)",
 		},
 		{
 			name:   "callback with types",
@@ -671,7 +673,7 @@ func TestLambdaProcessor_RustPipe_RealWorldExamples(t *testing.T) {
 		{
 			name:   "inline sort comparator",
 			input:  `sort.Slice(users, |i, j| users[i].Age < users[j].Age)`,
-			expect: `func(i, j)`,
+			expect: `func(i __TYPE_INFERENCE_NEEDED, j __TYPE_INFERENCE_NEEDED)`,
 		},
 	}
 

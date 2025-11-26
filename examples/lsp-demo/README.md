@@ -62,8 +62,7 @@ This example demonstrates the Dingo Language Server Protocol (LSP) integration w
 
 3. **dingo-lsp (Dingo language server):**
    ```bash
-   # Build from source
-   cd /Users/jack/mag/dingo
+   # Build from source (run from dingo project root)
    go build -o dingo-lsp cmd/dingo-lsp/main.go
 
    # Add to PATH or copy to $GOPATH/bin
@@ -72,8 +71,8 @@ This example demonstrates the Dingo Language Server Protocol (LSP) integration w
 
 4. **VSCode extension:**
    ```bash
-   # Install extension
-   code --install-extension /Users/jack/mag/dingo/editors/vscode/dingo-0.2.0.vsix
+   # Install extension (run from dingo project root)
+   code --install-extension editors/vscode/dingo-0.2.0.vsix
    ```
 
 ### Configuration

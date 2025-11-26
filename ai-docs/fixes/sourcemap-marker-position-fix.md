@@ -20,7 +20,7 @@ tmp, err := os.ReadFile(path)  // Line 8 (actual code)
 
 ### Primary Cause: Using Pre-Printer FileSet
 
-The main issue was in `/Users/jack/mag/dingo/cmd/dingo/main.go`:
+The main issue was in `cmd/dingo/main.go`:
 
 ```go
 // BEFORE (Wrong):
@@ -40,7 +40,7 @@ In `pkg/sourcemap/postast_generator.go`, the `findMarkerPosition()` method was r
 
 ### Fix 1: Use GenerateFromFiles (Primary Fix)
 
-**File**: `/Users/jack/mag/dingo/cmd/dingo/main.go`
+**File**: `cmd/dingo/main.go`
 
 Changed to use `GenerateFromFiles`, which re-parses the written .go file:
 
@@ -60,7 +60,7 @@ sourceMap, err := sourcemap.GenerateFromFiles(inputPath, outputPath, metadata)
 
 ### Fix 2: Find Code Line Before Marker (Secondary Fix)
 
-**File**: `/Users/jack/mag/dingo/pkg/sourcemap/postast_generator.go`
+**File**: `pkg/sourcemap/postast_generator.go`
 
 Enhanced `findMarkerPosition()` to find the **statement before the marker**:
 
@@ -128,11 +128,11 @@ ast.Inspect(g.goAST, func(n ast.Node) bool {
 
 ## Files Modified
 
-1. `/Users/jack/mag/dingo/cmd/dingo/main.go`
+1. `cmd/dingo/main.go`
    - Changed to use `sourcemap.GenerateFromFiles()` instead of `NewPostASTGenerator()` directly
    - Ensures FileSet comes from written .go file, not in-memory version
 
-2. `/Users/jack/mag/dingo/pkg/sourcemap/postast_generator.go`
+2. `pkg/sourcemap/postast_generator.go`
    - Enhanced `findMarkerPosition()` to find code line before marker
    - Added priority system: AssignStmt > ExprStmt > other statements
    - Added fallback to line start if AST inspection fails

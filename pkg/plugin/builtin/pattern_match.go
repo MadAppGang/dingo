@@ -139,7 +139,7 @@ func (p *PatternMatchPlugin) Process(node ast.Node) error {
 
 	// Debug: Log match expressions found
 	if p.ctx.Logger != nil {
-		p.ctx.Logger.Debug("PatternMatchPlugin.Process: Found %d match expressions", len(p.matchExpressions))
+		p.ctx.Logger.Debugf("PatternMatchPlugin.Process: Found %d match expressions", len(p.matchExpressions))
 	}
 
 	return nil

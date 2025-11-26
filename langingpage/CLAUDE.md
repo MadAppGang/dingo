@@ -177,7 +177,7 @@ Create a fast, SEO-optimized landing page that:
 **This landing page project uses DIFFERENT agents than the main Dingo transpiler.**
 
 #### ✅ **For Landing Page Work** (This Directory)
-**Working Directory**: `/Users/jack/mag/dingo/langingpage/`
+**Working Directory**: `langingpage/` (this directory)
 **Code**: `src/`, Astro components, React components, TypeScript, Tailwind CSS
 
 **Use these agents**:

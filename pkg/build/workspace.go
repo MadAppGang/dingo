@@ -299,5 +299,5 @@ func GetSourceMapPath(dingoPath string) string {
 
 // ensureDir creates a directory if it doesn't exist
 func ensureDir(path string) error {
-	return os.MkdirAll(path, 0755)
+	return os.MkdirAll(path, 0o755)
 }

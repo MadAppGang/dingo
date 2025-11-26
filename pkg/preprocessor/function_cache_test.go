@@ -1,6 +1,7 @@
 package preprocessor
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -536,7 +537,7 @@ func TestPerformance(t *testing.T) {
 	// Create 10 test files
 	files := make([]string, 10)
 	for i := 0; i < 10; i++ {
-		file := filepath.Join(tmpDir, filepath.Join(tmpDir, filepath.Base(filepath.Join("file", string(rune(i))+"_test.dingo"))))
+		file := filepath.Join(tmpDir, fmt.Sprintf("file%d_test.dingo", i))
 		content := `package main
 
 func ReadFile(path string) string { return "data" }

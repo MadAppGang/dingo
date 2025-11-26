@@ -65,7 +65,7 @@ func (p *ResultTypePlugin) SetContext(ctx *plugin.Context) {
 		// Create type inference service
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("Failed to create type inference service: %v", err)
 		} else {
 			p.typeInference = service
 
@@ -73,7 +73,7 @@ func (p *ResultTypePlugin) SetContext(ctx *plugin.Context) {
 			if ctx.TypeInfo != nil {
 				if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 					service.SetTypesInfo(typesInfo)
-					ctx.Logger.Debug("Result plugin: go/types integration enabled (Fix A5)")
+					ctx.Logger.Debugf("Result plugin: go/types integration enabled (Fix A5)")
 				}
 			}
 		}
@@ -121,7 +121,7 @@ func (p *ResultTypePlugin) handleGenericResult(expr *ast.IndexExpr) {
 				typeName = p.typeInference.TypeToString(telemType)
 				resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
 			} else {
-				p.ctx.Logger.Warn("ResultTypePlugin: Could not infer type for Result<T> element. Falling back to heuristic.")
+				p.ctx.Logger.Warnf("ResultTypePlugin: Could not infer type for Result<T> element. Falling back to heuristic.")
 				// Fallback to old heuristic if type inference fails
 				typeName = p.getTypeName(expr.Index)
 				resultType = fmt.Sprintf("Result%s", SanitizeTypeName(typeName, "error"))
@@ -151,7 +151,7 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 			if p.typeInference != nil {
 				okElemType, ok := p.typeInference.InferType(expr.Indices[0])
 				if !ok || okElemType == nil {
-					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T,E>. Falling back to heuristic.")
+					p.ctx.Logger.Warnf("ResultTypePlugin: Could not infer 'Ok' type for Result<T,E>. Falling back to heuristic.")
 					okType = p.getTypeName(expr.Indices[0])
 				} else {
 					okType = p.typeInference.TypeToString(okElemType)
@@ -159,7 +159,7 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 
 				errElemType, ok := p.typeInference.InferType(expr.Indices[1])
 				if !ok || errElemType == nil {
-					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Err' type for Result<T,E>. Falling back to heuristic.")
+					p.ctx.Logger.Warnf("ResultTypePlugin: Could not infer 'Err' type for Result<T,E>. Falling back to heuristic.")
 					errType = p.getTypeName(expr.Indices[1])
 				} else {
 					errType = p.typeInference.TypeToString(errElemType)
@@ -185,7 +185,7 @@ func (p *ResultTypePlugin) handleGenericResultList(expr *ast.IndexListExpr) {
 			if p.typeInference != nil {
 				okElemType, ok := p.typeInference.InferType(expr.Indices[0])
 				if !ok || okElemType == nil {
-					p.ctx.Logger.Warn("ResultTypePlugin: Could not infer 'Ok' type for Result<T>. Falling back to heuristic.")
+					p.ctx.Logger.Warnf("ResultTypePlugin: Could not infer 'Ok' type for Result<T>. Falling back to heuristic.")
 					okType = p.getTypeName(expr.Indices[0])
 				} else {
 					okType = p.typeInference.TypeToString(okElemType)
@@ -234,7 +234,7 @@ func (p *ResultTypePlugin) handleConstructorCall(call *ast.CallExpr) {
 // Returns the replacement node, or the original call if transformation fails
 func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 	if len(call.Args) != 1 {
-		p.ctx.Logger.Warn("Ok() expects exactly one argument, found %d", len(call.Args))
+		p.ctx.Logger.Warnf("Ok() expects exactly one argument, found %d", len(call.Args))
 		return call // Return unchanged
 	}
 
@@ -245,14 +245,14 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 	okType, err := p.inferTypeFromExpr(valueArg)
 	if err != nil {
 		// Type inference failed - use interface{} as fallback
-		p.ctx.Logger.Warn("Type inference failed for Ok(%s): %v, using interface{} fallback", FormatExprForDebug(valueArg), err)
+		p.ctx.Logger.Warnf("Type inference failed for Ok(%s): %v, using interface{} fallback", FormatExprForDebug(valueArg), err)
 		okType = "interface{}"
 	}
 
 	// CRITICAL FIX #3: Validate okType is not empty
 	// CRITICAL FIX #5 (Code Review): Use interface{} fallback instead of returning unchanged
 	if okType == "" {
-		p.ctx.Logger.Warn("Type inference returned empty string for Ok(%s), using interface{} fallback", FormatExprForDebug(valueArg))
+		p.ctx.Logger.Warnf("Type inference returned empty string for Ok(%s), using interface{} fallback", FormatExprForDebug(valueArg))
 		okType = "interface{}"
 	}
 
@@ -269,7 +269,7 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 	}
 
 	// Log transformation with type inference details
-	p.ctx.Logger.Debug("Fix A5: Inferred type for Ok(%s) → %s", FormatExprForDebug(valueArg), okType)
+	p.ctx.Logger.Debugf("Fix A5: Inferred type for Ok(%s) → %s", FormatExprForDebug(valueArg), okType)
 
 	// Fix A4: Handle addressability - wrap literals in IIFE if needed
 	var okValue ast.Expr
@@ -279,11 +279,11 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 			Op: token.AND,
 			X:  valueArg,
 		}
-		p.ctx.Logger.Debug("Fix A4: Expression is addressable, using &expr")
+		p.ctx.Logger.Debugf("Fix A4: Expression is addressable, using &expr")
 	} else {
 		// Non-addressable (literal, function call, etc.) - wrap in IIFE
 		okValue = wrapInIIFE(valueArg, okType, p.ctx)
-		p.ctx.Logger.Debug("Fix A4: Expression is non-addressable, wrapping in IIFE (temp var: __tmp%d)", p.ctx.TempVarCounter-1)
+		p.ctx.Logger.Debugf("Fix A4: Expression is non-addressable, wrapping in IIFE (temp var: __tmp%d)", p.ctx.TempVarCounter-1)
 	}
 
 	// Create the replacement CompositeLit
@@ -313,7 +313,7 @@ func (p *ResultTypePlugin) transformOkConstructor(call *ast.CallExpr) ast.Expr {
 // Returns the replacement node, or the original call if transformation fails
 func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr {
 	if len(call.Args) != 1 {
-		p.ctx.Logger.Warn("Err() expects exactly one argument, found %d", len(call.Args))
+		p.ctx.Logger.Warnf("Err() expects exactly one argument, found %d", len(call.Args))
 		return call // Return unchanged
 	}
 
@@ -323,13 +323,13 @@ func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr 
 	errType, err := p.inferTypeFromExpr(errorArg)
 	if err != nil {
 		// Type inference failed - default to "error"
-		p.ctx.Logger.Warn("Type inference failed for Err(%s): %v, defaulting to 'error'", FormatExprForDebug(errorArg), err)
+		p.ctx.Logger.Warnf("Type inference failed for Err(%s): %v, defaulting to 'error'", FormatExprForDebug(errorArg), err)
 		errType = "error"
 	}
 
 	// CRITICAL FIX #3: Validate errType is not empty
 	if errType == "" {
-		p.ctx.Logger.Warn("Type inference returned empty string for Err(%s), defaulting to 'error'", FormatExprForDebug(errorArg))
+		p.ctx.Logger.Warnf("Type inference returned empty string for Err(%s), defaulting to 'error'", FormatExprForDebug(errorArg))
 		errType = "error"
 	}
 
@@ -350,7 +350,7 @@ func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr 
 	}
 
 	// Log transformation with type inference details
-	p.ctx.Logger.Debug("Fix A5: Inferred error type for Err(%s) → %s", FormatExprForDebug(errorArg), errType)
+	p.ctx.Logger.Debugf("Fix A5: Inferred error type for Err(%s) → %s", FormatExprForDebug(errorArg), errType)
 
 	// Fix A4: Handle addressability - wrap literals in IIFE if needed
 	var errValue ast.Expr
@@ -360,11 +360,11 @@ func (p *ResultTypePlugin) transformErrConstructor(call *ast.CallExpr) ast.Expr 
 			Op: token.AND,
 			X:  errorArg,
 		}
-		p.ctx.Logger.Debug("Fix A4: Error expression is addressable, using &expr")
+		p.ctx.Logger.Debugf("Fix A4: Error expression is addressable, using &expr")
 	} else {
 		// Non-addressable (literal, function call, etc.) - wrap in IIFE
 		errValue = wrapInIIFE(errorArg, errType, p.ctx)
-		p.ctx.Logger.Debug("Fix A4: Error expression is non-addressable, wrapping in IIFE (temp var: __tmp%d)", p.ctx.TempVarCounter-1)
+		p.ctx.Logger.Debugf("Fix A4: Error expression is non-addressable, wrapping in IIFE (temp var: __tmp%d)", p.ctx.TempVarCounter-1)
 	}
 
 	// Create the replacement CompositeLit
@@ -407,10 +407,10 @@ func (p *ResultTypePlugin) inferTypeFromExpr(expr ast.Expr) (string, error) {
 		typ, ok := p.typeInference.InferType(expr)
 		if ok && typ != nil {
 			typeName := p.typeInference.TypeToString(typ)
-			p.ctx.Logger.Debug("Fix A5: TypeInferenceService resolved %T to %s", expr, typeName)
+			p.ctx.Logger.Debugf("Fix A5: TypeInferenceService resolved %T to %s", expr, typeName)
 			return typeName, nil
 		}
-		p.ctx.Logger.Debug("Fix A5: TypeInferenceService could not infer type for %T", expr)
+		p.ctx.Logger.Debugf("Fix A5: TypeInferenceService could not infer type for %T", expr)
 	}
 
 	// Fallback to structural heuristics for basic cases

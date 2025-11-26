@@ -27,40 +27,58 @@
       "original_line": 3,
       "original_column": 1,
       "processor_input_line": 0,
-      "length": 45,
+      "length": 11,
       "name": "identity"
     },
     {
-      "generated_line": 4,
+      "generated_line": 5,
       "generated_column": 1,
-      "original_line": 4,
-      "original_column": 1,
-      "processor_input_line": 0,
-      "length": 27,
-      "name": "identity"
-    },
-    {
-      "generated_line": 7,
-      "generated_column": 1,
-      "original_line": 7,
+      "original_line": 5,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 0,
       "name": "identity"
     },
     {
-      "generated_line": 11,
+      "generated_line": 6,
+      "generated_column": 1,
+      "original_line": 6,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 45,
+      "name": "identity"
+    },
+    {
+      "generated_line": 7,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 16,
+      "name": "identity"
+    },
+    {
+      "generated_line": 10,
       "generated_column": 2,
-      "original_line": 5,
+      "original_line": 7,
       "original_column": 27,
       "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
     },
     {
-      "generated_line": 17,
+      "generated_line": 14,
+      "generated_column": 1,
+      "original_line": 9,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 16,
       "generated_column": 2,
-      "original_line": 6,
+      "original_line": 8,
       "original_column": 27,
       "processor_input_line": 0,
       "length": 1,

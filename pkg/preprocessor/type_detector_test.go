@@ -228,7 +228,7 @@ func TestTypeDetector_InferBranchTypes_DifferentTypes(t *testing.T) {
 		expected string
 	}{
 		{"string vs int", `"text"`, "42", "any"},
-		{"int vs float", "42", "3.14", "any"},
+		{"int vs float", "42", "3.14", "float64"}, // Numeric promotion: int + float → float64
 		{"bool vs string", "true", `"yes"`, "any"},
 		{"int vs bool", "1", "true", "any"},
 		{"slice vs int", "[]int{1}", "42", "any"},

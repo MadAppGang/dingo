@@ -474,10 +474,8 @@ func parseElements(content string) []string {
 		current += string(ch)
 	}
 
-	// Add last element
-	if current != "" {
-		elements = append(elements, current)
-	}
+	// Add last element (even if empty - caller will filter)
+	elements = append(elements, current)
 
 	return elements
 }

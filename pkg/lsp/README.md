@@ -481,6 +481,13 @@ See [`docs/lsp-debugging.md`](../../docs/lsp-debugging.md) for detailed troubles
 ## Future Enhancements
 
 **Iteration 2 (Post-Phase IV):**
+- [ ] **Auto-import for missing packages** (PRIORITY: HIGH)
+  - Detect undefined package references (e.g., `os.ReadFile` without import)
+  - Provide diagnostic: "Package 'os' is not imported"
+  - Offer code action: "Add import for 'os'"
+  - Insert import at top of .dingo file when user accepts
+  - Reference: TypeScript LSP auto-import implementation
+  - **Rationale:** Transpiler assumes imports are present; LSP handles editing features
 - [ ] Document symbols (Ctrl+Shift+O)
 - [ ] Find references (Shift+F12)
 - [ ] Rename refactoring (F2)

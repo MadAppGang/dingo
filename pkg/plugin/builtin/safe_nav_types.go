@@ -82,7 +82,7 @@ func (p *SafeNavTypePlugin) SetContext(ctx *plugin.Context) {
 		// Create type inference service
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("SafeNavTypePlugin: Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("SafeNavTypePlugin: Failed to create type inference service: %v", err)
 			return
 		}
 
@@ -92,14 +92,14 @@ func (p *SafeNavTypePlugin) SetContext(ctx *plugin.Context) {
 		if ctx.TypeInfo != nil {
 			if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 				service.SetTypesInfo(typesInfo)
-				ctx.Logger.Debug("SafeNavTypePlugin: go/types integration enabled")
+				ctx.Logger.Debugf("SafeNavTypePlugin: go/types integration enabled")
 			} else {
 				// TypeInfo exists but is not *types.Info - warn about limited inference
-				ctx.Logger.Warn("SafeNavTypePlugin: TypeInfo is not *types.Info (type: %T), type inference may be limited", ctx.TypeInfo)
+				ctx.Logger.Warnf("SafeNavTypePlugin: TypeInfo is not *types.Info (type: %T), type inference may be limited", ctx.TypeInfo)
 			}
 		} else {
 			// No TypeInfo available - will use heuristic inference
-			ctx.Logger.Debug("SafeNavTypePlugin: No TypeInfo available, using heuristic type inference")
+			ctx.Logger.Debugf("SafeNavTypePlugin: No TypeInfo available, using heuristic type inference")
 		}
 	}
 }
@@ -122,7 +122,7 @@ func (p *SafeNavTypePlugin) Process(node ast.Node) error {
 		if file, ok := node.(*ast.File); ok {
 			p.structFields = p.buildStructFieldTypeMap(file)
 			p.methodReturns = p.buildMethodReturnTypeMap(file)
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Built type maps - %d structs, %d method receivers",
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Built type maps - %d structs, %d method receivers",
 				len(p.structFields), len(p.methodReturns))
 		}
 	}
@@ -137,13 +137,13 @@ func (p *SafeNavTypePlugin) Process(node ast.Node) error {
 					ident:  ident,
 					parent: parent,
 				})
-				p.ctx.Logger.Debug("SafeNavTypePlugin: Found __INFER__ placeholder at %v", p.ctx.FileSet.Position(ident.Pos()))
+				p.ctx.Logger.Debugf("SafeNavTypePlugin: Found __INFER__ placeholder at %v", p.ctx.FileSet.Position(ident.Pos()))
 			}
 		}
 		return true
 	})
 
-	p.ctx.Logger.Debug("SafeNavTypePlugin: Discovery complete, found %d __INFER__ placeholders", len(p.inferNodes))
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: Discovery complete, found %d __INFER__ placeholders", len(p.inferNodes))
 	return nil
 }
 
@@ -162,14 +162,14 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 				if len(funcLit.Type.Results.List) == 1 {
 					if ident, ok := funcLit.Type.Results.List[0].Type.(*ast.Ident); ok {
 						if ident.Name == "__INFER__" {
-							p.ctx.Logger.Debug("SafeNavTypePlugin: Found func() __INFER__, attempting to resolve type...")
+							p.ctx.Logger.Debugf("SafeNavTypePlugin: Found func() __INFER__, attempting to resolve type...")
 							// Look for Option_T calls in the function body
 							optionType := p.resolveReturnTypeFromFunc(funcLit)
 							if optionType != "" {
 								funcLitTypes[funcLit] = optionType
-								p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved IIFE return type to %s", optionType)
+								p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved IIFE return type to %s", optionType)
 							} else {
-								p.ctx.Logger.Debug("SafeNavTypePlugin: Failed to resolve IIFE return type")
+								p.ctx.Logger.Debugf("SafeNavTypePlugin: Failed to resolve IIFE return type")
 							}
 						}
 					}
@@ -222,7 +222,7 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 										Body: funcLit.Body,
 									}
 									cursor.Replace(newFuncLit)
-									p.ctx.Logger.Debug("SafeNavTypePlugin: Replaced func() __INFER__ with func() %s", optionType)
+									p.ctx.Logger.Debugf("SafeNavTypePlugin: Replaced func() __INFER__ with func() %s", optionType)
 								}
 							}
 						}
@@ -247,7 +247,7 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 									// Use the function's return type directly (e.g., "StringOption")
 									if ident.Name != "__INFER__" {
 										optionType = ident.Name
-										p.ctx.Logger.Debug("SafeNavTypePlugin: Using function return type %s for __INFER__ call", optionType)
+										p.ctx.Logger.Debugf("SafeNavTypePlugin: Using function return type %s for __INFER__ call", optionType)
 									}
 								}
 							}
@@ -265,7 +265,7 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 								Args: call.Args,
 							}
 							cursor.Replace(newCall)
-							p.ctx.Logger.Debug("SafeNavTypePlugin: Replaced %s() with %s()", fun.Name, newFunName)
+							p.ctx.Logger.Debugf("SafeNavTypePlugin: Replaced %s() with %s()", fun.Name, newFunName)
 						}
 					}
 				}
@@ -280,7 +280,7 @@ func (p *SafeNavTypePlugin) Transform(node ast.Node) (ast.Node, error) {
 							// Replace __INFER__ with the resolved type
 							replacement := ast.NewIdent(inferNode.resolvedType)
 							cursor.Replace(replacement)
-							p.ctx.Logger.Debug("SafeNavTypePlugin: Replaced __INFER__ identifier with %s", inferNode.resolvedType)
+							p.ctx.Logger.Debugf("SafeNavTypePlugin: Replaced __INFER__ identifier with %s", inferNode.resolvedType)
 							break
 						}
 					}
@@ -423,7 +423,7 @@ func (p *SafeNavTypePlugin) extractInnerType(named *types.Named) types.Type {
 	// Use type inference service to extract type parameter
 	innerType, ok := p.typeInference.GetOptionTypeParam(typeName)
 	if !ok {
-		p.ctx.Logger.Warn("Failed to extract inner type from Option type: %s", typeName)
+		p.ctx.Logger.Warnf("Failed to extract inner type from Option type: %s", typeName)
 		return nil
 	}
 
@@ -767,7 +767,7 @@ func (p *SafeNavTypePlugin) resolveTypeFromExpr(node *inferNode, expr ast.Expr) 
 		node.isPointer = true
 		node.isOption = false
 		node.resolvedType = p.typeInference.TypeToString(ptrType.Elem())
-		p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved __INFER__ to pointer type: *%s", node.resolvedType)
+		p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved __INFER__ to pointer type: *%s", node.resolvedType)
 		return nil
 	}
 
@@ -777,7 +777,7 @@ func (p *SafeNavTypePlugin) resolveTypeFromExpr(node *inferNode, expr ast.Expr) 
 			node.isOption = true
 			node.isPointer = false
 			node.resolvedType = named.Obj().Name()
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved __INFER__ to Option type: %s", node.resolvedType)
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved __INFER__ to Option type: %s", node.resolvedType)
 			return nil
 		}
 	}
@@ -1008,7 +1008,7 @@ func (p *SafeNavTypePlugin) buildMethodReturnTypeMap(file *ast.File) map[string]
 // 4. Extract Option_T from those calls or variables
 func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) string {
 	if funcLit == nil || funcLit.Body == nil {
-		p.ctx.Logger.Debug("SafeNavTypePlugin: resolveReturnTypeFromFunc - funcLit or body is nil")
+		p.ctx.Logger.Debugf("SafeNavTypePlugin: resolveReturnTypeFromFunc - funcLit or body is nil")
 		return ""
 	}
 
@@ -1018,18 +1018,18 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 		if call, ok := n.(*ast.CallExpr); ok {
 			if fun, ok := call.Fun.(*ast.Ident); ok {
 				name := fun.Name
-				p.ctx.Logger.Debug("SafeNavTypePlugin: Found call to %s", name)
+				p.ctx.Logger.Debugf("SafeNavTypePlugin: Found call to %s", name)
 				// Look for patterns like: Option_User_None, Option_string_Some, etc.
 				if strings.HasPrefix(name, "Option_") && !strings.HasPrefix(name, "__INFER__") {
 					if strings.HasSuffix(name, "_None") {
 						// Extract Option_T from Option_T_None
 						optionType = strings.TrimSuffix(name, "_None")
-						p.ctx.Logger.Debug("SafeNavTypePlugin: Found Option_T_None call, extracted type: %s", optionType)
+						p.ctx.Logger.Debugf("SafeNavTypePlugin: Found Option_T_None call, extracted type: %s", optionType)
 						return false // Stop searching
 					} else if strings.HasSuffix(name, "_Some") {
 						// Extract Option_T from Option_T_Some
 						optionType = strings.TrimSuffix(name, "_Some")
-						p.ctx.Logger.Debug("SafeNavTypePlugin: Found Option_T_Some call, extracted type: %s", optionType)
+						p.ctx.Logger.Debugf("SafeNavTypePlugin: Found Option_T_Some call, extracted type: %s", optionType)
 						return false // Stop searching
 					}
 				}
@@ -1043,11 +1043,11 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 		return optionType
 	}
 
-	p.ctx.Logger.Debug("SafeNavTypePlugin: No Option_T_None/Some calls found, trying variable method calls...")
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: No Option_T_None/Some calls found, trying variable method calls...")
 
 	// Otherwise, look for variables with .IsNone() or .Unwrap() method calls
 	// This handles cases like: if user.IsNone() { ... }
-	p.ctx.Logger.Debug("SafeNavTypePlugin: Attempting method call detection...")
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: Attempting method call detection...")
 
 	// First, collect variable names that have .IsNone()/.Unwrap() calls
 	varNames := make(map[string]bool)
@@ -1057,7 +1057,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 				methodName := sel.Sel.Name
 				if methodName == "IsNone" || methodName == "IsSome" || methodName == "Unwrap" {
 					if ident, ok := sel.X.(*ast.Ident); ok {
-						p.ctx.Logger.Debug("SafeNavTypePlugin: Found %s.%s() call", ident.Name, methodName)
+						p.ctx.Logger.Debugf("SafeNavTypePlugin: Found %s.%s() call", ident.Name, methodName)
 						varNames[ident.Name] = true
 					}
 				}
@@ -1068,7 +1068,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 
 	// If we have candidate variables, try to find their type declarations
 	if len(varNames) > 0 {
-		p.ctx.Logger.Debug("SafeNavTypePlugin: Found %d candidate variables: %v", len(varNames), varNames)
+		p.ctx.Logger.Debugf("SafeNavTypePlugin: Found %d candidate variables: %v", len(varNames), varNames)
 
 		// Walk up to the parent scope to find variable declarations
 		// Use the parent map to traverse up the AST
@@ -1088,7 +1088,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 											if valueSpec.Type != nil {
 												if ident, ok := valueSpec.Type.(*ast.Ident); ok {
 													typeName := ident.Name
-													p.ctx.Logger.Debug("SafeNavTypePlugin: Found var %s %s", name.Name, typeName)
+													p.ctx.Logger.Debugf("SafeNavTypePlugin: Found var %s %s", name.Name, typeName)
 													if strings.HasPrefix(typeName, "Option_") {
 														foundType = typeName
 														return false
@@ -1105,7 +1105,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 				})
 
 				if foundType != "" {
-					p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved type from variable declaration: %s", foundType)
+					p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved type from variable declaration: %s", foundType)
 					return foundType
 				}
 			}
@@ -1113,7 +1113,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 		}
 	}
 
-	p.ctx.Logger.Debug("SafeNavTypePlugin: Trying AST-based type resolution (Strategy 3)...")
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: Trying AST-based type resolution (Strategy 3)...")
 
 	// Strategy 3: Use AST-based type maps to resolve field/method types
 	// This handles:
@@ -1131,7 +1131,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 							fieldName := sel.Sel.Name
 							varName := baseIdent.Name
 
-							p.ctx.Logger.Debug("SafeNavTypePlugin: Found return %s.%s", varName, fieldName)
+							p.ctx.Logger.Debugf("SafeNavTypePlugin: Found return %s.%s", varName, fieldName)
 
 							// Try to find the type of the base variable
 							var baseType string
@@ -1152,12 +1152,12 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 															if unwrapBase, ok := callSel.X.(*ast.Ident); ok {
 																// Extract type from Option_T → T
 																// If user is UserOption, then user.Unwrap() returns User
-																p.ctx.Logger.Debug("SafeNavTypePlugin: Found %s := %s.Unwrap()", varName, unwrapBase.Name)
+																p.ctx.Logger.Debugf("SafeNavTypePlugin: Found %s := %s.Unwrap()", varName, unwrapBase.Name)
 
 																// Trace the unwrapBase variable to find its Option type
 																baseType = p.extractUnwrappedTypeFromVar(funcLit, unwrapBase.Name)
 																if baseType != "" {
-																	p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type: %s", baseType)
+																	p.ctx.Logger.Debugf("SafeNavTypePlugin: Extracted unwrapped type: %s", baseType)
 																}
 															}
 														}
@@ -1171,13 +1171,13 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 							})
 
 							if baseType != "" {
-								p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved base type: %s", baseType)
+								p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved base type: %s", baseType)
 
 								// Check if it's a field access
 								if p.structFields != nil {
 									if fields, ok := p.structFields[baseType]; ok {
 										if fieldType, ok := fields[fieldName]; ok {
-											p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved field type: %s.%s = %s", baseType, fieldName, fieldType)
+											p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved field type: %s.%s = %s", baseType, fieldName, fieldType)
 											optionType = fieldType
 											return false
 										}
@@ -1187,7 +1187,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 								// Check if it's a method call
 								// Note: method calls would have CallExpr parent, so check for that
 							} else {
-								p.ctx.Logger.Debug("SafeNavTypePlugin: Could not resolve base type for %s", varName)
+								p.ctx.Logger.Debugf("SafeNavTypePlugin: Could not resolve base type for %s", varName)
 							}
 						}
 					}
@@ -1199,7 +1199,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 								methodName := sel.Sel.Name
 								varName := baseIdent.Name
 
-								p.ctx.Logger.Debug("SafeNavTypePlugin: Found return %s.%s()", varName, methodName)
+								p.ctx.Logger.Debugf("SafeNavTypePlugin: Found return %s.%s()", varName, methodName)
 
 								// Try to find the type of the base variable
 								var baseType string
@@ -1218,7 +1218,7 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 																	// Trace the unwrapBase variable to find its Option type
 																	baseType = p.extractUnwrappedTypeFromVar(funcLit, unwrapBaseIdent.Name)
 																	if baseType != "" {
-																		p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type for method call: %s", baseType)
+																		p.ctx.Logger.Debugf("SafeNavTypePlugin: Extracted unwrapped type for method call: %s", baseType)
 																	}
 																}
 															}
@@ -1232,13 +1232,13 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 								})
 
 								if baseType != "" {
-									p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved base type for method call: %s", baseType)
+									p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved base type for method call: %s", baseType)
 
 									// Check if we have method return type info
 									if p.methodReturns != nil {
 										if methods, ok := p.methodReturns[baseType]; ok {
 											if returnType, ok := methods[methodName]; ok {
-												p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved method return type: %s.%s() = %s", baseType, methodName, returnType)
+												p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved method return type: %s.%s() = %s", baseType, methodName, returnType)
 												optionType = returnType
 												return false
 											}
@@ -1254,12 +1254,12 @@ func (p *SafeNavTypePlugin) resolveReturnTypeFromFunc(funcLit *ast.FuncLit) stri
 		})
 
 		if optionType != "" {
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Resolved type using AST-based type maps: %s", optionType)
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Resolved type using AST-based type maps: %s", optionType)
 			return optionType
 		}
 	}
 
-	p.ctx.Logger.Debug("SafeNavTypePlugin: Failed to resolve type")
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: Failed to resolve type")
 	return ""
 }
 
@@ -1284,7 +1284,7 @@ func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varN
 							if call, ok := rhs.(*ast.CallExpr); ok {
 								if funcIdent, ok := call.Fun.(*ast.Ident); ok {
 									funcName := funcIdent.Name
-									p.ctx.Logger.Debug("SafeNavTypePlugin: Variable %s is assigned from function %s()", varName, funcName)
+									p.ctx.Logger.Debugf("SafeNavTypePlugin: Variable %s is assigned from function %s()", varName, funcName)
 
 									// Look up the function's return type in method returns map
 									// Note: For top-level functions, we'd need a function return type map
@@ -1296,7 +1296,7 @@ func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varN
 										typeName := strings.TrimPrefix(funcName, "get")
 										typeName = strings.TrimPrefix(typeName, "fetch")
 										optionTypeName = typeName + "Option"
-										p.ctx.Logger.Debug("SafeNavTypePlugin: Inferred option type from function name: %s", optionTypeName)
+										p.ctx.Logger.Debugf("SafeNavTypePlugin: Inferred option type from function name: %s", optionTypeName)
 										found = true
 										return false
 									}
@@ -1314,43 +1314,43 @@ func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varN
 	// First, try to find the variable in the current block
 	if block, ok := startNode.(*ast.BlockStmt); ok {
 		if findVarInBlock(block) {
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in current scope", varName)
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Found variable %s in current scope", varName)
 		}
 	} else if funcLit, ok := startNode.(*ast.FuncLit); ok {
 		if findVarInBlock(funcLit.Body) {
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in current IIFE scope", varName)
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Found variable %s in current IIFE scope", varName)
 		}
 	}
 
 	// If not found in current scope, traverse up to parent scopes
 	if optionTypeName == "" {
-		p.ctx.Logger.Debug("SafeNavTypePlugin: Variable %s not found in current scope, searching parent scopes...", varName)
+		p.ctx.Logger.Debugf("SafeNavTypePlugin: Variable %s not found in current scope, searching parent scopes...", varName)
 
 		currentNode := startNode
 		for optionTypeName == "" {
 			// Get parent node
 			parentNode := p.ctx.GetParent(currentNode)
 			if parentNode == nil {
-				p.ctx.Logger.Debug("SafeNavTypePlugin: Reached root, no parent found")
+				p.ctx.Logger.Debugf("SafeNavTypePlugin: Reached root, no parent found")
 				break
 			}
 
-			p.ctx.Logger.Debug("SafeNavTypePlugin: Checking parent node type: %T", parentNode)
+			p.ctx.Logger.Debugf("SafeNavTypePlugin: Checking parent node type: %T", parentNode)
 
 			// Check if parent is a function declaration with a body
 			if funcDecl, ok := parentNode.(*ast.FuncDecl); ok && funcDecl.Body != nil {
-				p.ctx.Logger.Debug("SafeNavTypePlugin: Searching in parent function %s", funcDecl.Name.Name)
+				p.ctx.Logger.Debugf("SafeNavTypePlugin: Searching in parent function %s", funcDecl.Name.Name)
 				if findVarInBlock(funcDecl.Body) {
-					p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in parent function %s", varName, funcDecl.Name.Name)
+					p.ctx.Logger.Debugf("SafeNavTypePlugin: Found variable %s in parent function %s", varName, funcDecl.Name.Name)
 					break
 				}
 			}
 
 			// Check if parent is a block statement
 			if block, ok := parentNode.(*ast.BlockStmt); ok {
-				p.ctx.Logger.Debug("SafeNavTypePlugin: Searching in parent block")
+				p.ctx.Logger.Debugf("SafeNavTypePlugin: Searching in parent block")
 				if findVarInBlock(block) {
-					p.ctx.Logger.Debug("SafeNavTypePlugin: Found variable %s in parent block", varName)
+					p.ctx.Logger.Debugf("SafeNavTypePlugin: Found variable %s in parent block", varName)
 					break
 				}
 			}
@@ -1361,7 +1361,7 @@ func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varN
 	}
 
 	if optionTypeName == "" {
-		p.ctx.Logger.Debug("SafeNavTypePlugin: Could not determine option type for variable %s in any scope", varName)
+		p.ctx.Logger.Debugf("SafeNavTypePlugin: Could not determine option type for variable %s in any scope", varName)
 		return ""
 	}
 
@@ -1378,7 +1378,7 @@ func (p *SafeNavTypePlugin) extractUnwrappedTypeFromVar(startNode ast.Node, varN
 		unwrappedType = "bool"
 	}
 
-	p.ctx.Logger.Debug("SafeNavTypePlugin: Extracted unwrapped type %s from option type %s", unwrappedType, optionTypeName)
+	p.ctx.Logger.Debugf("SafeNavTypePlugin: Extracted unwrapped type %s from option type %s", unwrappedType, optionTypeName)
 	return unwrappedType
 }
 

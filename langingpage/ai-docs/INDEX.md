@@ -246,7 +246,7 @@ When working on Astro projects:
 6. **Validate continuously** against the checklist during planning, implementation, and QA
 7. **Document ai-docs references** in your plans, code, and reports
 
-**CRITICAL**: Always consult ai-docs before making architectural decisions. See `/Users/jack/mag/dingo/langingpage/CLAUDE.md` for detailed AI agent workflow patterns.
+**CRITICAL**: Always consult ai-docs before making architectural decisions. See `CLAUDE.md` in the langingpage directory for detailed AI agent workflow patterns.
 
 ### For Specific Tasks
 
@@ -287,7 +287,7 @@ When working on Astro projects:
 This knowledge base is specifically for the **Dingo Landing Page** project, an Astro-based marketing website.
 
 ### Project Info
-- **Location**: `/Users/jack/mag/dingo/langingpage`
+- **Location**: `langingpage`
 - **Framework**: Astro
 - **Package Manager**: pnpm
 - **Purpose**: Landing page for the Dingo meta-language project

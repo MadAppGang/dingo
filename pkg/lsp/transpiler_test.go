@@ -113,7 +113,7 @@ func readConfig(path string) ([]byte, error) {
 	cache, _ := NewSourceMapCache(logger)
 	gopls, _ := NewGoplsClient("gopls", logger) // Won't actually use gopls in this test
 
-	at := NewAutoTranspiler(logger, cache, gopls)
+	at := NewAutoTranspiler(logger, cache, gopls, nil) // nil server - not testing diagnostics
 
 	// Transpile
 	ctx := context.Background()

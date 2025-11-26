@@ -127,17 +127,17 @@ Before EVERY action, main chat asks:
 
 ## Files Modified
 
-1. `/Users/jack/mag/dingo/CLAUDE.md` - Root transpiler project
+1. `CLAUDE.md` - Root transpiler project
    - Added CRITICAL section at top
    - Enhanced delegation templates
    - Token budget enforcement
 
-2. `/Users/jack/mag/dingo/langingpage/CLAUDE.md` - Landing page project
+2. `langingpage/CLAUDE.md` - Landing page project
    - Added CRITICAL section at top
    - Astro-specific delegation templates
    - Component-focused limits
 
-3. `/Users/jack/mag/dingo/ai-docs/token-optimization-strategy.md` - This file
+3. `ai-docs/token-optimization-strategy.md` - This file
    - Documents strategy
    - Tracks impact
    - Reference for future
