@@ -64,29 +64,29 @@ func parseLogLevel(levelStr string) LogLevel {
 
 func (l *StandardLogger) Debugf(format string, args ...interface{}) {
 	if l.level <= LogLevelDebug {
-		l.logger.Output(2, fmt.Sprintf("[DEBUG] "+format, args...))
+		_ = l.logger.Output(2, fmt.Sprintf("[DEBUG] "+format, args...))
 	}
 }
 
 func (l *StandardLogger) Infof(format string, args ...interface{}) {
 	if l.level <= LogLevelInfo {
-		l.logger.Output(2, fmt.Sprintf("[INFO] "+format, args...))
+		_ = l.logger.Output(2, fmt.Sprintf("[INFO] "+format, args...))
 	}
 }
 
 func (l *StandardLogger) Warnf(format string, args ...interface{}) {
 	if l.level <= LogLevelWarn {
-		l.logger.Output(2, fmt.Sprintf("[WARN] "+format, args...))
+		_ = l.logger.Output(2, fmt.Sprintf("[WARN] "+format, args...))
 	}
 }
 
 func (l *StandardLogger) Errorf(format string, args ...interface{}) {
 	if l.level <= LogLevelError {
-		l.logger.Output(2, fmt.Sprintf("[ERROR] "+format, args...))
+		_ = l.logger.Output(2, fmt.Sprintf("[ERROR] "+format, args...))
 	}
 }
 
 func (l *StandardLogger) Fatalf(format string, args ...interface{}) {
-	l.logger.Output(2, fmt.Sprintf("[FATAL] "+format, args...))
+	_ = l.logger.Output(2, fmt.Sprintf("[FATAL] "+format, args...))
 	os.Exit(1)
 }

@@ -364,7 +364,7 @@ func TestWithAnnotation(t *testing.T) {
 	pos := file.Pos(10)
 
 	err := NewEnhancedError(fset, pos, "Test message")
-	err.WithAnnotation("Custom annotation")
+	_ = err.WithAnnotation("Custom annotation")
 
 	if err.Annotation != "Custom annotation" {
 		t.Errorf("Expected annotation 'Custom annotation', got %q", err.Annotation)
@@ -382,7 +382,7 @@ func TestWithSuggestion(t *testing.T) {
 	pos := file.Pos(10)
 
 	err := NewEnhancedError(fset, pos, "Test message")
-	err.WithSuggestion("Try this fix")
+	_ = err.WithSuggestion("Try this fix")
 
 	if err.Suggestion != "Try this fix" {
 		t.Errorf("Expected suggestion 'Try this fix', got %q", err.Suggestion)
@@ -400,7 +400,7 @@ func TestWithMissingItems(t *testing.T) {
 	pos := file.Pos(10)
 
 	err := NewEnhancedError(fset, pos, "Non-exhaustive match")
-	err.WithMissingItems([]string{"Err(_)", "None"})
+	_ = err.WithMissingItems([]string{"Err(_)", "None"})
 
 	if len(err.MissingItems) != 2 {
 		t.Errorf("Expected 2 missing items, got %d", len(err.MissingItems))
