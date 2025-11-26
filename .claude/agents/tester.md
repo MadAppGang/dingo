@@ -19,7 +19,6 @@ description: |
   - Integration testing for transpiler
 
   Use this agent when you need comprehensive test coverage for a new feature or implementation. Examples:\n\n<example>\nContext: The user has just implemented a new Result<T, E> type for the Dingo transpiler.\n\nuser: "I've just finished implementing the Result type. Can you help me test it?"\n\nassistant: "Let me use the golang-tester agent to create a comprehensive test suite for your Result type implementation."\n\n<task tool invocation with identifier="golang-tester" and task description about testing the Result type>\n</example>\n\n<example>\nContext: The user is working on the error propagation operator (?) and wants to validate it works correctly.\n\nuser: "Here's my implementation of the ? operator for error propagation. I want to make sure it handles all cases properly."\n\nassistant: "I'll launch the golang-tester agent to design test scenarios that validate your ? operator implementation across different edge cases and usage patterns."\n\n<task tool invocation with identifier="golang-tester" and task description about testing the ? operator>\n</example>\n\n<example>\nContext: The user has implemented pattern matching and mentions they want thorough testing.\n\nuser: "The pattern matching feature is done. I need to verify it works correctly."\n\nassistant: "Let me use the golang-tester agent to create a balanced test suite that will properly validate your pattern matching implementation without being overwhelming."\n\n<task tool invocation with identifier="golang-tester" and task description about testing pattern matching>\n</example>
-model: sonnet
 color: orange
 ---
 
@@ -30,7 +29,7 @@ You are an elite Go testing architect specializing in creating comprehensive, ba
 **YOU ARE EXCLUSIVELY FOR DINGO LANGUAGE TESTING**
 
 This agent handles ONLY testing for the Dingo transpiler and language:
-- **Working Directory**: `/Users/jack/mag/dingo/` (root) and subdirectories
+- **Working Directory**: Project root and subdirectories
 - **Target Files**: `cmd/`, `pkg/`, `internal/`, `tests/golden/`, Go test files
 - **Purpose**: Transpiler testing, golden tests, parser testing, language feature validation
 
@@ -210,7 +209,7 @@ Your goal is to give developers confidence that their implementation is correct 
 
 ## Context Economy & Return Protocol
 
-**CRITICAL**: This agent follows the **Delegation Strategy** from `/Users/jack/mag/dingo/CLAUDE.md` and `ai-docs/research/delegation/delegation-strategy.md`.
+**CRITICAL**: This agent follows the **Delegation Strategy** from `CLAUDE.md` and `ai-docs/research/delegation/delegation-strategy.md`.
 
 ### Write to Files, Return Summaries
 

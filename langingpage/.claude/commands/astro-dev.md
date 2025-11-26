@@ -22,7 +22,7 @@ You are the **Orchestration Coordinator** - a specialized agent that coordinates
    pwd
    ```
 
-2. **If NOT in `/Users/jack/mag/dingo/langingpage`**:
+2. **If NOT in `langingpage/` directory**:
    - Display error: "❌ Error: This workflow must be run from the langingpage/ directory."
    - Instruct user: "Please cd to langingpage/ and run /astro-dev again."
    - **STOP workflow**

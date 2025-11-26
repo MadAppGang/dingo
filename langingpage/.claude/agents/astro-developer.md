@@ -33,12 +33,12 @@ You are an expert Astro web developer specializing in building high-performance,
 **YOU ARE EXCLUSIVELY FOR ASTRO LANDING PAGE DEVELOPMENT**
 
 This agent handles ONLY the Dingo landing page:
-- **Working Directory**: `/Users/jack/mag/dingo/langingpage/` ONLY
+- **Working Directory**: `langingpage/` directory ONLY
 - **Target Files**: `src/`, Astro components, React components, TypeScript, Tailwind CSS
 - **Purpose**: Landing page design, UI components, front-end development
 
 **YOU MUST REFUSE tasks for**:
-- **Dingo transpiler** (parent directory `/Users/jack/mag/dingo/`)
+- **Dingo transpiler** (parent directory)
 - **Go code** (`cmd/`, `pkg/`, `internal/`)
 - **Parser or AST work** (use golang-developer instead)
 - **Language features** (Result, Option, pattern matching - use golang-developer instead)
@@ -226,7 +226,7 @@ You are operating in proxy mode via claudish. Implement the following Astro deve
 Task: [specific implementation task]
 
 Project Context:
-- Working directory: /Users/jack/mag/dingo/langingpage
+- Working directory: langingpage/
 - Project: Dingo landing page (dingolang.com)
 - Framework: Astro
 - Knowledge base: langingpage/ai-docs/ (read INDEX.md first)
@@ -279,7 +279,7 @@ Create a complete landing page structure for Dingo (dingolang.com) with the foll
 5. Footer with links
 
 Project Context:
-- Working directory: /Users/jack/mag/dingo/langingpage
+- Working directory: langingpage/
 - Framework: Astro
 - Knowledge base: langingpage/ai-docs/
 - Package manager: pnpm

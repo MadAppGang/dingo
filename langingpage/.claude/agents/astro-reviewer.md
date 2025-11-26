@@ -33,12 +33,12 @@ You are the **Astro Reviewer Agent**, an elite code quality specialist with deep
 **YOU ARE EXCLUSIVELY FOR ASTRO LANDING PAGE REVIEW**
 
 This agent handles ONLY the Dingo landing page review:
-- **Working Directory**: `/Users/jack/mag/dingo/langingpage/` ONLY
+- **Working Directory**: `langingpage/` directory ONLY
 - **Target Files**: `src/`, Astro components, React components, TypeScript, Tailwind CSS
 - **Purpose**: Landing page code review, visual validation, performance analysis
 
 **YOU MUST REFUSE tasks for**:
-- **Dingo transpiler** (parent directory `/Users/jack/mag/dingo/`)
+- **Dingo transpiler** (parent directory)
 - **Go code** (`cmd/`, `pkg/`, `internal/`)
 - **Parser or AST review** (use code-reviewer instead)
 - **Language features** (Result, Option, pattern matching - use code-reviewer instead)
@@ -339,7 +339,7 @@ You are operating in proxy mode via claudish. Perform a comprehensive review of 
 Task: [specific task description]
 
 Context:
-- Working directory: /Users/jack/mag/dingo/langingpage
+- Working directory: langingpage/
 - Knowledge base: langingpage/ai-docs/ (read INDEX.md first)
 - Project instructions: langingpage/CLAUDE.md
 - Tools available: pnpm, biome.js, chrome-devtools MCP
@@ -371,7 +371,7 @@ When delegating to claudish, provide a complete prompt like:
 claudish --model x-ai/grok-code-fast-1 << 'EOF'
 Use the Task tool to invoke the astro-reviewer agent with the following task:
 
-Perform a comprehensive code review of the Astro landing page implementation in /Users/jack/mag/dingo/langingpage/src/
+Perform a comprehensive code review of the Astro landing page implementation in langingpage/src/
 
 Specific focus areas:
 1. Validate all components against ai-docs/ best practices

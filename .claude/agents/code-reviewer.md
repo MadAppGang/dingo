@@ -15,7 +15,6 @@ description: |
   - **For general code quality**: Either agent works
 
   This agent should be invoked after completing a logical chunk of code implementation, when seeking feedback on code design, or when you want to ensure adherence to project standards. For the Dingo project, use this agent after implementing features from the features/ directory, after significant refactoring, or when adding new transpiler/LSP components.\n\nExamples:\n\n<example>\nContext: User has just implemented a new parser component for the Dingo transpiler.\nuser: "I've just finished implementing the Result type parser. Here's the code:"\n<code implementation>\nassistant: "Let me use the code-reviewer agent to review this implementation for simplicity, readability, and maintainability."\n<uses Task tool to invoke code-reviewer agent>\n</example>\n\n<example>\nContext: User has completed a feature implementation and wants feedback.\nuser: "Can you review the error propagation operator I just added?"\nassistant: "I'll use the code-reviewer agent to analyze this implementation against our project principles."\n<uses Task tool to invoke code-reviewer agent>\n</example>\n\n<example>\nContext: Proactive review after detecting a significant code change.\nuser: "I've refactored the AST transformation logic to support pattern matching."\nassistant: "Since you've completed a significant implementation, let me proactively use the code-reviewer agent to ensure it meets our quality standards."\n<uses Task tool to invoke code-reviewer agent>\n</example>
-model: sonnet
 color: red
 ---
 
@@ -207,7 +206,7 @@ You are operating in proxy mode via claudish. Review the following code for the 
 Review Task: [specific review request]
 
 Project Context:
-- Working directory: /Users/jack/mag/dingo
+- Working directory: (project root)
 - Project: Dingo transpiler (meta-language for Go)
 - Phase: [current development phase]
 - Guidelines: See CLAUDE.md and ai-docs/ directory
@@ -248,7 +247,7 @@ Use the Task tool to invoke the code-reviewer agent with the following task:
 Review the error propagation operator implementation in pkg/preprocessor/error_prop.go
 
 Project Context:
-- Working directory: /Users/jack/mag/dingo
+- Working directory: (project root)
 - Project: Dingo transpiler (Go meta-language)
 - Feature: ? operator for error propagation (Go Proposal #71203)
 - Implementation: AST transformation from ? to explicit if err != nil
@@ -358,7 +357,7 @@ For each issue:
 
 ## Context Economy & Return Protocol
 
-**CRITICAL**: This agent follows the **Delegation Strategy** from `/Users/jack/mag/dingo/CLAUDE.md` and `ai-docs/research/delegation/delegation-strategy.md`.
+**CRITICAL**: This agent follows the **Delegation Strategy** from `CLAUDE.md` and `ai-docs/research/delegation/delegation-strategy.md`.
 
 ### Write to Files, Return Summaries
 
