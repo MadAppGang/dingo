@@ -517,10 +517,10 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 		t.Fatalf("First statement is %T, want *ast.AssignStmt", funcLit.Body.List[0])
 	}
 
-	// Verify assignment LHS is tmp1
+	// Verify assignment LHS is tmp (first call, no number per "No-Number-First Pattern")
 	lhsIdent, ok := assignStmt.Lhs[0].(*ast.Ident)
-	if !ok || lhsIdent.Name != "tmp1" {
-		t.Errorf("Assignment LHS is %v, want tmp1", assignStmt.Lhs[0])
+	if !ok || lhsIdent.Name != "tmp" {
+		t.Errorf("Assignment LHS is %v, want tmp", assignStmt.Lhs[0])
 	}
 
 	// Verify second statement is return
@@ -529,15 +529,15 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 		t.Fatalf("Second statement is %T, want *ast.ReturnStmt", funcLit.Body.List[1])
 	}
 
-	// Verify return value is &tmp1
+	// Verify return value is &tmp
 	unaryExpr, ok := returnStmt.Results[0].(*ast.UnaryExpr)
 	if !ok || unaryExpr.Op != token.AND {
 		t.Fatalf("Return value is %T with op %v, want *ast.UnaryExpr with &", returnStmt.Results[0], unaryExpr.Op)
 	}
 
 	returnIdent, ok := unaryExpr.X.(*ast.Ident)
-	if !ok || returnIdent.Name != "tmp1" {
-		t.Errorf("Return address-of is %v, want &tmp1", unaryExpr.X)
+	if !ok || returnIdent.Name != "tmp" {
+		t.Errorf("Return address-of is %v, want &tmp", unaryExpr.X)
 	}
 
 	// Verify CallExpr has no args (immediate invocation)
@@ -545,19 +545,19 @@ func TestWrapInIIFE_BasicStructure(t *testing.T) {
 		t.Errorf("CallExpr has %d args, want 0 (immediate invocation)", len(callExpr.Args))
 	}
 
-	// Verify temp var counter was incremented
-	if ctx.TempVarCounter != 1 {
-		t.Errorf("TempVarCounter is %d, want 1", ctx.TempVarCounter)
+	// Verify temp var counter was incremented (first call uses "tmp", counter becomes 2)
+	if ctx.TempVarCounter != 2 {
+		t.Errorf("TempVarCounter is %d, want 2", ctx.TempVarCounter)
 	}
 }
 
 // TestWrapInIIFE_MultipleCalls verifies unique temp var names
 func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 1,
+		TempVarCounter: 0, // Start at 0
 	}
 
-	// First call
+	// First call - should get "tmp" (no number)
 	expr1 := &ast.BasicLit{Kind: token.INT, Value: "42"}
 	result1 := wrapInIIFE(expr1, "int", ctx)
 
@@ -566,11 +566,11 @@ func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	assignStmt1 := funcLit1.Body.List[0].(*ast.AssignStmt)
 	lhs1 := assignStmt1.Lhs[0].(*ast.Ident)
 
-	if lhs1.Name != "tmp1" {
-		t.Errorf("First call generated %s, want tmp1", lhs1.Name)
+	if lhs1.Name != "tmp" {
+		t.Errorf("First call generated %s, want tmp", lhs1.Name)
 	}
 
-	// Second call
+	// Second call - should get "tmp1"
 	expr2 := &ast.BasicLit{Kind: token.STRING, Value: `"hello"`}
 	result2 := wrapInIIFE(expr2, "string", ctx)
 
@@ -579,11 +579,11 @@ func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	assignStmt2 := funcLit2.Body.List[0].(*ast.AssignStmt)
 	lhs2 := assignStmt2.Lhs[0].(*ast.Ident)
 
-	if lhs2.Name != "__tmp1" {
-		t.Errorf("Second call generated %s, want __tmp1", lhs2.Name)
+	if lhs2.Name != "tmp1" {
+		t.Errorf("Second call generated %s, want tmp1", lhs2.Name)
 	}
 
-	// Third call
+	// Third call - should get "tmp2"
 	expr3 := &ast.BasicLit{Kind: token.FLOAT, Value: "3.14"}
 	result3 := wrapInIIFE(expr3, "float64", ctx)
 
@@ -592,19 +592,19 @@ func TestWrapInIIFE_MultipleCalls(t *testing.T) {
 	assignStmt3 := funcLit3.Body.List[0].(*ast.AssignStmt)
 	lhs3 := assignStmt3.Lhs[0].(*ast.Ident)
 
-	if lhs3.Name != "__tmp2" {
-		t.Errorf("Third call generated %s, want __tmp2", lhs3.Name)
+	if lhs3.Name != "tmp2" {
+		t.Errorf("Third call generated %s, want tmp2", lhs3.Name)
 	}
 
-	if ctx.TempVarCounter != 3 {
-		t.Errorf("TempVarCounter is %d, want 3", ctx.TempVarCounter)
+	if ctx.TempVarCounter != 4 {
+		t.Errorf("TempVarCounter is %d, want 4", ctx.TempVarCounter)
 	}
 }
 
 // TestMaybeWrapForAddressability_Addressable verifies that addressable expressions get &expr
 func TestMaybeWrapForAddressability_Addressable(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 1,
+		TempVarCounter: 0, // Start at 0
 	}
 
 	expr := ast.NewIdent("x")
@@ -634,7 +634,7 @@ func TestMaybeWrapForAddressability_Addressable(t *testing.T) {
 // TestMaybeWrapForAddressability_NonAddressable verifies that non-addressable expressions get wrapped
 func TestMaybeWrapForAddressability_NonAddressable(t *testing.T) {
 	ctx := &plugin.Context{
-		TempVarCounter: 1,
+		TempVarCounter: 0, // Start at 0
 	}
 
 	expr := &ast.BasicLit{Kind: token.INT, Value: "42"}
@@ -652,9 +652,9 @@ func TestMaybeWrapForAddressability_NonAddressable(t *testing.T) {
 		t.Errorf("CallExpr.Fun is %T, want *ast.FuncLit", callExpr.Fun)
 	}
 
-	// Temp var counter SHOULD be incremented (IIFE created)
-	if ctx.TempVarCounter != 1 {
-		t.Errorf("TempVarCounter = %d, want 1 (IIFE created)", ctx.TempVarCounter)
+	// Temp var counter SHOULD be incremented (IIFE created, counter goes 0→1→2)
+	if ctx.TempVarCounter != 2 {
+		t.Errorf("TempVarCounter = %d, want 2 (IIFE created)", ctx.TempVarCounter)
 	}
 }
 

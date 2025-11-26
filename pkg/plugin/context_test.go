@@ -78,30 +78,30 @@ func TestContext_ClearErrors(t *testing.T) {
 func TestContext_NextTempVar(t *testing.T) {
 	ctx := &Context{}
 
-	// First call should return tmp1
+	// First call should return tmp (no number - "No-Number-First Pattern")
 	name1 := ctx.NextTempVar()
-	if name1 != "tmp1" {
-		t.Errorf("NextTempVar() = %q, want %q", name1, "tmp1")
+	if name1 != "tmp" {
+		t.Errorf("NextTempVar() = %q, want %q", name1, "tmp")
 	}
 
-	// Counter should increment
+	// Counter should be 2 (initialized to 1, then incremented to 2)
 	if ctx.TempVarCounter != 2 {
 		t.Errorf("TempVarCounter = %d, want 2", ctx.TempVarCounter)
 	}
 
-	// Second call should return tmp2
+	// Second call should return tmp1
 	name2 := ctx.NextTempVar()
-	if name2 != "tmp2" {
-		t.Errorf("NextTempVar() = %q, want %q", name2, "tmp2")
+	if name2 != "tmp1" {
+		t.Errorf("NextTempVar() = %q, want %q", name2, "tmp1")
 	}
 
-	// Third call should return tmp3
+	// Third call should return tmp2
 	name3 := ctx.NextTempVar()
-	if name3 != "tmp3" {
-		t.Errorf("NextTempVar() = %q, want %q", name3, "tmp3")
+	if name3 != "tmp2" {
+		t.Errorf("NextTempVar() = %q, want %q", name3, "tmp2")
 	}
 
-	// Counter should be 4
+	// Counter should be 4 (after 3 calls: init to 1, then 2, 3, 4)
 	if ctx.TempVarCounter != 4 {
 		t.Errorf("TempVarCounter = %d, want 4", ctx.TempVarCounter)
 	}
