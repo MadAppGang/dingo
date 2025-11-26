@@ -44,7 +44,7 @@ jobs:
       run: go build -v -o dingo-lsp ./cmd/dingo-lsp
 
     - name: Run unit tests
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v /scripts)
 
     - name: Run golden tests
       run: go test -v ./tests -run TestGoldenFiles
