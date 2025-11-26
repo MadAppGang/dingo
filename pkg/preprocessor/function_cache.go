@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
@@ -76,14 +77,16 @@ func NewFunctionExclusionCache(packagePath string) *FunctionExclusionCache {
 // Time complexity: O(1) map lookup, ~1ms
 func (c *FunctionExclusionCache) IsLocalSymbol(name string) bool {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
+	found := c.localFunctions[name]
+	c.mu.RUnlock()
 
-	if c.localFunctions[name] {
-		c.cacheHits++
+	// Use atomic operations for counters to avoid race with concurrent reads
+	if found {
+		atomic.AddUint64(&c.cacheHits, 1)
 		return true
 	}
 
-	c.cacheMisses++
+	atomic.AddUint64(&c.cacheMisses, 1)
 	return false
 }
 
