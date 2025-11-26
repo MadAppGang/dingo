@@ -80,15 +80,15 @@ func TestPositionTranslationAccuracy(t *testing.T) {
 		{
 			name:           "error_prop_simple_first_question_mark",
 			dingoFile:      "../../tests/golden/error_prop_01_simple.dingo",
-			dingoLine:      4,  // os.ReadFile(path)?
-			expectedGoLine: 8,  // ✅ ACTUAL CODE LINE (tmp, err := os.ReadFile(path))
+			dingoLine:      6,  // let data = os.ReadFile(filePath)?
+			expectedGoLine: 8,  // tmp, err := os.ReadFile(filePath)
 			expectedSymbol: "ReadFile",
 		},
 		{
 			name:           "error_prop_simple_second_question_mark",
 			dingoFile:      "../../tests/golden/error_prop_01_simple.dingo",
-			dingoLine:      10,  // readConfig("config.yaml")?
-			expectedGoLine: 17,  // ✅ ACTUAL CODE LINE (tmp, err := readConfig("config.yaml"))
+			dingoLine:      12,  // let a = readConfig("config.yaml")?
+			expectedGoLine: 17,  // tmp, err := readConfig("config.yaml")
 			expectedSymbol: "readConfig",
 		},
 	}
@@ -147,7 +147,7 @@ func TestSymbolAtTranslatedPosition(t *testing.T) {
 			name:      "hover_on_ReadFile",
 			dingoFile: "../../tests/golden/error_prop_01_simple.dingo",
 			hoverPosition: Position{
-				Line: 4,  // let data = os.ReadFile(path)?
+				Line: 6,  // let data = os.ReadFile(filePath)?
 				Col:  18, // Position of "ReadFile"
 			},
 			expectedSymbol:  "ReadFile",
@@ -157,7 +157,7 @@ func TestSymbolAtTranslatedPosition(t *testing.T) {
 			name:      "hover_on_os",
 			dingoFile: "../../tests/golden/error_prop_01_simple.dingo",
 			hoverPosition: Position{
-				Line: 4,
+				Line: 6,  // let data = os.ReadFile(filePath)?
 				Col:  12, // Position of "os"
 			},
 			expectedSymbol:  "os",
@@ -377,7 +377,7 @@ func TestIdentityMappingReverse(t *testing.T) {
 			name:              "function_definition",
 			dingoFile:         "../../tests/golden/error_prop_01_simple.dingo",
 			goLine:            7,  // func readConfig in .go
-			expectedDingoLine: 3,  // func readConfig in .dingo
+			expectedDingoLine: 5,  // func readConfig in .dingo (line 5: func readConfig...)
 			description:       "func readConfig(path string) ([]byte, error)",
 		},
 		{
@@ -391,14 +391,14 @@ func TestIdentityMappingReverse(t *testing.T) {
 			name:              "return_statement",
 			dingoFile:         "../../tests/golden/error_prop_01_simple.dingo",
 			goLine:            14, // return data, nil in .go
-			expectedDingoLine: 5,  // return data, nil in .dingo
+			expectedDingoLine: 7,  // return data, nil in .dingo (line 7)
 			description:       "return data, nil",
 		},
 		{
 			name:              "second_function",
 			dingoFile:         "../../tests/golden/error_prop_01_simple.dingo",
 			goLine:            16, // func test in .go
-			expectedDingoLine: 9,  // func test in .dingo
+			expectedDingoLine: 11, // func test in .dingo (line 11)
 			description:       "func test()",
 		},
 	}
@@ -593,11 +593,8 @@ func TestGoToDefinitionReverse(t *testing.T) {
 	t.Logf("Dingo file has %d lines, Go file has %d lines", len(dingoLines), len(goLines))
 
 	// TEST CASE: In .go file, "func readConfig" is at line 7
-	// In .dingo file, it's at line 3
-	// Expected: MapToOriginal(7, 1) → (3, 1)
-	//
-	// CURRENT BUG: Identity mapping says line 3 → line 3
-	// So reverse lookup on line 7 will fail or return wrong line
+	// In .dingo file, it's at line 5 (after package, empty line, import, empty line)
+	// Expected: MapToOriginal(7, 1) → (5, 1)
 
 	goLineWithFunc := 7 // func readConfig in .go file
 
@@ -614,8 +611,8 @@ func TestGoToDefinitionReverse(t *testing.T) {
 		}
 	}
 
-	// Expected: line 3 (where "func readConfig" actually is in .dingo)
-	expectedDingoLine := 3
+	// Expected: line 5 (where "func readConfig" actually is in .dingo)
+	expectedDingoLine := 5
 
 	if originalLine != expectedDingoLine {
 		t.Errorf("CRITICAL BUG: Go to Definition would jump to WRONG line!")
