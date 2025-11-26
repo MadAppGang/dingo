@@ -1,7 +1,5 @@
-version: "2"
-
 linters:
-  default: none
+  disable-all: true
   enable:
     - bodyclose
     - dogsled
@@ -18,13 +16,13 @@ linters:
     - lll
     - misspell
     - nakedret
-    - staticcheck  # Includes stylecheck and gosimple in v2
+    - staticcheck
     - unconvert
     - unparam
     - unused
     - whitespace
 
-  settings:
+linters-settings:
     govet:
       enable-all: true
       disable:
@@ -49,15 +47,6 @@ linters:
         - style
 
 
-formatters:
-  enable:
-    - gofmt
-    - goimports
-
-  settings:
-    goimports:
-      local-prefixes:
-        - github.com/MadAppGang/dingo
 
 run:
   timeout: 5m

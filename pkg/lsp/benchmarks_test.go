@@ -27,7 +27,7 @@ func BenchmarkPositionTranslation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		translator.TranslatePosition(
+		_, _, _ = translator.TranslatePosition(
 			lspuri.File("test.dingo"),
 			protocol.Position{Line: 4, Character: 9},
 			DingoToGo,
@@ -57,7 +57,7 @@ func BenchmarkPositionTranslationRoundTrip(b *testing.B) {
 		// Dingo → Go
 		goURI, goPos, _ := translator.TranslatePosition(dingoURI, dingoPos, DingoToGo)
 		// Go → Dingo
-		translator.TranslatePosition(goURI, goPos, GoToDingo)
+		_, _, _ = translator.TranslatePosition(goURI, goPos, GoToDingo)
 	}
 }
 
@@ -77,7 +77,7 @@ func BenchmarkSourceMapCacheGet(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cache.Get("test.go")
+		_, _ = cache.Get("test.go")
 	}
 }
 
@@ -97,7 +97,7 @@ func BenchmarkSourceMapCacheGetConcurrent(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			cache.Get("test.go")
+			_, _ = cache.Get("test.go")
 		}
 	})
 }
@@ -124,7 +124,7 @@ func BenchmarkTranslateRange(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		translator.TranslateRange(uri, rng, DingoToGo)
+		_, _, _ = translator.TranslateRange(uri, rng, DingoToGo)
 	}
 }
 

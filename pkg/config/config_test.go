@@ -381,7 +381,7 @@ func TestLoadConfigNoFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -429,7 +429,7 @@ format = "separate"
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -477,7 +477,7 @@ error_propagation_syntax = "bang"
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -528,7 +528,7 @@ error_propagation_syntax = "bang"  # Missing closing bracket
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -568,7 +568,7 @@ error_propagation_syntax = "invalid_syntax"
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -614,7 +614,7 @@ error_propagation_syntax = "question"
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -658,7 +658,7 @@ syntax = "scala"
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
@@ -810,7 +810,7 @@ lambda_style = "kotlin"
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.Chdir(oldWd)
+			defer func() { _ = os.Chdir(oldWd) }()
 
 			if err := os.Chdir(tmpDir); err != nil {
 				t.Fatal(err)
