@@ -30,7 +30,7 @@ Added **identity mappings** for all lines that don't get transformed by the erro
 
 ### Code Changes
 
-**File**: `/Users/jack/mag/dingo/pkg/preprocessor/error_prop.go`
+**File**: `pkg/preprocessor/error_prop.go`
 
 1. **Modified `processLine()` function** (lines 263-306):
    - Now calls `createIdentityMapping()` for lines without `?` operator
@@ -102,9 +102,9 @@ cat tests/golden/error_prop_01_simple.go.map | python3 -c "..."
 
 ## Related Files
 
-- `/Users/jack/mag/dingo/pkg/preprocessor/error_prop.go` - Main fix
-- `/Users/jack/mag/dingo/tests/golden/error_prop_01_simple.dingo` - Test file
-- `/Users/jack/mag/dingo/tests/golden/error_prop_01_simple.go.map` - Updated source map
+- `pkg/preprocessor/error_prop.go` - Main fix
+- `tests/golden/error_prop_01_simple.dingo` - Test file
+- `tests/golden/error_prop_01_simple.go.map` - Updated source map
 
 ## Future Enhancements
 

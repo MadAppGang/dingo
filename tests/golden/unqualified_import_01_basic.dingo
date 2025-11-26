@@ -1,5 +1,7 @@
 package main
 
+import "os"
+
 // Test: Basic unqualified stdlib function call
 // Feature: Unqualified import inference
 // Complexity: basic

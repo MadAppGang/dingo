@@ -107,13 +107,10 @@ func (t *TypeAnnotProcessor) ProcessInternal(code string) (string, []TransformMe
 			if hadTransformation {
 				marker := fmt.Sprintf("// dingo:t:%d", counter)
 
-				// Write transformed line
+				// Write transformed line (no marker in output)
 				result.Write(line)
 
-				// Add marker on next line
-				result.WriteString("\n")
-				result.WriteString(marker)
-
+				// Metadata only - marker not written to output
 				metadata = append(metadata, TransformMetadata{
 					Type:            "type_annot",
 					OriginalLine:    lineNum,

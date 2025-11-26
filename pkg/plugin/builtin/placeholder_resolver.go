@@ -55,7 +55,7 @@ func (p *PlaceholderResolverPlugin) SetContext(ctx *plugin.Context) {
 	if ctx != nil && ctx.FileSet != nil {
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("PlaceholderResolver: Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("PlaceholderResolver: Failed to create type inference service: %v", err)
 			return
 		}
 
@@ -65,7 +65,7 @@ func (p *PlaceholderResolverPlugin) SetContext(ctx *plugin.Context) {
 		if ctx.TypeInfo != nil {
 			if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 				service.SetTypesInfo(typesInfo)
-				ctx.Logger.Debug("PlaceholderResolver: go/types integration enabled")
+				ctx.Logger.Debugf("PlaceholderResolver: go/types integration enabled")
 			}
 		}
 	}
@@ -86,13 +86,13 @@ func (p *PlaceholderResolverPlugin) Process(node ast.Node) error {
 		case *ast.Ident:
 			if strings.HasPrefix(node.Name, "__") && strings.HasSuffix(node.Name, "__") {
 				p.replacements[node.Name] = p.replacements[node.Name] + 1
-				p.ctx.Logger.Debug("PlaceholderResolver: Found placeholder %s", node.Name)
+				p.ctx.Logger.Debugf("PlaceholderResolver: Found placeholder %s", node.Name)
 			}
 		case *ast.CallExpr:
 			if fun, ok := node.Fun.(*ast.Ident); ok {
 				if strings.HasPrefix(fun.Name, "__") {
 					p.replacements[fun.Name] = p.replacements[fun.Name] + 1
-					p.ctx.Logger.Debug("PlaceholderResolver: Found placeholder call %s", fun.Name)
+					p.ctx.Logger.Debugf("PlaceholderResolver: Found placeholder call %s", fun.Name)
 				}
 			}
 		}
@@ -142,7 +142,7 @@ func (p *PlaceholderResolverPlugin) Transform(node ast.Node) (ast.Node, error) {
 										Body: funcLit.Body,
 									}
 									cursor.Replace(newFuncLit)
-									p.ctx.Logger.Debug("PlaceholderResolver: Replaced func() __INFER__ with func() %s", optionType)
+									p.ctx.Logger.Debugf("PlaceholderResolver: Replaced func() __INFER__ with func() %s", optionType)
 								}
 							}
 						}
@@ -175,7 +175,7 @@ func (p *PlaceholderResolverPlugin) Transform(node ast.Node) (ast.Node, error) {
 	// Log replacement statistics
 	for placeholder, count := range p.replacements {
 		if count > 0 {
-			p.ctx.Logger.Debug("PlaceholderResolver: Replaced %d instances of %s", count, placeholder)
+			p.ctx.Logger.Debugf("PlaceholderResolver: Replaced %d instances of %s", count, placeholder)
 		}
 	}
 
@@ -196,7 +196,7 @@ func (p *PlaceholderResolverPlugin) resolveFuncLitReturnTypes(node ast.Node) map
 							returnType := p.inferReturnTypeFromBody(funcLit)
 							if returnType != "" {
 								funcLitTypes[funcLit] = returnType
-								p.ctx.Logger.Debug("PlaceholderResolver: Inferred return type %s for IIFE", returnType)
+								p.ctx.Logger.Debugf("PlaceholderResolver: Inferred return type %s for IIFE", returnType)
 							}
 						}
 					}
@@ -596,7 +596,7 @@ func (p *PlaceholderResolverPlugin) replaceUnwrap(cursor *astutil.Cursor, call *
 			Args: []ast.Expr{},
 		}
 		cursor.Replace(unwrapCall)
-		p.ctx.Logger.Debug("PlaceholderResolver: Replaced __UNWRAP__ with .Unwrap() call")
+		p.ctx.Logger.Debugf("PlaceholderResolver: Replaced __UNWRAP__ with .Unwrap() call")
 	} else {
 		// For now, default to Unwrap() for safety
 		// The Option type will handle the proper unwrapping
@@ -608,7 +608,7 @@ func (p *PlaceholderResolverPlugin) replaceUnwrap(cursor *astutil.Cursor, call *
 			Args: []ast.Expr{},
 		}
 		cursor.Replace(unwrapCall)
-		p.ctx.Logger.Debug("PlaceholderResolver: Replaced __UNWRAP__ with .Unwrap() call (default)")
+		p.ctx.Logger.Debugf("PlaceholderResolver: Replaced __UNWRAP__ with .Unwrap() call (default)")
 	}
 }
 
@@ -629,7 +629,7 @@ func (p *PlaceholderResolverPlugin) replaceIsSome(cursor *astutil.Cursor, call *
 		Args: []ast.Expr{},
 	}
 	cursor.Replace(isSomeCall)
-	p.ctx.Logger.Debug("PlaceholderResolver: Replaced __IS_SOME__ with .IsSome() call")
+	p.ctx.Logger.Debugf("PlaceholderResolver: Replaced __IS_SOME__ with .IsSome() call")
 }
 
 // replaceInferConstructor replaces __INFER___None() and __INFER___Some()
@@ -656,7 +656,7 @@ func (p *PlaceholderResolverPlugin) replaceInferConstructor(cursor *astutil.Curs
 			Args: call.Args,
 		}
 		cursor.Replace(newCall)
-		p.ctx.Logger.Debug("PlaceholderResolver: Replaced %s with %s", funName, newFunName)
+		p.ctx.Logger.Debugf("PlaceholderResolver: Replaced %s with %s", funName, newFunName)
 	}
 }
 
@@ -673,7 +673,7 @@ func (p *PlaceholderResolverPlugin) replaceSafeNavInfer(cursor *astutil.Cursor, 
 	// For now, just replace with the first argument
 	// A more sophisticated implementation would trace the field access chain
 	cursor.Replace(call.Args[0])
-	p.ctx.Logger.Debug("PlaceholderResolver: Simplified __SAFE_NAV_INFER__ call")
+	p.ctx.Logger.Debugf("PlaceholderResolver: Simplified __SAFE_NAV_INFER__ call")
 }
 
 // handleIdent handles standalone __INFER__ identifiers
@@ -683,7 +683,7 @@ func (p *PlaceholderResolverPlugin) handleIdent(cursor *astutil.Cursor, ident *a
 		inferredType := p.inferTypeFromContext(ident)
 		if inferredType != "" {
 			cursor.Replace(ast.NewIdent(inferredType))
-			p.ctx.Logger.Debug("PlaceholderResolver: Replaced __INFER__ with %s", inferredType)
+			p.ctx.Logger.Debugf("PlaceholderResolver: Replaced __INFER__ with %s", inferredType)
 		}
 	}
 }

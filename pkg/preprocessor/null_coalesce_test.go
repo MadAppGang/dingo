@@ -313,8 +313,8 @@ func TestExtractOperandBefore(t *testing.T) {
 		{"123.45 ?? default", 7, 0},            // "123.45 "
 		{"a + b ?? default", 6, 4},             // Extract "b" only
 		{"x = value ?? default", 10, 4},        // Extract "value"
-		{"obj.method() ?? default", 14, 0},     // "obj.method() "
-		{"user?.getName() ?? default", 18, 0}, // "user?.getName() "
+		{"obj.method() ?? default", 12, 0},     // "obj.method()"
+		{"user?.getName() ?? default", 16, 0}, // "user?.getName()"
 	}
 
 	for _, tt := range tests {
@@ -338,24 +338,24 @@ func TestExtractOperandAfter(t *testing.T) {
 		{"value ?? 123", 9, 12},                      // "123"
 		{"value ?? 123.45", 9, 15},                   // "123.45"
 		{"value ?? true", 9, 13},                     // "true"
-		{"value ?? getValue()", 9, 20},               // "getValue()"
-		{"value ?? getX(a, b)", 9, 20},               // "getX(a, b)"
+		{"value ?? getValue()", 9, 19},               // "getValue()"
+		{"value ?? getX(a, b)", 9, 19},               // "getX(a, b)"
 		{`value ?? "hello world"`, 9, 22},            // "\"hello world\""
 		{"value ?? fallback ?? default", 9, 17},      // "fallback"
-		{"value ?? user?.name", 9, 19},               // "user" (stops at ?)
-		{"value ?? obj.method()", 9, 21},             // "obj" (stops at .)
+		{"value ?? user?.name", 9, 19},               // "user?.name" (safe nav chain)
+		{"value ?? obj.method()", 9, 21},             // "obj.method()" (method chain)
 		{`value ?? "quoted \"string\""`, 9, 28},      // Escaped quotes
-		{"value ?? getData(nested())", 9, 27},        // Nested parens
-		{"value ?? getData(a, f(x))", 9, 26},         // Nested with comma
-		{`value ?? "string with, comma"`, 9, 30},     // Comma in string
+		{"value ?? getData(nested())", 9, 26},        // Nested parens
+		{"value ?? getData(a, f(x))", 9, 25},         // Nested with comma
+		{`value ?? "string with, comma"`, 9, 29},     // Comma in string
 		{"value ?? a + b", 9, 10},                    // Just "a"
-		{"value ?? -123", 9, 10},                     // Just identifier (- is operator)
+		{"value ?? -123", 9, 13},                     // "-123" (negative number)
 		{`value ?? "multi\nline"`, 9, 22},            // Escape sequences
 		{`value ?? 'single'`, 9, 17},                 // Single quotes
 		{"value ?? `backtick`", 9, 19},               // Backticks
-		{"value ?? getData(f(g(h())))", 9, 28},       // Deep nesting
+		{"value ?? getData(f(g(h())))", 9, 27},       // Deep nesting
 		{`value ?? "a(b)c"`, 9, 16},                  // Parens in string
-		{"value ?? func(a, b, c)", 9, 23},            // Multiple args
+		{"value ?? func(a, b, c)", 9, 22},            // Multiple args
 		{`value ?? "test\"quote"`, 9, 22},            // Escaped quote
 		{"value ?? 3.14159", 9, 16},                  // Float
 		{"value ?? nil", 9, 12},                      // nil keyword
@@ -370,13 +370,13 @@ func TestExtractOperandAfter(t *testing.T) {
 		{"value ?? getData()", 9, 18},                // No args
 		{"value ?? f()", 9, 12},                      // Short function
 		{`value ?? "a\"b\"c"`, 9, 18},                // Multiple escapes
-		{"value ?? num.method()", 9, 12},             // Stops at . (field access)
+		{"value ?? num.method()", 9, 21},             // "num.method()" (method chain)
 		{"value ?? arr[0]", 9, 12},                   // Stops at [ (array access)
 		{"value ?? ptr->field", 9, 12},               // Stops at - (not valid Go but test boundary)
 		{"value ?? x", 9, 10},                        // Single char
 		{`value ?? "\""`, 9, 13},                     // Just escaped quote
 		{"value ?? 1.0", 9, 12},                      // Simple float
-		{"value ?? .5", 9, 10},                       // Stops at . (not valid number start)
+		{"value ?? .5", 9, 11},                       // ".5" (decimal starting with .)
 		{`value ?? "\n\t"`, 9, 15},                   // Escape sequences
 		{"value ?? func()", 9, 15},                   // 'func' as identifier
 		{"value ?? return", 9, 15},                   // Keyword as identifier

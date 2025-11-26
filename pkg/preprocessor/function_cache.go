@@ -371,12 +371,22 @@ func (c *FunctionExclusionCache) HasUnqualifiedImports() bool {
 // containsUnqualifiedPattern checks if content has potential unqualified stdlib calls
 // This is a quick heuristic for the early bailout optimization.
 // Pattern: Capitalized function call (e.g., ReadFile(...), Printf(...))
+// Excludes: qualified calls (os.ReadFile), lowercase functions (readFile)
 func containsUnqualifiedPattern(content []byte) bool {
 	// Simple check: Look for capitalized identifier followed by '('
 	// This is a heuristic, not precise, but good enough for early bailout
 	for i := 0; i < len(content)-1; i++ {
 		if content[i] >= 'A' && content[i] <= 'Z' {
-			// Found uppercase letter, check if followed by alphanumeric then '('
+			// Check if preceded by identifier character or '.' (qualified call or mid-identifier)
+			if i > 0 {
+				prev := content[i-1]
+				if (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') ||
+					(prev >= '0' && prev <= '9') || prev == '.' || prev == '_' {
+					continue
+				}
+			}
+
+			// Found uppercase letter at start of identifier, check if followed by alphanumeric then '('
 			j := i + 1
 			for j < len(content) && ((content[j] >= 'a' && content[j] <= 'z') ||
 				(content[j] >= 'A' && content[j] <= 'Z') ||

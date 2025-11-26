@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+const packageMainSrc = "package main"
+
 func TestContext_ReportError(t *testing.T) {
 	ctx := &Context{}
 
@@ -217,7 +219,7 @@ func TestContext_GetParent_NilMap(t *testing.T) {
 	ctx := &Context{}
 	// Parent map not built yet
 
-	src := `package main`
+	src := packageMainSrc
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "test.go", src, 0)
 	if err != nil {
@@ -476,7 +478,7 @@ func TestContext_WalkParents_NilMap(t *testing.T) {
 	ctx := &Context{}
 	// Parent map not built
 
-	src := `package main`
+	src := packageMainSrc
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "test.go", src, 0)
 	if err != nil {
@@ -502,7 +504,7 @@ func TestContext_WalkParents_NilMap(t *testing.T) {
 func TestContext_BuildParentMap_EmptyFile(t *testing.T) {
 	ctx := &Context{}
 
-	src := `package main`
+	src := packageMainSrc
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "test.go", src, 0)
 	if err != nil {

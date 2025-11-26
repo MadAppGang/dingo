@@ -12,6 +12,8 @@ import (
 	"github.com/MadAppGang/dingo/pkg/preprocessor"
 )
 
+const doubleUnderscore = "__"
+
 // Transformer walks the AST and replaces Dingo placeholder patterns
 // with final Go implementations
 type Transformer struct {
@@ -185,12 +187,6 @@ const (
 )
 
 // getExprContext analyzes the context of an expression
-func (t *Transformer) getExprContext(cursor *astutil.Cursor) ExprContext {
-	// Walk up the AST to find parent context
-	// TODO: Implement context detection
-	return ContextUnknown
-}
-
 // TransformError wraps transformation errors with context
 type TransformError struct {
 	Node ast.Node
@@ -227,7 +223,7 @@ func isValidLambdaPlaceholder(call *ast.CallExpr) bool {
 			return false
 		}
 		// Verify it ends with "__"
-		if len(name) >= 2 && name[len(name)-2:] != "__" {
+		if len(name) >= 2 && name[len(name)-2:] != doubleUnderscore {
 			return false
 		}
 		return true
@@ -253,7 +249,7 @@ func isValidMatchPlaceholder(call *ast.CallExpr) bool {
 			return false
 		}
 		// Verify it ends with "__"
-		if len(name) >= 2 && name[len(name)-2:] != "__" {
+		if len(name) >= 2 && name[len(name)-2:] != doubleUnderscore {
 			return false
 		}
 		return true
@@ -277,7 +273,7 @@ func isValidSafeNavPlaceholder(call *ast.CallExpr) bool {
 			return false
 		}
 		// Verify it ends with "__"
-		if len(name) >= 2 && name[len(name)-2:] != "__" {
+		if len(name) >= 2 && name[len(name)-2:] != doubleUnderscore {
 			return false
 		}
 		return true

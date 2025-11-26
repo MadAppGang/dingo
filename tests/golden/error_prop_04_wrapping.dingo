@@ -1,5 +1,7 @@
 package main
 
+import "os"
+
 func readUserConfig(username: string) ([]byte, error) {
 	let path = "/home/" + username + "/config.json"
 	let data = ReadFile(path)? "failed to read user config"

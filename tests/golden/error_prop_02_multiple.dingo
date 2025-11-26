@@ -1,5 +1,8 @@
 package main
 
+import "os"
+import "encoding/json"
+
 func loadData(path: string) (map[string]interface{}, error) {
 	let data = ReadFile(path)?
 	var result map[string]interface{}

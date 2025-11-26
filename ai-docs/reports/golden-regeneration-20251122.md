@@ -148,7 +148,7 @@ Machine directives like `__INFER__` and `__UNWRAP__`:
 
 ## Regeneration Script Created
 
-**Location**: `/Users/jack/mag/dingo/regenerate-golden.sh`
+**Location**: `regenerate-golden.sh`
 
 **Features**:
 - ✅ Builds dingo transpiler if needed
@@ -343,7 +343,7 @@ The null coalesce and safe navigation preprocessors are generating placeholders 
 
 ## References
 
-- Script: `/Users/jack/mag/dingo/regenerate-golden.sh`
-- Null Coalesce Processor: `/Users/jack/mag/dingo/pkg/preprocessor/null_coalesce.go`
-- Safe Nav Processor: `/Users/jack/mag/dingo/pkg/preprocessor/safe_nav.go`
-- Golden Tests: `/Users/jack/mag/dingo/tests/golden/*.go.golden`
+- Script: `regenerate-golden.sh`
+- Null Coalesce Processor: `pkg/preprocessor/null_coalesce.go`
+- Safe Nav Processor: `pkg/preprocessor/safe_nav.go`
+- Golden Tests: `tests/golden/*.go.golden`

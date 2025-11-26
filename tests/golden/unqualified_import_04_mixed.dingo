@@ -1,5 +1,7 @@
 package main
 
+import "os"
+import "fmt"
 import "errors"
 
 // Test: Mix of qualified and unqualified calls

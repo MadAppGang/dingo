@@ -1,5 +1,9 @@
 package main
 
+import "os"
+import "strconv"
+import "fmt"
+
 // Test: Multiple unqualified stdlib calls from different packages
 // Feature: Unqualified import inference
 // Complexity: intermediate

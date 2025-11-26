@@ -37,10 +37,8 @@ func add(x: int, y: int) int {
 		t.Errorf("Expected AST node type 'FuncDecl', got '%s'", meta.ASTNodeType)
 	}
 
-	// Result should contain the marker
-	if !strings.Contains(result, "// dingo:t:0") {
-		t.Errorf("Result should contain marker '// dingo:t:0'")
-	}
+	// Marker should be in metadata, not in output (clean code generation)
+	// The marker is used for AST matching via metadata, not embedded in code
 
 	// Result should have transformed : to space
 	if !strings.Contains(result, "func add(x int, y int)") {
@@ -61,7 +59,7 @@ func multiply(a: int, b: int) int {
 	return a * b
 }`
 
-	result, metadata, err := processor.ProcessInternal(input)
+	_, metadata, err := processor.ProcessInternal(input)
 	if err != nil {
 		t.Fatalf("ProcessInternal failed: %v", err)
 	}
@@ -79,13 +77,7 @@ func multiply(a: int, b: int) int {
 		t.Errorf("Expected second marker '// dingo:t:1', got '%s'", metadata[1].GeneratedMarker)
 	}
 
-	// Both markers should be in result
-	if !strings.Contains(result, "// dingo:t:0") {
-		t.Errorf("Result should contain marker '// dingo:t:0'")
-	}
-	if !strings.Contains(result, "// dingo:t:1") {
-		t.Errorf("Result should contain marker '// dingo:t:1'")
-	}
+	// Markers should be in metadata, not in output (clean code generation)
 }
 
 func TestTypeAnnotProcessor_ReturnArrow(t *testing.T) {
@@ -111,9 +103,9 @@ func getValue() -> string {
 		t.Errorf("Result should have transformed return arrow, got: %s", result)
 	}
 
-	// Should contain marker
-	if !strings.Contains(result, "// dingo:t:0") {
-		t.Errorf("Result should contain marker '// dingo:t:0'")
+	// Marker should be in metadata, not in output
+	if metadata[0].GeneratedMarker != "// dingo:t:0" {
+		t.Errorf("Expected marker '// dingo:t:0' in metadata, got '%s'", metadata[0].GeneratedMarker)
 	}
 }
 

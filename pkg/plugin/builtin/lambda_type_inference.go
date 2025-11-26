@@ -61,7 +61,7 @@ func (p *LambdaTypeInferencePlugin) SetContext(ctx *plugin.Context) {
 		// Create type inference service
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("Lambda type inference: Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("Lambda type inference: Failed to create type inference service: %v", err)
 		} else {
 			p.typeInference = service
 
@@ -69,7 +69,7 @@ func (p *LambdaTypeInferencePlugin) SetContext(ctx *plugin.Context) {
 			if ctx.TypeInfo != nil {
 				if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 					service.SetTypesInfo(typesInfo)
-					ctx.Logger.Debug("Lambda type inference: go/types integration enabled")
+					ctx.Logger.Debugf("Lambda type inference: go/types integration enabled")
 				}
 			}
 		}
@@ -355,6 +355,6 @@ func (p *LambdaTypeInferencePlugin) typeToAST(typ types.Type) ast.Expr {
 func (p *LambdaTypeInferencePlugin) reportTypeInferenceRequired(ctx *funcLiteralContext) {
 	// For v1.0, we require explicit type annotations
 	// This will be caught by the preprocessor's validation or later compilation
-	p.ctx.Logger.Debug("Lambda at %v: type inference not available, explicit types required",
+	p.ctx.Logger.Debugf("Lambda at %v: type inference not available, explicit types required",
 		p.ctx.FileSet.Position(ctx.pos))
 }

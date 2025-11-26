@@ -67,7 +67,7 @@ func (p *TuplePlugin) SetContext(ctx *plugin.Context) {
 	if ctx != nil && ctx.FileSet != nil {
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("Failed to create type inference service: %v", err)
 		} else {
 			p.typeInference = service
 
@@ -75,7 +75,7 @@ func (p *TuplePlugin) SetContext(ctx *plugin.Context) {
 			if ctx.TypeInfo != nil {
 				if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 					service.SetTypesInfo(typesInfo)
-					ctx.Logger.Debug("Tuple plugin: go/types integration enabled")
+					ctx.Logger.Debugf("Tuple plugin: go/types integration enabled")
 				}
 			}
 		}
@@ -119,7 +119,7 @@ func (p *TuplePlugin) handleTupleMarker(call *ast.CallExpr) {
 	arity := len(call.Args) // Use actual arg count (more reliable than parsing)
 
 	if arity < 2 || arity > 12 {
-		p.ctx.Logger.Warn("Tuple marker has invalid arity %d (expected 2-12)", arity)
+		p.ctx.Logger.Warnf("Tuple marker has invalid arity %d (expected 2-12)", arity)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (p *TuplePlugin) handleTupleMarker(call *ast.CallExpr) {
 	for i, arg := range call.Args {
 		inferredType, ok := p.inferElementType(arg)
 		if !ok {
-			p.ctx.Logger.Warn("Failed to infer type for tuple element %d", i)
+			p.ctx.Logger.Warnf("Failed to infer type for tuple element %d", i)
 			// Fallback to interface{} for failed inference
 			elementTypeNames[i] = "interface{}"
 			continue
@@ -146,7 +146,7 @@ func (p *TuplePlugin) handleTupleMarker(call *ast.CallExpr) {
 	if !p.emittedTypes[typeName] {
 		p.emitTupleDeclaration(typeName, elementTypeNames)
 		p.emittedTypes[typeName] = true
-		p.ctx.Logger.Debug("Generated tuple type: %s", typeName)
+		p.ctx.Logger.Debugf("Generated tuple type: %s", typeName)
 	}
 }
 

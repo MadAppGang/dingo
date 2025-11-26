@@ -1,5 +1,8 @@
 package main
 
+import "os"
+import "strconv"
+
 func processData(path: string) (int, error) {
 	let data = ReadFile(path)?
 	return Atoi(string(data))?

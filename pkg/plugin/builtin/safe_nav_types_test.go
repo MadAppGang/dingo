@@ -15,7 +15,7 @@ type testLogger struct {
 	t *testing.T
 }
 
-func (l *testLogger) Debug(format string, args ...interface{}) {
+func (l *testLogger) Debugf(format string, args ...interface{}) {
 	l.t.Logf("[DEBUG] "+format, args...)
 }
 
@@ -23,7 +23,7 @@ func (l *testLogger) Info(msg string) {
 	l.t.Logf("[INFO] %s", msg)
 }
 
-func (l *testLogger) Warn(format string, args ...interface{}) {
+func (l *testLogger) Warnf(format string, args ...interface{}) {
 	l.t.Logf("[WARN] "+format, args...)
 }
 

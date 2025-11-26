@@ -4,7 +4,7 @@ package main
 // Feature: Functional map utility
 // Complexity: basic
 
-func map(arr: []int, f: func(int) int) []int {
+func mapSlice(arr: []int, f: func(int) int) []int {
 	let result = make([]int, len(arr))
 	for i, v := range arr {
 		result[i] = f(v)
@@ -16,8 +16,8 @@ func main() {
 	let numbers = []int{1, 2, 3, 4, 5}
 
 	// Map with lambda
-	let doubled = map(numbers, |x| x * 2)
-	let squared = map(numbers, |x| x * x)
+	let doubled = mapSlice(numbers, |x| x * 2)
+	let squared = mapSlice(numbers, |x| x * x)
 
 	println("Doubled:", doubled)
 	println("Squared:", squared)

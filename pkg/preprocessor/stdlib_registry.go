@@ -5,6 +5,22 @@ import (
 	"strings"
 )
 
+// PackageAliases maps full package paths to their common short aliases.
+var PackageAliases = map[string]string{
+	"encoding/json": "json",
+	"net/http":      "http",
+	"path/filepath": "filepath",
+	"math/rand":     "rand",
+}
+
+// normalizePackageName converts a full package path to its alias if one exists.
+func normalizePackageName(pkg string) string {
+	if alias, ok := PackageAliases[pkg]; ok {
+		return alias
+	}
+	return pkg
+}
+
 // StdlibRegistry maps function names to the standard library packages they belong to.
 // Functions appearing in multiple packages are listed with all packages for ambiguity detection.
 var StdlibRegistry = map[string][]string{
@@ -510,14 +526,19 @@ func GetPackageForFunction(funcName string) (string, error) {
 
 	if len(pkgs) > 1 {
 		// Ambiguous: function exists in multiple packages
+		// Normalize package names for error reporting
+		normalizedPkgs := make([]string, len(pkgs))
+		for i, pkg := range pkgs {
+			normalizedPkgs[i] = normalizePackageName(pkg)
+		}
 		return "", &AmbiguousFunctionError{
 			Function: funcName,
-			Packages: pkgs,
+			Packages: normalizedPkgs,
 		}
 	}
 
-	// Unique mapping
-	return pkgs[0], nil
+	// Unique mapping - normalize package name
+	return normalizePackageName(pkgs[0]), nil
 }
 
 // IsStdlibFunction returns true if the function name is registered in the stdlib.
@@ -526,12 +547,12 @@ func IsStdlibFunction(funcName string) bool {
 	return exists
 }
 
-// GetAllPackages returns all unique packages in the registry.
+// GetAllPackages returns all unique packages in the registry (using normalized aliases).
 func GetAllPackages() []string {
 	pkgSet := make(map[string]bool)
 	for _, pkgs := range StdlibRegistry {
 		for _, pkg := range pkgs {
-			pkgSet[pkg] = true
+			pkgSet[normalizePackageName(pkg)] = true
 		}
 	}
 

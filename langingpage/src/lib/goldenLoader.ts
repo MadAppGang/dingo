@@ -66,9 +66,7 @@ export function goldenLoader(): Loader {
   return {
     name: 'golden-loader',
     load: async ({ store, logger }) => {
-      // Resolve path to golden tests directory
-      // From: /Users/jack/mag/dingo/langingpage/src/lib/
-      // To:   /Users/jack/mag/dingo/tests/golden/
+      // Resolve path to golden tests directory (relative to this file)
       const currentDir = path.dirname(fileURLToPath(import.meta.url));
       const goldenDir = path.resolve(currentDir, '../../../tests/golden');
 

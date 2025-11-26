@@ -4,7 +4,7 @@
 Conduct a comprehensive code review of the Phase 6 Lambda Functions implementation for the Dingo transpiler project.
 
 ## Context
-- Working Directory: /Users/jack/mag/dingo
+- Working Directory: .
 - Current Phase: Phase 6 - Lambda Functions
 - Project Type: Go transpiler (meta-language for Go)
 - Architecture: Two-stage transpilation (preprocessor + go/parser)

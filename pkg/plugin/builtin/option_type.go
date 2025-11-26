@@ -60,7 +60,7 @@ func (p *OptionTypePlugin) SetContext(ctx *plugin.Context) {
 		// Create type inference service
 		service, err := NewTypeInferenceService(ctx.FileSet, nil, ctx.Logger)
 		if err != nil {
-			ctx.Logger.Warn("Failed to create type inference service: %v", err)
+			ctx.Logger.Warnf("Failed to create type inference service: %v", err)
 		} else {
 			p.typeInference = service
 
@@ -68,14 +68,14 @@ func (p *OptionTypePlugin) SetContext(ctx *plugin.Context) {
 			if ctx.TypeInfo != nil {
 				if typesInfo, ok := ctx.TypeInfo.(*types.Info); ok {
 					service.SetTypesInfo(typesInfo)
-					ctx.Logger.Debug("Option plugin: go/types integration enabled")
+					ctx.Logger.Debugf("Option plugin: go/types integration enabled")
 				}
 			}
 
 			// PRIORITY 4 FIX: Inject parent map for return statement inference
 			if parentMap := ctx.GetParentMap(); parentMap != nil {
 				service.SetParentMap(parentMap)
-				ctx.Logger.Debug("Option plugin: parent map integration enabled")
+				ctx.Logger.Debugf("Option plugin: parent map integration enabled")
 			}
 		}
 	}
@@ -123,7 +123,7 @@ func (p *OptionTypePlugin) handleGenericOption(expr *ast.IndexExpr) {
 		// This is an Option<T> type
 		telemType, ok := p.typeInference.InferType(expr.Index)
 		if !ok || telemType == nil {
-			p.ctx.Logger.Warn("OptionTypePlugin: Could not infer type for Option<T> element. Falling back to heuristic.")
+			p.ctx.Logger.Warnf("OptionTypePlugin: Could not infer type for Option<T> element. Falling back to heuristic.")
 			typeName = p.getTypeName(expr.Index)
 		} else {
 			typeName = p.typeInference.TypeToString(telemType)
@@ -180,7 +180,7 @@ func (p *OptionTypePlugin) handleNoneExpression(ident *ast.Ident) {
 	}
 
 	// Successfully inferred type
-	p.ctx.Logger.Debug("None constant: inferred Option type %s from context", targetType)
+	p.ctx.Logger.Debugf("None constant: inferred Option type %s from context", targetType)
 
 	// Ensure the Option type is declared
 	optionTypeName := fmt.Sprintf("Option%s", SanitizeTypeName(targetType))
@@ -202,8 +202,8 @@ func (p *OptionTypePlugin) handleNoneExpression(ident *ast.Ident) {
 		},
 	}
 
-	p.ctx.Logger.Debug("Transforming None → %s{tag: OptionTagNone}", optionTypeName)
-	p.ctx.Logger.Debug("Generated replacement AST: %v", replacement)
+	p.ctx.Logger.Debugf("Transforming None → %s{tag: OptionTagNone}", optionTypeName)
+	p.ctx.Logger.Debugf("Generated replacement AST: %v", replacement)
 
 	// Note: Actual AST replacement happens in the Transform phase
 }
@@ -211,7 +211,7 @@ func (p *OptionTypePlugin) handleNoneExpression(ident *ast.Ident) {
 // handleSomeConstructor processes Some(value) constructor
 func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 	if len(call.Args) != 1 {
-		p.ctx.Logger.Warn("Some() expects exactly one argument, found %d", len(call.Args))
+		p.ctx.Logger.Warnf("Some() expects exactly one argument, found %d", len(call.Args))
 		return
 	}
 
@@ -222,13 +222,13 @@ func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 	valueType, err := p.inferTypeFromExpr(valueArg)
 	if err != nil {
 		// Type inference failed - use interface{} as last resort
-		p.ctx.Logger.Warn("Type inference failed for Some(%s): %v, using interface{}", FormatExprForDebug(valueArg), err)
+		p.ctx.Logger.Warnf("Type inference failed for Some(%s): %v, using interface{}", FormatExprForDebug(valueArg), err)
 		valueType = "interface{}"
 	}
 
 	// CRITICAL FIX #3: Validate valueType is not empty
 	if valueType == "" {
-		p.ctx.Logger.Warn("Type inference returned empty string for Some(%s), using interface{}", FormatExprForDebug(valueArg))
+		p.ctx.Logger.Warnf("Type inference returned empty string for Some(%s), using interface{}", FormatExprForDebug(valueArg))
 		valueType = "interface{}"
 	}
 
@@ -257,15 +257,15 @@ func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 			Op: token.AND,
 			X:  valueArg,
 		}
-		p.ctx.Logger.Debug("Some(%s): value is addressable, using &value", valueType)
+		p.ctx.Logger.Debugf("Some(%s): value is addressable, using &value", valueType)
 	} else {
 		// Wrap in IIFE to create addressable temporary variable
 		valueExpr = wrapInIIFE(valueArg, valueType, p.ctx)
-		p.ctx.Logger.Debug("Some(%s): value is non-addressable (literal), wrapping in IIFE", valueType)
+		p.ctx.Logger.Debugf("Some(%s): value is non-addressable (literal), wrapping in IIFE", valueType)
 	}
 
 	// Transform the call to a struct literal
-	p.ctx.Logger.Debug("Transforming Some(%s) → %s{tag: OptionTagSome, some: <addressable-value>}", valueType, optionTypeName)
+	p.ctx.Logger.Debugf("Transforming Some(%s) → %s{tag: OptionTagSome, some: <addressable-value>}", valueType, optionTypeName)
 
 	// Create the replacement CompositeLit
 	// Some(value) → Option_T{tag: OptionTagSome, some: &value or IIFE}
@@ -286,7 +286,7 @@ func (p *OptionTypePlugin) handleSomeConstructor(call *ast.CallExpr) {
 	// Replace the CallExpr with the CompositeLit in the parent node
 	// This is done via AST transformation in the Transform phase
 	// For now, we just log the transformation
-	p.ctx.Logger.Debug("Generated replacement AST: %v", replacement)
+	p.ctx.Logger.Debugf("Generated replacement AST: %v", replacement)
 }
 
 // emitOptionDeclaration generates the Option type declaration and helper methods
@@ -1116,7 +1116,7 @@ func (p *OptionTypePlugin) inferNoneTypeFromContext(noneIdent *ast.Ident) (strin
 				tParam := strings.TrimPrefix(typeStr, "Option_")
 				// Reverse sanitization to get original type name
 				tParam = p.desanitizeTypeName(tParam)
-				p.ctx.Logger.Debug("Inferred None type from go/types: %s", tParam)
+				p.ctx.Logger.Debugf("Inferred None type from go/types: %s", tParam)
 				return tParam, true
 			}
 		}
@@ -1128,7 +1128,7 @@ func (p *OptionTypePlugin) inferNoneTypeFromContext(noneIdent *ast.Ident) (strin
 
 	// PHASE 3 LIMITATION: InferTypeFromContext() is a stub that always returns false
 	// Users must use explicit type annotations until Phase 4
-	p.ctx.Logger.Debug("None type inference: go/types not available or context not found (Phase 3 limitation)")
+	p.ctx.Logger.Debugf("None type inference: go/types not available or context not found (Phase 3 limitation)")
 	return "", false
 }
 
@@ -1196,10 +1196,10 @@ func (p *OptionTypePlugin) inferTypeFromExpr(expr ast.Expr) (string, error) {
 	if p.typeInference != nil {
 		if typ, ok := p.typeInference.InferType(expr); ok && typ != nil {
 			typeStr := p.typeInference.TypeToString(typ)
-			p.ctx.Logger.Debug("Type inference (go/types): %T → %s", expr, typeStr)
+			p.ctx.Logger.Debugf("Type inference (go/types): %T → %s", expr, typeStr)
 			return typeStr, nil
 		}
-		p.ctx.Logger.Debug("Type inference (go/types) failed for %T, falling back to heuristics", expr)
+		p.ctx.Logger.Debugf("Type inference (go/types) failed for %T, falling back to heuristics", expr)
 	}
 
 	// Fallback: Structural heuristics (when go/types unavailable)

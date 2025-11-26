@@ -315,7 +315,7 @@ func (c *GoplsClient) SyncFileContent(ctx context.Context, goPath string) error 
 }
 
 // NotifyFileChange notifies gopls that a .go file changed (for auto-transpile)
-// DEPRECATED: Use SyncFileContent instead for reliable synchronization
+// Deprecated: Use SyncFileContent instead for reliable synchronization
 func (c *GoplsClient) NotifyFileChange(ctx context.Context, goPath string) error {
 	fileURI := uri.File(goPath)
 	fileEvent := protocol.FileEvent{

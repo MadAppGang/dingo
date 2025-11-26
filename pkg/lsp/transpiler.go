@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.lsp.dev/protocol"
+	lspuri "go.lsp.dev/uri"
 	"github.com/MadAppGang/dingo/pkg/transpiler"
 )
 
@@ -15,10 +16,11 @@ type AutoTranspiler struct {
 	mapCache   *SourceMapCache
 	gopls      *GoplsClient
 	transpiler *transpiler.Transpiler
+	server     *Server // For publishing Dingo-specific diagnostics
 }
 
 // NewAutoTranspiler creates an auto-transpiler instance
-func NewAutoTranspiler(logger Logger, mapCache *SourceMapCache, gopls *GoplsClient) *AutoTranspiler {
+func NewAutoTranspiler(logger Logger, mapCache *SourceMapCache, gopls *GoplsClient, server *Server) *AutoTranspiler {
 	// Create integrated transpiler
 	t, err := transpiler.New()
 	if err != nil {
@@ -31,6 +33,7 @@ func NewAutoTranspiler(logger Logger, mapCache *SourceMapCache, gopls *GoplsClie
 		mapCache:   mapCache,
 		gopls:      gopls,
 		transpiler: t,
+		server:     server,
 	}
 }
 
@@ -54,12 +57,23 @@ func (at *AutoTranspiler) TranspileFile(ctx context.Context, dingoPath string) e
 
 // OnFileChange handles a .dingo file change (called by watcher)
 func (at *AutoTranspiler) OnFileChange(ctx context.Context, dingoPath string) {
+	uri := protocol.DocumentURI(lspuri.File(dingoPath))
+
 	// Transpile the file
 	if err := at.TranspileFile(ctx, dingoPath); err != nil {
 		at.logger.Errorf("Auto-transpile failed for %s: %v", dingoPath, err)
-		// Note: Diagnostic publishing would happen here when IDE connection is ready
-		// For now, we just log the error
-		return
+
+		// Publish Dingo-specific diagnostic for transpilation error
+		diagnostic := ParseTranspileError(dingoPath, err.Error())
+		if diagnostic != nil && at.server != nil {
+			at.server.publishDingoDiagnostics(uri, []protocol.Diagnostic{*diagnostic})
+		}
+		return // Don't proceed to gopls sync
+	}
+
+	// Clear diagnostics on successful transpilation
+	if at.server != nil {
+		at.server.publishDingoDiagnostics(uri, []protocol.Diagnostic{})
 	}
 
 	// Invalidate source map cache
@@ -83,7 +97,7 @@ func (at *AutoTranspiler) syncGoplsWithGoFile(ctx context.Context, goPath string
 
 // ParseTranspileError parses transpiler output into LSP diagnostic
 // Returns nil if output is not an error
-func ParseTranspileError(dingoPath string, output string) *protocol.Diagnostic {
+func ParseTranspileError(dingoPath, output string) *protocol.Diagnostic {
 	// Simple heuristic: check for common error patterns
 	// Format: "file.dingo:10:5: error message"
 	lines := strings.Split(output, "\n")

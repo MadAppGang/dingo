@@ -116,26 +116,6 @@ func process() error {
 	}
 }
 
-func TestGetIndentation(t *testing.T) {
-	tests := []struct {
-		line     string
-		expected string
-	}{
-		{"no indent", ""},
-		{"\tindented with tab", "\t"},
-		{"    indented with spaces", "    "},
-		{"\t\tdouble tab", "\t\t"},
-		{"", ""},
-	}
-
-	for _, tt := range tests {
-		result := getIndentation(tt.line)
-		if result != tt.expected {
-			t.Errorf("getIndentation(%q) = %q, expected %q", tt.line, result, tt.expected)
-		}
-	}
-}
-
 // equalIgnoringWhitespace compares two strings while normalizing whitespace
 func equalIgnoringWhitespace(a, b string) bool {
 	return strings.TrimSpace(a) == strings.TrimSpace(b)

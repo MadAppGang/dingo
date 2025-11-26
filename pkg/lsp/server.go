@@ -53,16 +53,17 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 	// Initialize translator
 	translator := NewTranslator(mapCache)
 
-	// Initialize auto-transpiler
-	transpiler := NewAutoTranspiler(cfg.Logger, mapCache, gopls)
-
+	// Create server first (without transpiler)
 	server := &Server{
 		config:     cfg,
 		gopls:      gopls,
 		mapCache:   mapCache,
 		translator: translator,
-		transpiler: transpiler,
 	}
+
+	// Initialize auto-transpiler with server reference
+	transpiler := NewAutoTranspiler(cfg.Logger, mapCache, gopls, server)
+	server.transpiler = transpiler
 
 	// Set diagnostics handler for gopls -> IDE diagnostics forwarding
 	gopls.SetDiagnosticsHandler(server.handlePublishDiagnostics)
@@ -237,14 +238,33 @@ func (s *Server) handleDidOpen(ctx context.Context, reply jsonrpc2.Replier, req 
 		return reply(ctx, nil, err)
 	}
 
-	// CRITICAL FIX D1: When .dingo file opens, open corresponding .go file with gopls
+	// CRITICAL FIX D1: When .dingo file opens, ensure .go file exists and open with gopls
 	// This is necessary for gopls to analyze the file and send diagnostics
 	if isDingoFile(params.TextDocument.URI) {
-		s.config.Logger.Debugf("Opened .dingo file: %s", params.TextDocument.URI)
+		dingoPath := params.TextDocument.URI.Filename()
+		s.config.Logger.Infof("[didOpen] Opened .dingo file: %s", dingoPath)
 
-		// Open corresponding .go file with gopls so it can analyze and send diagnostics
-		if err := s.openGoFileWithGopls(ctx, params.TextDocument.URI.Filename()); err != nil {
-			s.config.Logger.Warnf("Failed to open .go file with gopls: %v", err)
+		// Check if .go file exists, if not auto-transpile
+		goPath := dingoToGoPath(dingoPath)
+		if _, err := os.Stat(goPath); os.IsNotExist(err) {
+			s.config.Logger.Infof("[didOpen] .go file missing, auto-transpiling: %s", dingoPath)
+
+			// Auto-transpile to generate .go file
+			if s.transpiler != nil {
+				s.transpiler.OnFileChange(ctx, dingoPath)
+				s.config.Logger.Infof("[didOpen] Auto-transpile completed (check for errors above)")
+			} else {
+				s.config.Logger.Warnf("[didOpen] Transpiler not available!")
+			}
+		} else {
+			s.config.Logger.Infof("[didOpen] .go file already exists: %s", goPath)
+		}
+
+		// Open corresponding .go file with gopls (if transpilation succeeded)
+		if err := s.openGoFileWithGopls(ctx, dingoPath); err != nil {
+			s.config.Logger.Warnf("[didOpen] Failed to open .go file with gopls: %v", err)
+		} else {
+			s.config.Logger.Infof("[didOpen] Successfully opened .go file with gopls")
 		}
 
 		return reply(ctx, nil, nil)
@@ -414,6 +434,42 @@ func (s *Server) closeGoFileWithGopls(ctx context.Context, dingoPath string) err
 
 	s.config.Logger.Debugf("[Diagnostic Fix] Successfully closed .go file with gopls: %s", goPath)
 	return nil
+}
+
+// publishDingoDiagnostics publishes Dingo-specific diagnostics (e.g., transpilation errors)
+// This is separate from gopls diagnostics (which are translated and forwarded)
+func (s *Server) publishDingoDiagnostics(uri protocol.DocumentURI, diagnostics []protocol.Diagnostic) {
+	// Get IDE connection (thread-safe)
+	ideConn, serverCtx := s.GetConn()
+	if ideConn == nil {
+		s.config.Logger.Warnf("[Dingo Diagnostics] No IDE connection available, cannot publish diagnostics")
+		return
+	}
+
+	// Prepare params
+	params := protocol.PublishDiagnosticsParams{
+		URI:         uri,
+		Diagnostics: diagnostics,
+	}
+
+	// Use server context if available, otherwise background
+	publishCtx := serverCtx
+	if publishCtx == nil {
+		publishCtx = context.Background()
+	}
+
+	// Publish to IDE
+	err := ideConn.Notify(publishCtx, "textDocument/publishDiagnostics", params)
+	if err != nil {
+		s.config.Logger.Errorf("[Dingo Diagnostics] Failed to publish diagnostics: %v", err)
+		return
+	}
+
+	if len(diagnostics) > 0 {
+		s.config.Logger.Debugf("[Dingo Diagnostics] Published %d Dingo-specific diagnostic(s) for %s", len(diagnostics), uri)
+	} else {
+		s.config.Logger.Debugf("[Dingo Diagnostics] Cleared diagnostics for %s", uri)
+	}
 }
 
 // forwardToGopls forwards unknown requests directly to gopls

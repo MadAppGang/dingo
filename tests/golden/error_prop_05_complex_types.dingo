@@ -1,5 +1,7 @@
 package main
 
+import "os"
+
 type User struct {
 	ID   int
 	Name string

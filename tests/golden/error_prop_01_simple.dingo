@@ -1,5 +1,7 @@
 package main
 
+import "os"
+
 func readConfig(filePath2 string) ([]byte, error) {
 	let data = os.ReadFile(filePath)?
 	return data, nil

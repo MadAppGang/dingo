@@ -95,7 +95,7 @@ func NewTypeInferenceService(fset *token.FileSet, file *ast.File, logger plugin.
 // This should be called after running the type checker
 func (s *TypeInferenceService) SetTypesInfo(info *types.Info) {
 	s.typesInfo = info
-	s.logger.Debug("Type inference service updated with go/types information")
+	s.logger.Debugf("Type inference service updated with go/types information")
 }
 
 // SetParentMap sets parent map for context-based type inference
@@ -147,7 +147,7 @@ func (s *TypeInferenceService) GetResultTypeParams(typeName string) (T, E types.
 
 	// CRITICAL FIX #1: Don't reverse-parse - fail if not cached
 	// Reverse parsing breaks for complex types like map[string]int
-	s.logger.Warn("Result type %s not in cache - cannot infer types (reverse parsing disabled)", typeName)
+	s.logger.Warnf("Result type %s not in cache - cannot infer types (reverse parsing disabled)", typeName)
 	return nil, nil, false
 }
 
@@ -172,7 +172,7 @@ func (s *TypeInferenceService) GetOptionTypeParam(typeName string) (T types.Type
 	}
 
 	// CRITICAL FIX #1: Don't reverse-parse - fail if not cached
-	s.logger.Warn("Option type %s not in cache - cannot infer types (reverse parsing disabled)", typeName)
+	s.logger.Warnf("Option type %s not in cache - cannot infer types (reverse parsing disabled)", typeName)
 	return nil, false
 }
 
@@ -315,17 +315,17 @@ func (s *TypeInferenceService) makeBasicType(typeName string) types.Type {
 //	}
 func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 	if expr == nil {
-		s.logger.Debug("InferType: nil expression")
+		s.logger.Debugf("InferType: nil expression")
 		return nil, false
 	}
 
 	// Strategy 1: Use go/types if available (most accurate)
 	if s.typesInfo != nil && s.typesInfo.Types != nil {
 		if tv, ok := s.typesInfo.Types[expr]; ok && tv.Type != nil {
-			s.logger.Debug("InferType: go/types resolved %T to %s", expr, tv.Type)
+			s.logger.Debugf("InferType: go/types resolved %T to %s", expr, tv.Type)
 			return tv.Type, true
 		}
-		s.logger.Debug("InferType: go/types has no information for %T", expr)
+		s.logger.Debugf("InferType: go/types has no information for %T", expr)
 	}
 
 	// Strategy 2: Structural inference for basic literals (fallback)
@@ -339,7 +339,7 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 			return typ, true
 		}
 		// For variables, we need go/types - can't infer without it
-		s.logger.Debug("InferType: identifier %q requires go/types for accurate inference", e.Name)
+		s.logger.Debugf("InferType: identifier %q requires go/types for accurate inference", e.Name)
 		return nil, false
 
 	case *ast.UnaryExpr:
@@ -356,7 +356,7 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 		if e.Type != nil {
 			// This requires parsing the type expression to types.Type
 			// For now, return nil - proper implementation needs type reconstruction
-			s.logger.Debug("InferType: composite literal type requires AST->types.Type conversion")
+			s.logger.Debugf("InferType: composite literal type requires AST->types.Type conversion")
 			return nil, false
 		}
 		return nil, false
@@ -369,10 +369,10 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 				// Recursively infer the tuple type from its elements
 				tupleTypeName := s.inferTupleType(e)
 				if tupleTypeName != "" {
-					s.logger.Debug("InferType: Tuple marker %s → %s", ident.Name, tupleTypeName)
+					s.logger.Debugf("InferType: Tuple marker %s → %s", ident.Name, tupleTypeName)
 					return types.NewNamed(types.NewTypeName(0, nil, tupleTypeName, nil), nil, nil), true
 				}
-				s.logger.Debug("InferType: Failed to infer tuple type for %s", ident.Name)
+				s.logger.Debugf("InferType: Failed to infer tuple type for %s", ident.Name)
 				return nil, false
 			}
 
@@ -383,7 +383,7 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 					if argType, ok := s.InferType(e.Args[0]); ok {
 						// Result type is Result_T_error (standard error type)
 						resultTypeName := s.resultTypeNameFromOk(argType)
-						s.logger.Debug("InferType: Ok(%s) → %s", argType, resultTypeName)
+						s.logger.Debugf("InferType: Ok(%s) → %s", argType, resultTypeName)
 						// Return a named type for Result
 						return types.NewNamed(types.NewTypeName(0, nil, resultTypeName, nil), nil, nil), true
 					}
@@ -395,7 +395,7 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 					if argType, ok := s.InferType(e.Args[0]); ok {
 						// Result type is Result_interface{}_E (generic T)
 						resultTypeName := s.resultTypeNameFromErr(argType)
-						s.logger.Debug("InferType: Err(%s) → %s", argType, resultTypeName)
+						s.logger.Debugf("InferType: Err(%s) → %s", argType, resultTypeName)
 						return types.NewNamed(types.NewTypeName(0, nil, resultTypeName, nil), nil, nil), true
 					}
 				}
@@ -404,24 +404,24 @@ func (s *TypeInferenceService) InferType(expr ast.Expr) (types.Type, bool) {
 				if len(e.Args) == 1 {
 					if argType, ok := s.InferType(e.Args[0]); ok {
 						optionTypeName := s.optionTypeNameFromSome(argType)
-						s.logger.Debug("InferType: Some(%s) → %s", argType, optionTypeName)
+						s.logger.Debugf("InferType: Some(%s) → %s", argType, optionTypeName)
 						return types.NewNamed(types.NewTypeName(0, nil, optionTypeName, nil), nil, nil), true
 					}
 				}
 			case "None":
 				// None → Option<T> (T unknown without context)
 				// For tuples, this will fall back to interface{} which is acceptable
-				s.logger.Debug("InferType: None requires context for type inference")
+				s.logger.Debugf("InferType: None requires context for type inference")
 				return nil, false
 			}
 		}
 
 		// General function call - need go/types to determine return type
-		s.logger.Debug("InferType: function call %T requires go/types for return type", e.Fun)
+		s.logger.Debugf("InferType: function call %T requires go/types for return type", e.Fun)
 		return nil, false
 
 	default:
-	s.logger.Debug("InferType: unsupported expression type %T", expr)
+	s.logger.Debugf("InferType: unsupported expression type %T", expr)
 		return nil, false
 	}
 }
@@ -669,7 +669,7 @@ func (s *TypeInferenceService) tupleToParamString(tuple *types.Tuple) string {
 // 5. Binary operations: infers from other operand
 //
 func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, bool) {
-	s.logger.Debug("InferTypeFromContext called for node type: %T", node)
+	s.logger.Debugf("InferTypeFromContext called for node type: %T", node)
 
 	if node == nil {
 		return nil, false
@@ -677,11 +677,11 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 
 	// Phase 4: Use parent tracking to find context
 	if s.parentMap == nil {
-		s.logger.Debug("InferTypeFromContext: no parent map available")
+		s.logger.Debugf("InferTypeFromContext: no parent map available")
 		return nil, false
 	}
 
-	s.logger.Debug("InferTypeFromContext: parent map has %d entries", len(s.parentMap))
+	s.logger.Debugf("InferTypeFromContext: parent map has %d entries", len(s.parentMap))
 
 	// Walk up parent chain to find type-defining context
 	current := node
@@ -691,14 +691,14 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 			break
 		}
 
-		s.logger.Debug("InferTypeFromContext: checking parent type %T", parent)
+		s.logger.Debugf("InferTypeFromContext: checking parent type %T", parent)
 
 		// Context 1: Return statement - infer from function return type
 		if retStmt, ok := parent.(*ast.ReturnStmt); ok {
 			// Find the containing function
 			fnType := s.findFunctionReturnType(retStmt)
 			if fnType != nil {
-				s.logger.Debug("InferTypeFromContext: inferred from return type: %s", fnType)
+				s.logger.Debugf("InferTypeFromContext: inferred from return type: %s", fnType)
 				return fnType, true
 			}
 		}
@@ -708,7 +708,7 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 			// Find which LHS this None is being assigned to
 			varType := s.findAssignmentType(assign, node)
 			if varType != nil {
-				s.logger.Debug("InferTypeFromContext: inferred from assignment type: %s", varType)
+				s.logger.Debugf("InferTypeFromContext: inferred from assignment type: %s", varType)
 				return varType, true
 			}
 		}
@@ -718,7 +718,7 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 			// Find the value spec containing this node
 			varType := s.findVarDeclType(decl, node)
 			if varType != nil {
-				s.logger.Debug("InferTypeFromContext: inferred from var decl type: %s", varType)
+				s.logger.Debugf("InferTypeFromContext: inferred from var decl type: %s", varType)
 				return varType, true
 			}
 		}
@@ -727,7 +727,7 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 		if call, ok := parent.(*ast.CallExpr); ok {
 			paramType := s.findCallArgType(call, node)
 			if paramType != nil {
-				s.logger.Debug("InferTypeFromContext: inferred from call param type: %s", paramType)
+				s.logger.Debugf("InferTypeFromContext: inferred from call param type: %s", paramType)
 				return paramType, true
 			}
 		}
@@ -736,7 +736,7 @@ func (s *TypeInferenceService) InferTypeFromContext(node ast.Node) (types.Type, 
 		current = parent
 	}
 
-	s.logger.Debug("InferTypeFromContext: no type context found")
+	s.logger.Debugf("InferTypeFromContext: no type context found")
 	return nil, false
 }
 
@@ -758,9 +758,9 @@ func (s *TypeInferenceService) findFunctionReturnType(retStmt *ast.ReturnStmt) t
 
 		// Case 1: Named function
 		if funcDecl, ok := parent.(*ast.FuncDecl); ok {
-			s.logger.Debug("findFunctionReturnType: found function declaration %s", funcDecl.Name.Name)
+			s.logger.Debugf("findFunctionReturnType: found function declaration %s", funcDecl.Name.Name)
 			retType := s.extractReturnTypeFromFuncType(funcDecl.Type, retStmt)
-			s.logger.Debug("findFunctionReturnType: extracted return type: %v", retType)
+			s.logger.Debugf("findFunctionReturnType: extracted return type: %v", retType)
 			return retType
 		}
 
@@ -787,20 +787,20 @@ func (s *TypeInferenceService) extractReturnTypeFromFuncType(
 	// For now, assume single return value (extend for multi-return later)
 	if len(funcType.Results.List) > 0 {
 		resultField := funcType.Results.List[0]
-		s.logger.Debug("extractReturnTypeFromFuncType: result field type: %T", resultField.Type)
+		s.logger.Debugf("extractReturnTypeFromFuncType: result field type: %T", resultField.Type)
 
 		// PRIORITY 4 FIX: Try go/types first, then fall back to AST-based inference
 		if s.typesInfo != nil {
 			if tv, ok := s.typesInfo.Types[resultField.Type]; ok && tv.Type != nil {
-				s.logger.Debug("extractReturnTypeFromFuncType: go/types found type: %v", tv.Type)
+				s.logger.Debugf("extractReturnTypeFromFuncType: go/types found type: %v", tv.Type)
 				// Only use go/types result if it's NOT invalid type
 				// (Option types won't be in go/types until they're generated)
 				if tv.Type.String() != "invalid type" {
 					return tv.Type
 				}
-				s.logger.Debug("extractReturnTypeFromFuncType: go/types returned invalid type, falling back to AST")
+				s.logger.Debugf("extractReturnTypeFromFuncType: go/types returned invalid type, falling back to AST")
 			} else {
-				s.logger.Debug("extractReturnTypeFromFuncType: go/types did not have type info")
+				s.logger.Debugf("extractReturnTypeFromFuncType: go/types did not have type info")
 			}
 		}
 
@@ -808,9 +808,9 @@ func (s *TypeInferenceService) extractReturnTypeFromFuncType(
 		// This handles cases where Option types haven't been generated yet
 		if ident, ok := resultField.Type.(*ast.Ident); ok {
 			// Simple identifier type (e.g., Option_int)
-			s.logger.Debug("extractReturnTypeFromFuncType: creating type from identifier: %s", ident.Name)
+			s.logger.Debugf("extractReturnTypeFromFuncType: creating type from identifier: %s", ident.Name)
 			namedType := s.makeBasicType(ident.Name)
-			s.logger.Debug("extractReturnTypeFromFuncType: created type: %v (%T)", namedType, namedType)
+			s.logger.Debugf("extractReturnTypeFromFuncType: created type: %v (%T)", namedType, namedType)
 			return namedType
 		}
 	}
@@ -990,7 +990,7 @@ func (s *TypeInferenceService) RegisterResultType(typeName string, okType, errTy
 				okTypeStr, errTypeStr,
 			))
 			// Add warning to help users understand the issue
-			s.logger.Warn(
+			s.logger.Warnf(
 				"Collision hint: Use explicit type aliases to avoid ambiguity, or file a bug report",
 			)
 		}
@@ -1007,7 +1007,7 @@ func (s *TypeInferenceService) RegisterResultType(typeName string, okType, errTy
 	s.resultTypeCache[typeName] = info
 	s.registry.resultTypes[typeName] = info
 
-	s.logger.Debug("Registered Result type: %s (T=%s, E=%s)", typeName, okTypeStr, errTypeStr)
+	s.logger.Debugf("Registered Result type: %s (T=%s, E=%s)", typeName, okTypeStr, errTypeStr)
 
 	// CRITICAL FIX #1: Validate round-trip consistency
 	// Ensure type name is actually derived from these type strings
@@ -1015,7 +1015,7 @@ func (s *TypeInferenceService) RegisterResultType(typeName string, okType, errTy
 		s.sanitizeTypeName(okTypeStr),
 		s.sanitizeTypeName(errTypeStr))
 	if typeName != expectedTypeName {
-		s.logger.Warn("Type name mismatch: expected %s, got %s (sanitization may be lossy)", expectedTypeName, typeName)
+		s.logger.Warnf("Type name mismatch: expected %s, got %s (sanitization may be lossy)", expectedTypeName, typeName)
 	}
 }
 
@@ -1053,7 +1053,7 @@ func (s *TypeInferenceService) RegisterOptionType(typeName string, valueType typ
 				valueTypeStr,
 			))
 			// Add warning to help users understand the issue
-			s.logger.Warn(
+			s.logger.Warnf(
 				"Collision hint: Use explicit type aliases to avoid ambiguity, or file a bug report",
 			)
 		}
@@ -1068,12 +1068,12 @@ func (s *TypeInferenceService) RegisterOptionType(typeName string, valueType typ
 	s.optionTypeCache[typeName] = info
 	s.registry.optionTypes[typeName] = info
 
-	s.logger.Debug("Registered Option type: %s (T=%s)", typeName, valueTypeStr)
+	s.logger.Debugf("Registered Option type: %s (T=%s)", typeName, valueTypeStr)
 
 	// CRITICAL FIX #1: Validate round-trip consistency
 	expectedTypeName := fmt.Sprintf("Option_%s", s.sanitizeTypeName(valueTypeStr))
 	if typeName != expectedTypeName {
-		s.logger.Warn("Type name mismatch: expected %s, got %s (sanitization may be lossy)", expectedTypeName, typeName)
+		s.logger.Warnf("Type name mismatch: expected %s, got %s (sanitization may be lossy)", expectedTypeName, typeName)
 	}
 }
 
@@ -1097,7 +1097,7 @@ func (s *TypeInferenceService) ValidateNoneInference(noneExpr ast.Expr) (ok bool
 	// - If None is a return value, check function signature
 	// - Otherwise, fail with suggestion
 
-	s.logger.Debug("ValidateNoneInference called for expr at pos %v", s.fset.Position(noneExpr.Pos()))
+	s.logger.Debugf("ValidateNoneInference called for expr at pos %v", s.fset.Position(noneExpr.Pos()))
 
 	// Placeholder: Always fail for now (Task 1.5 will implement this)
 	return false, fmt.Sprintf(
@@ -1135,7 +1135,7 @@ func (s *TypeInferenceService) inferTupleType(call *ast.CallExpr) string {
 	for i, arg := range call.Args {
 		inferredType, ok := s.InferType(arg)
 		if !ok {
-			s.logger.Debug("inferTupleType: Failed to infer type for element %d", i)
+			s.logger.Debugf("inferTupleType: Failed to infer type for element %d", i)
 			return ""
 		}
 		elementTypeNames[i] = s.TypeToString(inferredType)

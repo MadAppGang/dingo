@@ -58,21 +58,21 @@
       "name": "identity"
     },
     {
-      "generated_line": 7,
-      "generated_column": 1,
-      "original_line": 7,
-      "original_column": 1,
-      "processor_input_line": 0,
-      "length": 1,
-      "name": "identity"
-    },
-    {
       "generated_line": 8,
       "generated_column": 1,
       "original_line": 8,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 17,
+      "generated_column": 1,
+      "original_line": 7,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
       "name": "identity"
     }
   ]

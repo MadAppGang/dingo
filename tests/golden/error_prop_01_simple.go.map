@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "dingo_file": "/Users/jack/mag/dingo/tests/golden/error_prop_01_simple.dingo",
-  "go_file": "/Users/jack/mag/dingo/tests/golden/error_prop_01_simple.go",
+  "dingo_file": "tests/golden/error_prop_01_simple.dingo",
+  "go_file": "tests/golden/error_prop_01_simple.go",
   "mappings": [
     {
       "generated_line": 1,
@@ -22,9 +22,27 @@
       "name": "identity"
     },
     {
-      "generated_line": 7,
+      "generated_line": 3,
       "generated_column": 1,
       "original_line": 3,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 11,
+      "name": "identity"
+    },
+    {
+      "generated_line": 4,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 7,
+      "generated_column": 1,
+      "original_line": 5,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 51,
@@ -33,16 +51,34 @@
     {
       "generated_line": 8,
       "generated_column": 2,
-      "original_line": 4,
+      "original_line": 6,
       "original_column": 34,
       "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
     },
     {
+      "generated_line": 9,
+      "generated_column": 1,
+      "original_line": 9,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 10,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
       "generated_line": 12,
       "generated_column": 1,
-      "original_line": 6,
+      "original_line": 8,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 1,
@@ -51,7 +87,7 @@
     {
       "generated_line": 14,
       "generated_column": 1,
-      "original_line": 5,
+      "original_line": 7,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 17,
@@ -60,7 +96,7 @@
     {
       "generated_line": 15,
       "generated_column": 1,
-      "original_line": 12,
+      "original_line": 14,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 1,
@@ -69,7 +105,7 @@
     {
       "generated_line": 16,
       "generated_column": 1,
-      "original_line": 9,
+      "original_line": 11,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 13,
@@ -78,7 +114,7 @@
     {
       "generated_line": 17,
       "generated_column": 2,
-      "original_line": 10,
+      "original_line": 12,
       "original_column": 35,
       "processor_input_line": 0,
       "length": 1,
@@ -87,7 +123,7 @@
     {
       "generated_line": 23,
       "generated_column": 1,
-      "original_line": 11,
+      "original_line": 13,
       "original_column": 1,
       "processor_input_line": 0,
       "length": 20,

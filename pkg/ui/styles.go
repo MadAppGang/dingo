@@ -275,13 +275,14 @@ func (b *BuildOutput) PrintInfo(msg string) {
 
 // formatDuration formats a duration in a human-readable way
 func formatDuration(d time.Duration) string {
-	if d < time.Microsecond {
+	switch {
+	case d < time.Microsecond:
 		return fmt.Sprintf("%dns", d.Nanoseconds())
-	} else if d < time.Millisecond {
+	case d < time.Millisecond:
 		return fmt.Sprintf("%dµs", d.Microseconds())
-	} else if d < time.Second {
+	case d < time.Second:
 		return fmt.Sprintf("%dms", d.Milliseconds())
-	} else {
+	default:
 		return fmt.Sprintf("%.2fs", d.Seconds())
 	}
 }
@@ -339,7 +340,7 @@ func Table(rows [][]string) string {
 }
 
 // ProgressBar creates a simple progress bar
-func ProgressBar(current, total int, width int) string {
+func ProgressBar(current, total, width int) string {
 	if width <= 0 {
 		width = 40
 	}

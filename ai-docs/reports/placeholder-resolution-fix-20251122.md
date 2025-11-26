@@ -34,7 +34,7 @@ Final Output:
 ## Solution Implemented
 
 ### 1. Created Comprehensive PlaceholderResolverPlugin
-**File**: `/Users/jack/mag/dingo/pkg/plugin/builtin/placeholder_resolver.go`
+**File**: `pkg/plugin/builtin/placeholder_resolver.go`
 
 **Key Features**:
 - Resolves ALL placeholder types:
@@ -52,7 +52,7 @@ Final Output:
 - Fallback heuristics for partial type information
 
 ### 2. Updated Type Detection
-**File**: `/Users/jack/mag/dingo/pkg/preprocessor/safe_nav.go`
+**File**: `pkg/preprocessor/safe_nav.go`
 
 **Added Pattern Recognition**:
 ```go
@@ -63,7 +63,7 @@ if strings.HasPrefix(typeName, "Option_") {
 ```
 
 ### 3. Registered Plugin in Pipeline
-**File**: `/Users/jack/mag/dingo/pkg/generator/generator.go`
+**File**: `pkg/generator/generator.go`
 
 **Pipeline Order**:
 ```go
@@ -102,12 +102,12 @@ func TestNullCoalesce(opt Option_string) string {
 ## Files Modified
 
 1. **Created**:
-   - `/Users/jack/mag/dingo/pkg/plugin/builtin/placeholder_resolver.go` (600+ lines)
+   - `pkg/plugin/builtin/placeholder_resolver.go` (600+ lines)
 
 2. **Modified**:
-   - `/Users/jack/mag/dingo/pkg/generator/generator.go` (registered plugin)
-   - `/Users/jack/mag/dingo/pkg/preprocessor/safe_nav.go` (improved type detection)
-   - `/Users/jack/mag/dingo/pkg/preprocessor/error_prop.go` (minor fixes)
+   - `pkg/generator/generator.go` (registered plugin)
+   - `pkg/preprocessor/safe_nav.go` (improved type detection)
+   - `pkg/preprocessor/error_prop.go` (minor fixes)
 
 ## Design Principles Upheld
 

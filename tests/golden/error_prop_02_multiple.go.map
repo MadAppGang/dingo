@@ -27,16 +27,16 @@
       "original_line": 3,
       "original_column": 1,
       "processor_input_line": 0,
-      "length": 61,
+      "length": 11,
       "name": "identity"
     },
     {
-      "generated_line": 4,
+      "generated_line": 5,
       "generated_column": 1,
-      "original_line": 4,
+      "original_line": 5,
       "original_column": 1,
       "processor_input_line": 0,
-      "length": 27,
+      "length": 0,
       "name": "identity"
     },
     {
@@ -45,44 +45,71 @@
       "original_line": 6,
       "original_column": 1,
       "processor_input_line": 0,
-      "length": 36,
+      "length": 61,
       "name": "identity"
     },
     {
-      "generated_line": 8,
+      "generated_line": 7,
       "generated_column": 1,
-      "original_line": 8,
+      "original_line": 4,
       "original_column": 1,
       "processor_input_line": 0,
-      "length": 1,
+      "length": 22,
       "name": "identity"
     },
     {
-      "generated_line": 9,
-      "generated_column": 1,
-      "original_line": 9,
-      "original_column": 1,
-      "processor_input_line": 0,
-      "length": 0,
-      "name": "identity"
-    },
-    {
-      "generated_line": 11,
+      "generated_line": 10,
       "generated_column": 2,
-      "original_line": 5,
+      "original_line": 7,
       "original_column": 27,
       "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
     },
     {
-      "generated_line": 18,
+      "generated_line": 12,
+      "generated_column": 1,
+      "original_line": 12,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 14,
+      "generated_column": 1,
+      "original_line": 11,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 16,
+      "generated_column": 1,
+      "original_line": 8,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 34,
+      "name": "identity"
+    },
+    {
+      "generated_line": 17,
       "generated_column": 2,
-      "original_line": 7,
+      "original_line": 9,
       "original_column": 36,
       "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
+    },
+    {
+      "generated_line": 23,
+      "generated_column": 1,
+      "original_line": 10,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 19,
+      "name": "identity"
     }
   ]
 }

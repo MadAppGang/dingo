@@ -425,8 +425,16 @@ func extractOperandBefore(line string, end int) int {
 			ch := line[start-1]
 			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
 				start--
-			} else if ch == '.' || ch == '?' {
-				// Method chain or safe nav - continue backwards
+			} else if ch == '.' {
+				// Method chain - continue backwards
+				start--
+			} else if ch == '?' {
+				// Check if it's safe nav (?.) or null coalesce (??)
+				if start >= 2 && line[start-2] == '?' {
+					// It's part of ?? operator, stop here
+					break
+				}
+				// It's safe nav (?.), continue backwards
 				start--
 			} else {
 				break
@@ -521,15 +529,28 @@ func extractOperandAfter(line string, start int) int {
 		return -1 // Unclosed string
 	}
 
-	// Case 2: Number literal (including negative numbers)
-	if ch >= '0' && ch <= '9' || (ch == '-' && start+1 < len(line) && line[start+1] >= '0' && line[start+1] <= '9') {
+	// Case 2: Number literal (including negative numbers and decimals starting with .)
+	if ch >= '0' && ch <= '9' || (ch == '-' && start+1 < len(line) && line[start+1] >= '0' && line[start+1] <= '9') || (ch == '.' && start+1 < len(line) && line[start+1] >= '0' && line[start+1] <= '9') {
 		end := start
+		hasDecimal := false
+
 		// Handle optional negative sign
 		if ch == '-' {
 			end++
 		}
-		end++ // Move past first digit
-		hasDecimal := false
+
+		// Handle decimal starting with .
+		if ch == '.' {
+			hasDecimal = true
+			end++ // Move past .
+		}
+
+		// Move past first digit (if not starting with .)
+		if end < len(line) && line[end] >= '0' && line[end] <= '9' {
+			end++
+		}
+
+		// Continue parsing number
 		for end < len(line) {
 			ch := line[end]
 			if ch >= '0' && ch <= '9' {
