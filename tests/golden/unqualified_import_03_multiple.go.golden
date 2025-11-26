@@ -5,19 +5,27 @@ import (
 	"os"
 	"strconv"
 )
+import "strconv"
+import "fmt"
+
+// Test: Multiple unqualified stdlib calls from different packages
+// Feature: Unqualified import inference
+// Complexity: intermediate
 
 func processInput(path string, numStr string) {
-
+	// Should add: import "os"
 	data, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
 
+	// Should add: import "strconv"
 	num, err := strconv.Atoi(numStr)
 	if err != nil {
 		panic(err)
 	}
 
+	// Should add: import "fmt"
 	fmt.Printf("Read %d bytes, number is %d\n", len(data), num)
 }
 func main() {

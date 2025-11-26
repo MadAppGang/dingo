@@ -1,23 +1,29 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
+import "fmt"
+import "errors"
+
+// Test: Mix of qualified and unqualified calls
+// Feature: Unqualified import inference
+// Complexity: intermediate
 
 func validateFile(path string) error {
-
+	// Unqualified - should transform to os.ReadFile
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
 	if len(data) == 0 {
-
+		// Qualified - should NOT transform
 		return errors.New("empty file")
 	}
 
+	// Unqualified - should transform to fmt.Printf
 	fmt.Printf("File size: %d bytes\n", len(data))
 
 	return nil

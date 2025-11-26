@@ -1,36 +1,43 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
+
+// Test: Basic Rust pipe syntax for lambdas
+// Feature: Rust-style lambda functions with func(param __TYPE_INFERENCE_NEEDED) { return syntax }
+// Complexity: basic
 
 func main() {
-
+	// Basic single parameter lambda
 	double := func(x int) int { return x * 2 }
 	result1 := double(5)
-	fmt.Println("Double 5:", result1)
+	fmt.Println("Double 5:", result1) // Output: 10
 
+	// Multi-parameter lambda
 	add := func(x int, y int) int { return x + y }
 	result2 := add(3, 7)
-	fmt.Println("Add 3 + 7:", result2)
+	fmt.Println("Add 3 + 7:", result2) // Output: 10
 
+	// Explicit types - single parameter
 	square := func(x int) int { return x * x }
 	result3 := square(4)
-	fmt.Println("Square 4:", result3)
+	fmt.Println("Square 4:", result3) // Output: 16
 
+	// Explicit types - multi parameter
 	multiply := func(x int, y int) int { return x * y }
 	result4 := multiply(6, 7)
-	fmt.Println("Multiply 6 * 7:", result4)
+	fmt.Println("Multiply 6 * 7:", result4) // Output: 42
 
+	// Lambda with explicit return type and block
 	isPositive := func(n int) bool { return n > 0 }
 	result6 := isPositive(10)
 	result7 := isPositive(-5)
-	fmt.Println("Is 10 positive:", result6)
-	fmt.Println("Is -5 positive:", result7)
+	fmt.Println("Is 10 positive:", result6) // Output: true
+	fmt.Println("Is -5 positive:", result7) // Output: false
 
+	// Lambda passed as function argument
 	process := func(n int, f func(int) int) int {
 		return f(n)
 	}
 	result8 := process(10, func(x int) int { return x + 5 })
-	fmt.Println("Process 10 with +5:", result8)
+	fmt.Println("Process 10 with +5:", result8) // Output: 15
 }

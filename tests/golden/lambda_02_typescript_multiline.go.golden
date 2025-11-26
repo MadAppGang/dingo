@@ -1,8 +1,10 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
+
+// Test: TypeScript arrow syntax with multi-line bodies
+// Feature: Lambda functions (TypeScript style)
+// Complexity: intermediate
 
 type Point struct {
 	X int
@@ -10,13 +12,14 @@ type Point struct {
 }
 
 func main() {
-
+	// Multi-line lambda with braces
 	complexCalc := func(x int) {
 		temp := x * 2
 		return temp + 5
 	}
 	result1 := complexCalc(10)
 
+	// Lambda with multiple statements
 	processNumber := func(n int) {
 		if n < 0 {
 			return -n
@@ -26,11 +29,13 @@ func main() {
 	result2 := processNumber(-5)
 	result3 := processNumber(5)
 
+	// Lambda returning struct
 	makePoint := func(x int, y int) {
 		return Point{X: x, Y: y}
 	}
 	point := makePoint(10, 20)
 
+	// Complex logic in lambda body
 	validate := func(input string) {
 		if len(input) == 0 {
 			return "empty"
@@ -44,6 +49,7 @@ func main() {
 	status2 := validate("hello")
 	status3 := validate("this is too long")
 
+	// Nested function call in lambda body
 	transform := func(val int) {
 		helper := func(x int) int {
 			return x * 3
@@ -52,5 +58,6 @@ func main() {
 	}
 	result4 := transform(5)
 
+	// Use results to avoid unused errors
 	fmt.Println(result1, result2, result3, point, status1, status2, status3, result4)
 }

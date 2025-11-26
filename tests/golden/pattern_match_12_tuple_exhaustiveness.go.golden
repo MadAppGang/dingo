@@ -1,9 +1,12 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// Test: Exhaustiveness checking with max 6-element tuple
+// Feature: Tuple pattern destructuring - exhaustiveness
+// Complexity: advanced
+
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -54,9 +57,9 @@ func (r Result) AndThen(fn func(int) Result) Result {
 
 // 6-element tuple (max limit) - demonstrates exhaustiveness with wildcards
 func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
-
+	// DINGO_MATCH_START: (s1, s2, s3, s4, s5, s6)
 	elem0, elem1, elem2, elem3, elem4, elem5 := s1, s2, s3, s4, s5, s6
-
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok, Ok, Ok, Ok) | (Err, _, _, _, _, _) | (_, Err, _, _, _, _) | (_, _, Err, _, _, _) | (_, _, _, Err, _, _) | (_, _, _, _, Err, _) | (_, _, _, _, _, Err) | ARITY: 6
 	switch elem0.tag {
 	case ResultTagErr:
 		switch elem1.tag {
@@ -69,7 +72,7 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					default:
 						switch elem5.tag {
 						default:
-
+							// DINGO_TUPLE_ARM: (Err(e), _, _, _, _, _)
 							e := *elem0.err
 							return "Step 1 failed: " + e.Error()
 						}
@@ -88,7 +91,7 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					case ResultTagOk:
 						switch elem5.tag {
 						case ResultTagOk:
-
+							// DINGO_TUPLE_ARM: (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_))
 							_ := *elem0.ok
 							_ := *elem1.ok
 							_ := *elem2.ok
@@ -112,7 +115,7 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					default:
 						switch elem5.tag {
 						default:
-
+							// DINGO_TUPLE_ARM: (_, Err(e), _, _, _, _)
 							e := *elem1.err
 							return "Step 2 failed: " + e.Error()
 						}
@@ -128,7 +131,7 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					default:
 						switch elem5.tag {
 						default:
-
+							// DINGO_TUPLE_ARM: (_, _, Err(e), _, _, _)
 							e := *elem2.err
 							return "Step 3 failed: " + e.Error()
 						}
@@ -141,7 +144,7 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					default:
 						switch elem5.tag {
 						default:
-
+							// DINGO_TUPLE_ARM: (_, _, _, Err(e), _, _)
 							e := *elem3.err
 							return "Step 4 failed: " + e.Error()
 						}
@@ -151,14 +154,14 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 					case ResultTagErr:
 						switch elem5.tag {
 						default:
-
+							// DINGO_TUPLE_ARM: (_, _, _, _, Err(e), _)
 							e := *elem4.err
 							return "Step 5 failed: " + e.Error()
 						}
 					default:
 						switch elem5.tag {
 						case ResultTagErr:
-
+							// DINGO_TUPLE_ARM: (_, _, _, _, _, Err(e))
 							e := *elem5.err
 							return "Step 6 failed: " + e.Error()
 						}
@@ -168,14 +171,15 @@ func validateSixSteps(s1, s2, s3, s4, s5, s6 Result) string {
 		}
 	}
 	panic("unreachable: match is exhaustive")
+	// DINGO_MATCH_END
 
 }
 
 // Example of exhaustive 4-element tuple
 func processFourResults(r1, r2, r3, r4 Result) string {
-
+	// DINGO_MATCH_START: (r1, r2, r3, r4)
 	elem0, elem1, elem2, elem3 := r1, r2, r3, r4
-
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok, Ok) | (_, _, _, _) | ARITY: 4
 	switch elem0.tag {
 	case ResultTagOk:
 		switch elem1.tag {
@@ -184,7 +188,7 @@ func processFourResults(r1, r2, r3, r4 Result) string {
 			case ResultTagOk:
 				switch elem3.tag {
 				case ResultTagOk:
-
+					// DINGO_TUPLE_ARM: (Ok(a), Ok(b), Ok(c), Ok(d))
 					a := *elem0.ok
 					b := *elem1.ok
 					c := *elem2.ok
@@ -200,13 +204,14 @@ func processFourResults(r1, r2, r3, r4 Result) string {
 			default:
 				switch elem3.tag {
 				default:
-
+					// DINGO_TUPLE_ARM: (_, _, _, _)
 					return "At least one error occurred"
 				}
 			}
 		}
 	}
 	panic("unreachable: match is exhaustive")
+	// DINGO_MATCH_END
 
 }
 func main() {
@@ -223,3 +228,12 @@ func main() {
 	result2 := processFourResults(r1, r2, r3, r4)
 	println(result2)
 }
+
+// Non-exhaustive example (would fail - commented out):
+// func nonExhaustive(r1, r2 Result) string {
+//     return match (r1, r2) {
+//         (Ok(x), Ok(y)) => "both ok",
+//         (Ok(x), Err(e)) => "second error"
+//         // Missing: (Err, Ok) and (Err, Err)
+//     }
+// }

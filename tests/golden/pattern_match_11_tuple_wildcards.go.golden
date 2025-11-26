@@ -1,9 +1,12 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// Test: Wildcard patterns in tuples - catch-all semantics
+// Feature: Tuple pattern destructuring - wildcards
+// Complexity: intermediate
+
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -52,16 +55,16 @@ func (r Result) AndThen(fn func(int) Result) Result {
 	panic("invalid Result state")
 }
 func analyzeResults(r1 Result, r2 Result, r3 Result) string {
-
+	// DINGO_MATCH_START: (r1, r2, r3)
 	elem0, elem1, elem2 := r1, r2, r3
-
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok) | (Ok, Ok, Err) | (Err, _, _) | (_, Err, _) | (_, _, Err) | ARITY: 3
 	switch elem0.tag {
 	case ResultTagErr:
 		switch elem1.tag {
 		default:
 			switch elem2.tag {
 			default:
-
+				// DINGO_TUPLE_ARM: (Err(e), _, _)
 				e := *elem0.err
 				return "First failed immediately: " + e.Error()
 			}
@@ -71,13 +74,13 @@ func analyzeResults(r1 Result, r2 Result, r3 Result) string {
 		case ResultTagOk:
 			switch elem2.tag {
 			case ResultTagErr:
-
+				// DINGO_TUPLE_ARM: (Ok(_), Ok(_), Err(e))
 				_ := *elem0.ok
 				_ := *elem1.ok
 				e := *elem2.err
 				return "First two ok, third failed: " + e.Error()
 			case ResultTagOk:
-
+				// DINGO_TUPLE_ARM: (Ok(x), Ok(y), Ok(z))
 				x := *elem0.ok
 				y := *elem1.ok
 				z := *elem2.ok
@@ -89,20 +92,21 @@ func analyzeResults(r1 Result, r2 Result, r3 Result) string {
 		case ResultTagErr:
 			switch elem2.tag {
 			default:
-
+				// DINGO_TUPLE_ARM: (_, Err(e), _)
 				e := *elem1.err
 				return "Second failed: " + e.Error()
 			}
 		default:
 			switch elem2.tag {
 			case ResultTagErr:
-
+				// DINGO_TUPLE_ARM: (_, _, Err(e))
 				e := *elem2.err
 				return "Third failed: " + e.Error()
 			}
 		}
 	}
 	panic("unreachable: match is exhaustive")
+	// DINGO_MATCH_END
 
 }
 func main() {

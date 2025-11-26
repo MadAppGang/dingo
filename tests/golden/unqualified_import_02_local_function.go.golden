@@ -1,11 +1,15 @@
 package main
 
+// Test: User-defined function should NOT be transformed
+// Feature: Unqualified import inference (negative test)
+// Complexity: basic
+
 // User's own ReadFile function
 func ReadFile(path string) string {
 	return "custom implementation for " + path
 }
 func main() {
-
+	// Should use user's ReadFile, NOT os.ReadFile
 	data := ReadFile("test.txt")
 	println(data)
 }

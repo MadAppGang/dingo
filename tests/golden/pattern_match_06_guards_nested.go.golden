@@ -1,5 +1,11 @@
 package main
 
+// Test: Guards with 'where' keyword (Swift-style)
+// Feature: Swift-style 'where' guards with complex boolean expressions
+// Complexity: intermediate
+// Limitation: where guards with NESTED patterns not yet supported
+
+// dingo:n:1
 type OptionTag uint8
 
 const (
@@ -46,7 +52,14 @@ func (o Option) AndThen(fn func(int) Option) Option {
 	}
 	panic("invalid Option state")
 }
+func (o Option) Unwrap() int {
+	if o.tag != OptionTagSome {
+		panic("called Unwrap on None")
+	}
+	return *o.some
+}
 
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -97,87 +110,90 @@ func (r Result) AndThen(fn func(int) Result) Result {
 // Using 'where' keyword (Swift-style)
 func analyzeValue(opt Option) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: opt
 	scrutinee := opt
 	switch scrutinee.tag {
 	case OptionTagSome:
 		x := *scrutinee.some
-
+		// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x > 100
 		if x > 100 {
 			result = "large"
-
+			// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x > 10
 		} else if x > 10 {
 			result = "medium"
-
+			// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x > 0
 		} else if x > 0 {
 			result = "small"
-
+			// DINGO_PATTERN: OptionSome(_)
 		} else {
 			result = "non-positive"
 		}
 	case OptionTagNone:
-
+		// DINGO_PATTERN: OptionNone
 		result = "none"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 
 // Simple pattern with where guards (NOT nested)
 func processResult(result Result) string {
 	var result2 interface{}
-
+	// DINGO_MATCH_START: result
 	scrutinee2 := result
 	switch scrutinee2.tag {
 	case ResultTagOk:
 		val := *scrutinee2.ok
-
+		// DINGO_PATTERN: ResultOk(val) | DINGO_GUARD: val > 100
 		if val > 100 {
 			result2 = "large value"
-
+			// DINGO_PATTERN: ResultOk(val) | DINGO_GUARD: val > 0
 		} else if val > 0 {
 			result2 = "positive value"
-
+			// DINGO_PATTERN: ResultOk(_)
 		} else {
 			result2 = "non-positive value"
 		}
 	case ResultTagErr:
-
+		// DINGO_PATTERN: ResultErr(_)
 		result2 = "error"
 	}
 	panic("unreachable: match is exhaustive")
 	return result2
+	// DINGO_MATCH_END
 
 }
 
 // Guard fallthrough demonstration
 func categorize(opt Option) string {
 	var result3 interface{}
-
+	// DINGO_MATCH_START: opt
 	scrutinee3 := opt
 	switch scrutinee3.tag {
 	case OptionTagSome:
 		x := *scrutinee3.some
-
+		// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x%3 == 0 && x%5 == 0
 		if x%3 == 0 && x%5 == 0 {
 			result3 = "fizzbuzz"
-
+			// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x%3 == 0
 		} else if x%3 == 0 {
 			result3 = "fizz"
-
+			// DINGO_PATTERN: OptionSome(x) | DINGO_GUARD: x%5 == 0
 		} else if x%5 == 0 {
 			result3 = "buzz"
-
+			// DINGO_PATTERN: OptionSome(x)
 		} else {
 			result3 = "number"
 		}
 	case OptionTagNone:
-
+		// DINGO_PATTERN: OptionNone
 		result3 = "empty"
 	}
 	panic("unreachable: match is exhaustive")
 	return result3
+	// DINGO_MATCH_END
 
 }
 func main() {

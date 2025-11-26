@@ -1,10 +1,13 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
-type ResultTag uint8
+type
+
+// Test: Nested match blocks
+// Feature: Match expression containing nested match expressions in arms
+// Complexity: advanced
+ResultTag uint8
 
 const (
 	ResultTagOk ResultTag = iota
@@ -15,6 +18,8 @@ type Result_Option_int_error struct {
 	tag ResultTag
 	ok  *Option_int
 	err *error
+
+	// dingo:n:1
 }
 
 func Result_Option_int_error_Ok(arg0 Option_int) Result_Option_int_error {
@@ -53,7 +58,10 @@ func (r Result_Option_int_error) UnwrapErr() error {
 	}
 	return *r.err
 }
-func (r Result_Option_int_error) UnwrapOrElse(fn func(error) Option_int) Option_int {
+func (r Result_Option_int_error) UnwrapOrElse(
+
+// dingo:n:0
+fn func(error) Option_int) Option_int {
 	if r.tag == ResultTagOk && r.ok != nil {
 		return *r.ok
 	}
@@ -104,11 +112,17 @@ func (r Result_Option_int_error) AndThen(fn func(Option_int) interface{}) interf
 	}
 	return struct {
 		tag ResultTag
-		ok  *interface{}
+		ok  *
+
+		// DINGO_MATCH_START: result
+		interface{}
 		err *error
 	}{tag: r.tag, ok: nil, err: r.err}
 }
 func (r Result_Option_int_error) OrElse(fn func(error) interface{}) interface{} {
+
+	// DINGO_PATTERN: Ok(inner)
+	// DINGO_MATCH_START: inner
 	if r.tag == ResultTagErr && r.err != nil {
 		return fn(*r.err)
 	}
@@ -118,14 +132,23 @@ func (r Result_Option_int_error) OrElse(fn func(error) interface{}) interface{} 
 		err *interface{}
 	}{tag: r.tag, ok: r.ok, err: nil}
 }
-func (r Result_Option_int_error) And(other interface{}) interface{} {
+func
+
+// DINGO_PATTERN: Some(val)
+(r Result_Option_int_error) And(other interface{}) interface{} {
+
+	// DINGO_PATTERN: None
 	if r.tag == ResultTagOk {
 		return other
 	}
 	return r
 }
 func (r Result_Option_int_error) Or(other Result_Option_int_error) Result_Option_int_error {
+
+	// DINGO_MATCH_END
 	if r.tag == ResultTagOk {
+
+		// DINGO_PATTERN: Err(e)
 		return r
 	}
 	return other
@@ -135,12 +158,23 @@ type Result_interface_error struct {
 	tag ResultTag
 	ok  *interface{}
 	err *error
+
+	// DINGO_MATCH_END
 }
 func Result_interface_error_Ok(arg0 interface{}) Result_interface_error {
 	return Result_interface_error{tag: ResultTagOk, ok: &arg0}
 }
-func Result_interface_error_Err(arg0 error) Result_interface_error {
-	return Result_interface_error{tag: ResultTagErr, err: &arg0}
+func Result_interface_error_Err(
+
+// 42
+arg0 error) Result_interface_error {
+	return Result_interface_error{
+
+	// 0
+	tag: ResultTagErr,
+
+	// -1
+	err: &arg0}
 }
 func (r Result_interface_error) IsOk() bool {
 	return r.tag == ResultTagOk
@@ -406,6 +440,12 @@ func (o Option) AndThen(fn func(int) Option) Option {
 		return o
 	}
 	panic("invalid Option state")
+}
+func (o Option) Unwrap() int {
+	if o.tag != OptionTagSome {
+		panic("called Unwrap on None")
+	}
+	return *o.some
 }
 func processNestedMatch(result Result) int {
 	var result ResultIntError

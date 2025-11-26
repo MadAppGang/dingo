@@ -1,9 +1,12 @@
 package main
 
-import (
-	"strings"
-)
+import "strings"
 
+// Test: Complex guard expressions with mixed 'if' and 'where'
+// Feature: Guards with complex boolean logic, field access, and method calls
+// Complexity: advanced
+
+// dingo:n:1
 type RequestTag uint8
 
 const (
@@ -39,6 +42,7 @@ func (e Request) IsDelete() bool {
 	return e.tag == RequestTagDelete
 }
 
+// dingo:n:0
 type StatusTag uint8
 
 const (
@@ -74,86 +78,101 @@ func (e Status) IsStopped() bool {
 // Mixed if/where keywords in same match
 func routeRequest(req Request) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: req
 	scrutinee := req
 	switch scrutinee.tag {
 	case RequestTagGet:
 		path := *scrutinee.get
-
+		// DINGO_PATTERN: Request_Get(path) | DINGO_GUARD: strings.HasPrefix(path, "/api/")
 		if strings.HasPrefix(path, "/api/") {
 			result = "API endpoint"
-
+			// DINGO_PATTERN: Request_Get(path) | DINGO_GUARD: len(path) > 0
 		} else if len(path) > 0 {
 			result = "static resource"
 		}
 	case RequestTagPost:
 		path := *scrutinee.post
 		body := *scrutinee.post1
-
+		// DINGO_PATTERN: Request_Post(path, body) | DINGO_GUARD: len(body) > 100 && strings.Contains(path, "upload")
 		if len(body) > 100 && strings.Contains(path, "upload") {
 			result = "large upload"
-
+			// DINGO_PATTERN: Request_Post(_, body) | DINGO_GUARD: len(body) > 0
 		} else if len(body) > 0 {
 			result = "post request"
 		}
 	case RequestTagDelete:
 		path := *scrutinee.delete
-
+		// DINGO_PATTERN: Request_Delete(path) | DINGO_GUARD: isProtected(path)
 		if isProtected(path) {
 			result = "forbidden"
-
+			// DINGO_PATTERN: Request_Delete(_)
 		} else {
 			result = "delete request"
 		}
 	default:
-
+		// DINGO_PATTERN: _
 		result = "unknown"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 
 // Guards with logical operators
 func classifyStatus(status Status) string {
 	var result2 interface{}
-
+	// DINGO_MATCH_START: status
 	scrutinee2 := status
 	switch scrutinee2.tag {
 	case StatusTagActive:
 		count := *scrutinee2.active
-
+		// DINGO_PATTERN: Status_Active(count) | DINGO_GUARD: count > 1000 || count < 0
 		if count > 1000 || count < 0 {
 			result2 = "unusual"
-
+			// DINGO_PATTERN: Status_Active(count) | DINGO_GUARD: count >= 100 && count <= 1000
 		} else if count >= 100 && count <= 1000 {
 			result2 = "normal"
-
+			// DINGO_PATTERN: Status_Active(_)
 		} else {
 			result2 = "low activity"
 		}
 	case StatusTagPaused:
 		duration := *scrutinee2.paused
-
+		// DINGO_PATTERN: Status_Paused(duration) | DINGO_GUARD: duration > 3600
 		if duration > 3600 {
 			result2 = "long pause"
-
+			// DINGO_PATTERN: Status_Paused(_) | DINGO_GUARD: true
 		} else if true {
 			result2 = "short pause"
 		}
 	case StatusTagStopped:
-
+		// DINGO_PATTERN: Status_Stopped
 		result2 = "stopped"
 	}
 	panic("unreachable: match is exhaustive")
 	return result2
+	// DINGO_MATCH_END
 
 }
+
+// TODO: Type switch support coming in future PR
+// func processValue(val interface{}) string {
+// 	return match val.(type) {
+// 		int if val.(int) > 0 => "positive integer",
+// 		int where val.(int) < 0 => "negative integer",
+// 		func(int __TYPE_INFERENCE_NEEDED) { return "zero" },
+// 		string if len(val.(string)) > 0 => "non-empty string",
+// 		func(string __TYPE_INFERENCE_NEEDED) { return "empty string" },
+// 		func(_ __TYPE_INFERENCE_NEEDED) { return "other type" },
+// 	}
+// }
+
 func isProtected(path string) bool {
 	return strings.HasPrefix(path, "/admin/")
 }
 func main() {
 	println(routeRequest(Request_Get("/api/users")))
 	println(classifyStatus(Status_Active(500)))
-
+	// println(processValue(42)) // TODO: Enable when type switch support added
 }

@@ -4,6 +4,10 @@ import (
 	"os"
 )
 
+// Test: Basic unqualified stdlib function call
+// Feature: Unqualified import inference
+// Complexity: basic
+
 func readConfig(path string) []byte {
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -10,11 +10,10 @@ import (
 // Input: "john:admin:42" → (name, role, age)
 func parseUserData(input string) (string, string, int, error) {
 	tmp, tmp1, tmp2, err := extractUserFields(input)
-
+	// dingo:e:0
 	if err != nil {
 		return "", "", 0, err
 	}
-
 	return tmp, tmp1, tmp2, nil
 }
 
@@ -26,11 +25,10 @@ func extractUserFields(data string) (string, string, int, error) {
 	}
 
 	tmp, err := strconv.Atoi(parts[2])
-
+	// dingo:e:1
 	if err != nil {
 		return "", "", 0, fmt.Errorf("invalid age: %w", err)
 	}
-	// dingo:e:1
 	var age = tmp
 	return parts[0], parts[1], age, nil
 }

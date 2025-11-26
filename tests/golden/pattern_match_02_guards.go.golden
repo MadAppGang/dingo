@@ -1,5 +1,10 @@
 package main
 
+// Test: Pattern matching with guards
+// Feature: Match with conditional guards
+// Complexity: intermediate
+
+// dingo:n:0
 type ValueTag uint8
 
 const (
@@ -27,33 +32,34 @@ func (e Value) IsString() bool {
 }
 func describe(v Value) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: v
 	scrutinee := v
 	switch scrutinee.tag {
 	case ValueTagInt:
 		n := *scrutinee.int
-
+		// DINGO_PATTERN: Value_Int(n) | DINGO_GUARD: n > 0
 		if n > 0 {
 			result = "Positive number"
-
+			// DINGO_PATTERN: Value_Int(n) | DINGO_GUARD: n < 0
 		} else if n < 0 {
 			result = "Negative number"
-
+			// DINGO_PATTERN: Value_Int(_)
 		} else {
 			result = "Zero"
 		}
 	case ValueTagString:
 		s := *scrutinee.string
-
+		// DINGO_PATTERN: Value_String(s) | DINGO_GUARD: len(s) > 5
 		if len(s) > 5 {
 			result = "Long string"
-
+			// DINGO_PATTERN: Value_String(_)
 		} else {
 			result = "Short string"
 		}
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 func main() {

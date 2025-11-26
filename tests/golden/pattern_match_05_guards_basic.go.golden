@@ -1,5 +1,10 @@
 package main
 
+// Test: Basic pattern guards with 'if' keyword
+// Feature: Pattern matching with runtime guard conditions
+// Complexity: basic
+
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -51,79 +56,82 @@ func (r Result) AndThen(fn func(int) Result) Result {
 // Simple guard on Result type
 func classifyNumber(result Result) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: result
 	scrutinee := result
 	switch scrutinee.tag {
 	case ResultTagOk:
 		x := *scrutinee.ok
-
+		// DINGO_PATTERN: ResultOk(x) | DINGO_GUARD: x > 0
 		if x > 0 {
 			result = "positive"
-
+			// DINGO_PATTERN: ResultOk(x) | DINGO_GUARD: x < 0
 		} else if x < 0 {
 			result = "negative"
-
+			// DINGO_PATTERN: ResultOk(_)
 		} else {
 			result = "zero"
 		}
 	case ResultTagErr:
 		e := *scrutinee.err
-
+		// DINGO_PATTERN: ResultErr(e)
 		result = "error"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 
 // Guard with multiple conditions
 func validateAge(result Result) string {
 	var result2 interface{}
-
+	// DINGO_MATCH_START: result
 	scrutinee2 := result
 	switch scrutinee2.tag {
 	case ResultTagOk:
 		age := *scrutinee2.ok
-
+		// DINGO_PATTERN: ResultOk(age) | DINGO_GUARD: age >= 18 && age < 65
 		if age >= 18 && age < 65 {
 			result2 = "adult"
-
+			// DINGO_PATTERN: ResultOk(age) | DINGO_GUARD: age >= 65
 		} else if age >= 65 {
 			result2 = "senior"
-
+			// DINGO_PATTERN: ResultOk(_)
 		} else {
 			result2 = "minor"
 		}
 	case ResultTagErr:
-
+		// DINGO_PATTERN: ResultErr(_)
 		result2 = "invalid"
 	}
 	panic("unreachable: match is exhaustive")
 	return result2
+	// DINGO_MATCH_END
 
 }
 
 // Guard with function call
 func checkLength(result Result) string {
 	var result3 interface{}
-
+	// DINGO_MATCH_START: result
 	scrutinee3 := result
 	switch scrutinee3.tag {
 	case ResultTagOk:
 		n := *scrutinee3.ok
-
+		// DINGO_PATTERN: ResultOk(n) | DINGO_GUARD: isEven(n)
 		if isEven(n) {
 			result3 = "even"
-
+			// DINGO_PATTERN: ResultOk(_)
 		} else {
 			result3 = "odd"
 		}
 	case ResultTagErr:
-
+		// DINGO_PATTERN: ResultErr(_)
 		result3 = "error"
 	}
 	panic("unreachable: match is exhaustive")
 	return result3
+	// DINGO_MATCH_END
 
 }
 func isEven(n int) bool {

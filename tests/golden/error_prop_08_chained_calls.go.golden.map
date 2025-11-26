@@ -1,165 +1,142 @@
 {
   "version": 1,
+  "dingo_file": "tests/golden/error_prop_08_chained_calls.dingo",
+  "go_file": "tests/golden/error_prop_08_chained_calls.go.golden",
   "mappings": [
     {
+      "generated_line": 1,
+      "generated_column": 1,
+      "original_line": 1,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 2,
+      "generated_column": 1,
+      "original_line": 2,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 3,
+      "generated_column": 1,
+      "original_line": 3,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 11,
+      "name": "identity"
+    },
+    {
+      "generated_line": 5,
+      "generated_column": 1,
+      "original_line": 5,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
+    },
+    {
+      "generated_line": 8,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 22,
+      "name": "identity"
+    },
+    {
+      "generated_line": 10,
+      "generated_column": 1,
+      "original_line": 6,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 20,
+      "name": "identity"
+    },
+    {
+      "generated_line": 11,
+      "generated_column": 1,
+      "original_line": 7,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 12,
+      "generated_column": 1,
+      "original_line": 8,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 9,
+      "name": "identity"
+    },
+    {
+      "generated_line": 13,
+      "generated_column": 1,
+      "original_line": 9,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 16,
+      "generated_column": 2,
+      "original_line": 12,
+      "original_column": 27,
+      "processor_input_line": 0,
+      "length": 1,
+      "name": "error_prop"
+    },
+    {
       "generated_line": 17,
-      "generated_column": 16,
-      "original_line": 9,
-      "original_column": 13,
-      "length": 14,
-      "name": "expr_mapping"
-    },
-    {
-      "generated_line": 17,
       "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 18,
-      "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 19,
-      "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
+      "original_line": 17,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
+      "name": "identity"
     },
     {
       "generated_line": 20,
       "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
+      "original_line": 16,
+      "original_column": 1,
+      "processor_input_line": 0,
       "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 21,
-      "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
+      "name": "identity"
     },
     {
       "generated_line": 22,
       "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
+      "original_line": 13,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 15,
+      "name": "identity"
     },
     {
       "generated_line": 23,
-      "generated_column": 6,
-      "original_line": 9,
-      "original_column": 6,
-      "length": 4,
-      "name": "var_name"
-    },
-    {
-      "generated_line": 23,
-      "generated_column": 1,
-      "original_line": 9,
-      "original_column": 27,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 25,
-      "generated_column": 16,
-      "original_line": 11,
-      "original_column": 12,
-      "length": 21,
-      "name": "expr_mapping"
-    },
-    {
-      "generated_line": 25,
-      "generated_column": 1,
-      "original_line": 11,
+      "generated_column": 2,
+      "original_line": 14,
       "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 26,
-      "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 27,
-      "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 28,
-      "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
+      "processor_input_line": 0,
       "length": 1,
       "name": "error_prop"
     },
     {
       "generated_line": 29,
       "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 30,
-      "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 31,
-      "generated_column": 6,
-      "original_line": 11,
-      "original_column": 6,
-      "length": 3,
-      "name": "var_name"
-    },
-    {
-      "generated_line": 31,
-      "generated_column": 1,
-      "original_line": 11,
-      "original_column": 33,
-      "length": 1,
-      "name": "error_prop"
-    },
-    {
-      "generated_line": 17,
-      "generated_column": 16,
-      "original_line": 9,
-      "original_column": 16,
-      "length": 11,
-      "name": "unqualified:ReadFile"
-    },
-    {
-      "generated_line": 25,
-      "generated_column": 16,
-      "original_line": 17,
-      "original_column": 16,
-      "length": 14,
-      "name": "unqualified:Unmarshal"
+      "original_line": 15,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 17,
+      "name": "identity"
     }
   ]
 }

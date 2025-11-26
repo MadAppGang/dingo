@@ -1,8 +1,10 @@
 package main
 
-import (
-	"fmt"
-)
+// Test: Option[T] helper methods
+// Feature: UnwrapOrElse, Map, AndThen, Filter
+// Complexity: advanced
+
+import "fmt"
 
 // Configuration struct
 type Config struct {
@@ -12,7 +14,7 @@ type Config struct {
 
 // getPort returns an optional port value
 func getPort() Option_int {
-
+	// Simulate reading from environment - might fail
 	return Option_int_Some(8080)
 }
 
@@ -23,11 +25,12 @@ func getVerboseFlag() Option_bool {
 
 // parseConfig builds a Config from optional values
 func parseConfig() Config {
-
+	// UnwrapOrElse: Use default value from function if None
 	port := getPort().UnwrapOrElse(func() int {
 		return 3000
 	})
 
+	// UnwrapOr: Use default value directly
 	verbose := getVerboseFlag().UnwrapOr(false)
 
 	return Config{Port: port, Verbose: verbose}
@@ -35,7 +38,7 @@ func parseConfig() Config {
 
 // processPort demonstrates Map transformation
 func processPort(opt Option_int) Option_int {
-
+	// Map: Transform Some value, propagate None
 	return opt.Map(func(port int) interface{} {
 		return port * 2
 	})
@@ -43,7 +46,7 @@ func processPort(opt Option_int) Option_int {
 
 // validatePort demonstrates Filter
 func validatePort(opt Option_int) Option_int {
-
+	// Filter: Keep Some values that pass predicate
 	return opt.Filter(func(port int) bool {
 		return port > 1024 && port < 65535
 	})
@@ -52,7 +55,7 @@ func validatePort(opt Option_int) Option_int {
 // getValidPort demonstrates AndThen chaining
 func getValidPort(id int) Option_int {
 	return getPort().AndThen(func(port int) Option_int {
-
+		// Chain operation: validate and adjust
 		if port < 1024 {
 			return Option_int_None()
 		}
@@ -64,6 +67,7 @@ func getValidPort(id int) Option_int {
 func processConfig(useDefault bool) Option_int {
 	port := getPort()
 
+	// Chain multiple operations
 	result := port.
 		Map(func(p int) interface{} { return p + 1000 }).
 		Filter(func(p int) bool { return p < 10000 }).
@@ -81,15 +85,17 @@ func processConfig(useDefault bool) Option_int {
 	return result
 }
 func main() {
-
+	// Test UnwrapOrElse
 	cfg := parseConfig()
 	fmt.Printf("Config: Port=%d, Verbose=%v\n", cfg.Port, cfg.Verbose)
 
+	// Test Map
 	doubled := processPort(getPort())
 	if doubled.IsSome() {
 		fmt.Printf("Doubled port: %d\n", *doubled.some)
 	}
 
+	// Test Filter
 	validated := validatePort(Option_int_Some(8080))
 	if validated.IsSome() {
 		fmt.Printf("Valid port: %d\n", *validated.some)
@@ -100,11 +106,13 @@ func main() {
 		fmt.Println("Invalid port filtered out")
 	}
 
+	// Test AndThen
 	adjustedPort := getValidPort(10)
 	if adjustedPort.IsSome() {
 		fmt.Printf("Adjusted port: %d\n", *adjustedPort.some)
 	}
 
+	// Test complex chaining
 	final := processConfig(true)
 	if final.IsSome() {
 		fmt.Printf("Final port: %d\n", *final.some)

@@ -1,8 +1,10 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
+
+// Test: Nested pattern matching
+// Feature: Match with nested // dingo:n:1
+type patternsTag uint8
 
 const (
 	patternsTagOk patternsTag = iota
@@ -50,6 +52,7 @@ func (r patterns) AndThen(fn func(Value) patterns) patterns {
 	panic("invalid patterns state")
 }
 
+// dingo:n:0
 type ValueTag uint8
 
 const (
@@ -76,7 +79,7 @@ func (e Value) IsString() bool {
 }
 func processResult(r Result) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: r
 	scrutinee := r
 	switch scrutinee.tag {
 	case ResultTagOk:
@@ -91,11 +94,12 @@ func processResult(r Result) string {
 		}
 	case ResultTagErr:
 		e := *scrutinee.err
-
+		// DINGO_PATTERN: ResultErr(e)
 		result = "Error: " + e.Error()
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 func main() {

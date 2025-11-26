@@ -1,9 +1,12 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// Test: Basic 2-element tuple matching with Result types
+// Feature: Tuple pattern destructuring
+// Complexity: basic
+
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -52,19 +55,19 @@ func (r Result) AndThen(fn func(int) Result) Result {
 	panic("invalid Result state")
 }
 func processResults(r1 Result, r2 Result) string {
-
+	// DINGO_MATCH_START: (r1, r2)
 	elem0, elem1 := r1, r2
-
+	// DINGO_TUPLE_PATTERN: (Ok, Ok) | (Ok, Err) | (Err, Ok) | (Err, Err) | ARITY: 2
 	switch elem0.tag {
 	case ResultTagErr:
 		switch elem1.tag {
 		case ResultTagErr:
-
+			// DINGO_TUPLE_ARM: (Err(e1), Err(e2))
 			e1 := *elem0.err
 			e2 := *elem1.err
 			return "Both failed: " + e1.Error() + ", " + e2.Error()
 		case ResultTagOk:
-
+			// DINGO_TUPLE_ARM: (Err(e), Ok(y))
 			e := *elem0.err
 			y := *elem1.ok
 			return "First failed: " + e.Error() + ", second succeeded: " + string(y)
@@ -72,18 +75,19 @@ func processResults(r1 Result, r2 Result) string {
 	case ResultTagOk:
 		switch elem1.tag {
 		case ResultTagErr:
-
+			// DINGO_TUPLE_ARM: (Ok(x), Err(e))
 			x := *elem0.ok
 			e := *elem1.err
 			return "First succeeded: " + string(x) + ", second failed: " + e.Error()
 		case ResultTagOk:
-
+			// DINGO_TUPLE_ARM: (Ok(x), Ok(y))
 			x := *elem0.ok
 			y := *elem1.ok
 			return "Both succeeded: " + string(x) + ", " + string(y)
 		}
 	}
 	panic("unreachable: match is exhaustive")
+	// DINGO_MATCH_END
 
 }
 func main() {

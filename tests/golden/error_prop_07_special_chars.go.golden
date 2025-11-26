@@ -7,11 +7,10 @@ import (
 
 func readWithMessage(path string) ([]byte, error) {
 	tmp, err := os.ReadFile(path)
-
+	// dingo:e:0
 	if err != nil {
 		return nil, fmt.Errorf("failed to read \"important\" file: %w", err)
 	}
-	// dingo:e:1
 	var data = tmp
 	return data, nil
 }

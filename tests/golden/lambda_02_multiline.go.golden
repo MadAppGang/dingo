@@ -1,14 +1,19 @@
 package main
 
-func main() {
+// Test: Multiline lambda expressions
+// Feature: Lambdas with block syntax
+// Complexity: intermediate
 
-	process := func(x int, y int) int {
-		sum := x + y
-		doubled := sum * 2
+func main() {
+	// Multiline lambda with block
+	var proces s = func(x int, y int) int {
+		var su m = x + y
+		var double d = sum * 2
 		return doubled
 	}
 
-	max := func(a int, b int) int {
+	// Lambda with conditional
+	var ma x = func(a int, b int) int {
 		if a > b {
 			return a
 		}

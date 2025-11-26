@@ -1,5 +1,10 @@
 package main
 
+// Test: Basic pattern matching
+// Feature: Pattern matching with match expression
+// Complexity: basic
+
+// dingo:n:0
 type StatusTag uint8
 
 const (
@@ -32,21 +37,22 @@ func (e Status) IsComplete() bool {
 }
 func getStatusMessage(s Status) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: s
 	scrutinee := s
 	switch scrutinee.tag {
 	case StatusTagPending:
-
+		// DINGO_PATTERN: Status_Pending
 		result = "Waiting to start"
 	case StatusTagActive:
-
+		// DINGO_PATTERN: Status_Active
 		result = "Currently running"
 	case StatusTagComplete:
-
+		// DINGO_PATTERN: Status_Complete
 		result = "Finished"
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 func main() {

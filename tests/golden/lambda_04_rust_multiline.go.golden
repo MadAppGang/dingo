@@ -1,19 +1,22 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
+
+// Test: Multiline Rust pipe syntax for lambdas
+// Feature: Rust-style lambdas with block bodies and complex logic
+// Complexity: intermediate
 
 func main() {
-
+	// Multi-line lambda with explicit braces
 	complexCalc := func(x int) int {
 		temp := x * 2
 		result := temp + 10
 		return result
 	}
 	result1 := complexCalc(5)
-	fmt.Println("Complex calc on 5:", result1)
+	fmt.Println("Complex calc on 5:", result1) // Output: 20
 
+	// Lambda with multiple statements
 	validator := func(n int) bool {
 		if n < 0 {
 			return false
@@ -25,9 +28,10 @@ func main() {
 	}
 	result2 := validator(50)
 	result3 := validator(150)
-	fmt.Println("Validate 50:", result2)
-	fmt.Println("Validate 150:", result3)
+	fmt.Println("Validate 50:", result2)  // Output: true
+	fmt.Println("Validate 150:", result3) // Output: false
 
+	// Multi-parameter lambda with complex logic
 	compare := func(a int, b int) int {
 		if a > b {
 			return 1
@@ -40,10 +44,11 @@ func main() {
 	result4 := compare(10, 5)
 	result5 := compare(3, 8)
 	result6 := compare(7, 7)
-	fmt.Println("Compare 10, 5:", result4)
-	fmt.Println("Compare 3, 8:", result5)
-	fmt.Println("Compare 7, 7:", result6)
+	fmt.Println("Compare 10, 5:", result4) // Output: 1
+	fmt.Println("Compare 3, 8:", result5)  // Output: -1
+	fmt.Println("Compare 7, 7:", result6)  // Output: 0
 
+	// Lambda with loop inside
 	sumUpTo := func(n int) int {
 		sum := 0
 		for i := 1; i <= n; i++ {
@@ -52,8 +57,9 @@ func main() {
 		return sum
 	}
 	result7 := sumUpTo(5)
-	fmt.Println("Sum 1 to 5:", result7)
+	fmt.Println("Sum 1 to 5:", result7) // Output: 15
 
+	// Lambda with nested conditional logic
 	categorize := func(age int) int {
 		if age < 13 {
 			return 1
@@ -70,11 +76,12 @@ func main() {
 	result9 := categorize(17)
 	result10 := categorize(35)
 	result11 := categorize(70)
-	fmt.Println("Age 10:", result8)
-	fmt.Println("Age 17:", result9)
-	fmt.Println("Age 35:", result10)
-	fmt.Println("Age 70:", result11)
+	fmt.Println("Age 10:", result8)  // Output: 1
+	fmt.Println("Age 17:", result9)  // Output: 2
+	fmt.Println("Age 35:", result10) // Output: 3
+	fmt.Println("Age 70:", result11) // Output: 4
 
+	// Lambda used in higher-order function
 	applyTwice := func(n int, f func(int) int) int {
 		return f(f(n))
 	}
@@ -82,8 +89,9 @@ func main() {
 		return x + 1
 	}
 	result13 := applyTwice(5, increment)
-	fmt.Println("Apply increment twice to 5:", result13)
+	fmt.Println("Apply increment twice to 5:", result13) // Output: 7
 
+	// Lambda with mixed operations
 	processor := func(x int, y int) int {
 		sum := x + y
 		product := x * y
@@ -94,6 +102,6 @@ func main() {
 	}
 	result14 := processor(3, 4)
 	result15 := processor(10, 2)
-	fmt.Println("Process 3, 4:", result14)
-	fmt.Println("Process 10, 2:", result15)
+	fmt.Println("Process 3, 4:", result14)  // Output: 12 (product wins)
+	fmt.Println("Process 10, 2:", result15) // Output: 20 (product wins)
 }

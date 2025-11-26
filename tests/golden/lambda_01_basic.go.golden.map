@@ -1,30 +1,8 @@
 {
   "version": 1,
+  "dingo_file": "tests/golden/lambda_01_basic.dingo",
+  "go_file": "tests/golden/lambda_01_basic.go.golden",
   "mappings": [
-    {
-      "generated_line": 5,
-      "generated_column": 0,
-      "original_line": 5,
-      "original_column": 0,
-      "processor_input_line": 0,
-      "length": 43
-    },
-    {
-      "generated_line": 6,
-      "generated_column": 0,
-      "original_line": 6,
-      "original_column": 0,
-      "processor_input_line": 0,
-      "length": 39
-    },
-    {
-      "generated_line": 7,
-      "generated_column": 0,
-      "original_line": 7,
-      "original_column": 0,
-      "processor_input_line": 0,
-      "length": 58
-    },
     {
       "generated_line": 1,
       "generated_column": 1,
@@ -32,6 +10,15 @@
       "original_column": 1,
       "processor_input_line": 0,
       "length": 12,
+      "name": "identity"
+    },
+    {
+      "generated_line": 2,
+      "generated_column": 1,
+      "original_line": 2,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
       "name": "identity"
     },
     {
@@ -44,30 +31,39 @@
       "name": "identity"
     },
     {
-      "generated_line": 5,
-      "generated_column": 2,
-      "original_line": 5,
-      "original_column": 2,
+      "generated_line": 4,
+      "generated_column": 1,
+      "original_line": 4,
+      "original_column": 1,
       "processor_input_line": 0,
-      "length": 42,
+      "length": 48,
+      "name": "identity"
+    },
+    {
+      "generated_line": 5,
+      "generated_column": 1,
+      "original_line": 5,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 44,
       "name": "identity"
     },
     {
       "generated_line": 6,
-      "generated_column": 2,
+      "generated_column": 1,
       "original_line": 6,
-      "original_column": 2,
+      "original_column": 1,
       "processor_input_line": 0,
-      "length": 38,
+      "length": 39,
       "name": "identity"
     },
     {
       "generated_line": 7,
-      "generated_column": 2,
+      "generated_column": 1,
       "original_line": 7,
-      "original_column": 2,
+      "original_column": 1,
       "processor_input_line": 0,
-      "length": 57,
+      "length": 58,
       "name": "identity"
     },
     {
@@ -77,6 +73,15 @@
       "original_column": 1,
       "processor_input_line": 0,
       "length": 1,
+      "name": "identity"
+    },
+    {
+      "generated_line": 9,
+      "generated_column": 1,
+      "original_line": 9,
+      "original_column": 1,
+      "processor_input_line": 0,
+      "length": 0,
       "name": "identity"
     }
   ]

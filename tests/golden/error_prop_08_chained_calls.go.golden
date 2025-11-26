@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"json"
 	"os"
 )
+import "encoding/json"
 
 type Config struct {
 	Host string
@@ -13,19 +14,17 @@ type Config struct {
 
 func pipeline(path string) (*Config, error) {
 	tmp, err := os.ReadFile(path)
-
+	// dingo:e:0
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
-	// dingo:e:1
 	var data = tmp
 	var cfg Config
 	tmp1, err1 := json.Unmarshal(data, &cfg)
-
+	// dingo:e:1
 	if err1 != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err1)
 	}
-	// dingo:e:1
 	var err = tmp1
 	return &cfg, nil
 }

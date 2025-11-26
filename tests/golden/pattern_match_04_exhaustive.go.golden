@@ -1,5 +1,10 @@
 package main
 
+// Test: Exhaustive pattern matching
+// Feature: Compiler ensures all cases covered
+// Complexity: intermediate
+
+// dingo:n:0
 type ColorTag uint8
 
 const (
@@ -42,28 +47,29 @@ func (e Color) IsRGB() bool {
 }
 func colorToHex(c Color) string {
 	var result interface{}
-
+	// DINGO_MATCH_START: c
 	scrutinee := c
 	switch scrutinee.tag {
 	case ColorTagRed:
-
+		// DINGO_PATTERN: Color_Red
 		result = "#FF0000"
 	case ColorTagGreen:
-
+		// DINGO_PATTERN: Color_Green
 		result = "#00FF00"
 	case ColorTagBlue:
-
+		// DINGO_PATTERN: Color_Blue
 		result = "#0000FF"
 	case ColorTagRGB{r, g, b}:
-
+		// DINGO_PATTERN: Color_RGB{r, g, b}
 		result = "#" + toHex(r) + toHex(g) + toHex(b)
 	}
 	panic("unreachable: match is exhaustive")
 	return result
+	// DINGO_MATCH_END
 
 }
 func toHex(n int) string {
-
+	// Simplified hex conversion
 	if n < 16 {
 		return "0" + string(n)
 	}

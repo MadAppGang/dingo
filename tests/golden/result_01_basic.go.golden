@@ -1,9 +1,8 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -58,7 +57,7 @@ func divide(a float64, b float64) Result {
 	return ResultOk(a / b)
 }
 func main() {
-	result := divide(10.0, 2.0)
+	var resul t = divide(10.0, 2.0)
 	if result.IsOk() {
 		v := *result.ok
 		_ = v

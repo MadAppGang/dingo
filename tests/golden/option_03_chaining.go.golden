@@ -1,5 +1,10 @@
 package main
 
+// Test: Option type with chaining (map, and_then)
+// Feature: Option type with method chaining
+// Complexity: advanced
+
+// dingo:n:0
 type OptionTag uint8
 
 const (
@@ -45,6 +50,12 @@ func (o Option) AndThen(fn func(int) Option) Option {
 		return o
 	}
 	panic("invalid Option state")
+}
+func (o Option) Unwrap() int {
+	if o.tag != OptionTagSome {
+		panic("called Unwrap on None")
+	}
+	return *o.some
 }
 func getValue(id int) Option {
 	if id > 0 {

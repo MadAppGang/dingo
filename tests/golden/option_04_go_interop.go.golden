@@ -1,5 +1,10 @@
 package main
 
+// Test: Option type interoperating with Go nil pointers
+// Feature: Option type + Go interop
+// Complexity: intermediate
+
+// dingo:n:0
 type OptionTag uint8
 
 const (
@@ -45,6 +50,12 @@ func (o Option) AndThen(fn func(string) Option) Option {
 		return o
 	}
 	panic("invalid Option state")
+}
+func (o Option) Unwrap() string {
+	if o.tag != OptionTagSome {
+		panic("called Unwrap on None")
+	}
+	return *o.some
 }
 func findInMap(m map[string]string, key string) Option {
 	val, exists := m[key]

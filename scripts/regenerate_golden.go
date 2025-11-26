@@ -19,8 +19,8 @@ type simpleLogger struct{}
 
 func (l *simpleLogger) Info(msg string)                  { fmt.Println("INFO:", msg) }
 func (l *simpleLogger) Error(msg string)                 { fmt.Println("ERROR:", msg) }
-func (l *simpleLogger) Debug(format string, args ...any) { fmt.Printf("DEBUG: "+format+"\n", args...) }
-func (l *simpleLogger) Warn(format string, args ...any)  { fmt.Printf("WARN: "+format+"\n", args...) }
+func (l *simpleLogger) Debugf(format string, args ...any) { fmt.Printf("DEBUG: "+format+"\n", args...) }
+func (l *simpleLogger) Warnf(format string, args ...any)  { fmt.Printf("WARN: "+format+"\n", args...) }
 
 func main() {
 	if len(os.Args) < 2 {

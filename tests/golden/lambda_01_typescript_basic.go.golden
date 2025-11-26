@@ -1,8 +1,10 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
+
+// Test: Basic TypeScript arrow syntax lambdas
+// Feature: Lambda functions (TypeScript style)
+// Complexity: basic
 
 type User struct {
 	Name string
@@ -10,19 +12,23 @@ type User struct {
 }
 
 func main() {
-
+	// Single param without parens (with explicit type)
 	double := func(x int) int { return x * 2 }
 	result1 := double(5)
 
+	// Single param with parens
 	triple := func(x int) int { return x * 3 }
 	result2 := triple(5)
 
+	// Multi-param
 	add := func(x int, y int) int { return x + y }
 	result3 := add(10, 20)
 
+	// With explicit types
 	multiply := func(x int, y int) { return x * y }
 	result4 := multiply(4, 7)
 
+	// In map/filter context (simulated with slice iteration)
 	numbers := []int{1, 2, 3, 4, 5}
 	var doubled []int
 	for _, n := range numbers {
@@ -30,10 +36,12 @@ func main() {
 		doubled = append(doubled, transform(n))
 	}
 
+	// Lambda in function call
 	apply := func(f func(int) int, val int) int {
 		return f(val)
 	}
 	result5 := apply(func(x int) int { return x + 10 }, 5)
 
+	// Use results to avoid unused errors
 	fmt.Println(result1, result2, result3, result4, doubled, result5)
 }

@@ -1,9 +1,12 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// Test: Result type with method chaining
+// Feature: Result type with map and and_then
+// Complexity: advanced
+
+// dingo:n:0
 type ResultTag uint8
 
 const (

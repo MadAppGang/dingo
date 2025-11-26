@@ -6,10 +6,9 @@ import (
 
 func parseInt(s string) (int, error) {
 	tmp, err := strconv.Atoi(s)
-
+	// dingo:e:0
 	if err != nil {
 		return 0, err
 	}
-
 	return tmp, nil
 }

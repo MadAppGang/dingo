@@ -1,9 +1,12 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
+// Test: 3-element tuple patterns with realistic parsing scenario
+// Feature: Tuple pattern destructuring
+// Complexity: intermediate
+
+// dingo:n:0
 type ResultTag uint8
 
 const (
@@ -52,16 +55,16 @@ func (r Result) AndThen(fn func(string) Result) Result {
 	panic("invalid Result state")
 }
 func parseConfig(host Result, port Result, timeout Result) string {
-
+	// DINGO_MATCH_START: (host, port, timeout)
 	elem0, elem1, elem2 := host, port, timeout
-
+	// DINGO_TUPLE_PATTERN: (Ok, Ok, Ok) | (Ok, Ok, Err) | (Ok, Err, _) | (Err, _, _) | ARITY: 3
 	switch elem0.tag {
 	case ResultTagErr:
 		switch elem1.tag {
 		default:
 			switch elem2.tag {
 			default:
-
+				// DINGO_TUPLE_ARM: (Err(e), _, _)
 				e := *elem0.err
 				return "Invalid host: " + e.Error()
 			}
@@ -71,7 +74,7 @@ func parseConfig(host Result, port Result, timeout Result) string {
 		case ResultTagErr:
 			switch elem2.tag {
 			default:
-
+				// DINGO_TUPLE_ARM: (Ok(h), Err(e), _)
 				h := *elem0.ok
 				e := *elem1.err
 				return "Host " + h + " but invalid port: " + e.Error()
@@ -79,13 +82,13 @@ func parseConfig(host Result, port Result, timeout Result) string {
 		case ResultTagOk:
 			switch elem2.tag {
 			case ResultTagErr:
-
+				// DINGO_TUPLE_ARM: (Ok(h), Ok(p), Err(e))
 				h := *elem0.ok
 				p := *elem1.ok
 				e := *elem2.err
 				return "Config: " + h + ":" + p + " __TUPLE_2__LITERAL__0b5d4307(default timeout, error: " + e.Error() + ")"
 			case ResultTagOk:
-
+				// DINGO_TUPLE_ARM: (Ok(h), Ok(p), Ok(t))
 				h := *elem0.ok
 				p := *elem1.ok
 				t := *elem2.ok
@@ -94,6 +97,7 @@ func parseConfig(host Result, port Result, timeout Result) string {
 		}
 	}
 	panic("unreachable: match is exhaustive")
+	// DINGO_MATCH_END
 
 }
 func main() {

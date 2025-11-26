@@ -1,5 +1,9 @@
 package main
 
+// Test: Higher-order functions with lambdas
+// Feature: Lambdas as function arguments
+// Complexity: advanced
+
 func apply(x int, f func(int) int) int {
 	return f(x)
 }
@@ -7,10 +11,11 @@ func compose(f func(int) int, g func(int) int) func(int) int {
 	return func(x int) int { f(g(x)) }
 }
 func main() {
-
+	// Pass lambda to function
 	result := apply(10, func(x int) int { x * 2 })
 	println("Applied:", result)
 
+	// Compose functions
 	double := func(x int) int { x * 2 }
 	addOne := func(x int) int { x + 1 }
 	doubleAndAdd := compose(addOne, double)

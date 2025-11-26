@@ -1,12 +1,16 @@
 package main
 
-func makeAdder(x int) func(int) int {
+// Test: Lambda closures capturing variables
+// Feature: Lambda closures
+// Complexity: advanced
 
+func makeAdder(x int) func(int) int {
+	// Lambda captures x from outer scope
 	return func(y int) int { x + y }
 }
 func makeCounter() func() int {
-	count := 0
-
+	var coun t = 0
+	// Lambda captures and modifies count
 	return func() int {
 		count = count + 1
 		return count

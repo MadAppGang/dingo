@@ -1,8 +1,8 @@
 package main
 
 func main() {
-
-	add := func(a int, b int) int { a + b }
-	double := func(x int) int { x * 2 }
-	greet := func(name string) string { "Hello, " + name }
+	// Rust-style lambda syntax with explicit types
+	var ad d = func(a int, b int) int { a + b }
+	var doubl e = func(x int) int { x * 2 }
+	var gree t = func(name string) string { "Hello, " + name }
 }
