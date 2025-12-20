@@ -117,24 +117,41 @@ dingo go hello.dingo
 
 **Sum Types with Pattern Matching:**
 
+For now this requires a `go.mod`, you might initialize one like that:
+
+```bash
+mkdir playground
+go mod init playground
+go get github.com/MadAppGang/dingo/pkg/dgo@main
+```
+
 ```go
-enum Result {
-    Ok(value: int),
-    Error(message: string)
-}
+package main
 
-func divide(a: int, b: int) Result {
+import (
+    "fmt"
+)
+
+func divide(a: int, b: int) Result[int, string] {
     if b == 0 {
-        return Error("division by zero")
+        return Err[int]("division by zero")
     }
-    return Ok(a / b)
+    return Ok[int, string](a / b)
 }
 
-result := divide(10, 2)
-match result {
-    Ok(value) => fmt.Printf("Success: %d\n", value),
-    Error(msg) => fmt.Printf("Error: %s\n", msg)
+func main() {
+    result := divide(10, 2)
+    match result {
+        Ok { value } => fmt.Printf("success: %d\n", value),
+        Err { msg } => fmt.Printf("error: %s\n", msg)
+    }
 }
+```
+
+Then you can run it:
+
+```bash
+dingo run pattern_matching.dingo
 ```
 
 **Safe Navigation and Null Coalescing (Phase 7 ✅):**
