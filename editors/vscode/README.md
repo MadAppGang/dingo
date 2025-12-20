@@ -1,6 +1,6 @@
 # Dingo Language Support for VS Code
 
-Syntax highlighting and language support for [Dingo](https://github.com/yourusername/dingo) - a modern meta-language for Go with Result types, error propagation, pattern matching, and more.
+Syntax highlighting and language support for [Dingo](https://github.com/MadAppGang/dingo) - a modern meta-language for Go with Result types, error propagation, pattern matching, and more.
 
 ## Features
 
@@ -98,13 +98,21 @@ Search for "Dingo" in the VS Code Extensions marketplace.
 
 1. Clone the Dingo repository:
    ```bash
-   git clone https://github.com/yourusername/dingo.git
+   git clone https://github.com/MadAppGang/dingo.git
    ```
 
-2. Copy the extension to your VS Code extensions folder:
+2. Copy or symlink the extension to your VS Code extensions folder:
    ```bash
    cp -r dingo/editors/vscode ~/.vscode/extensions/dingo-language
    ```
+
+   or:
+
+   ```bash
+   ln -s $(pwd)/editors/vscode ~/.vscode/extensions/dingo-language
+   ```
+
+   Replace `~/.vscode/` with `~/.vscode-oss` if your using vscodium.
 
 3. Reload VS Code
 
@@ -328,7 +336,7 @@ If you see "dingo-lsp binary not found":
 
 ## Contributing
 
-See the main [Dingo repository](https://github.com/yourusername/dingo) for contribution guidelines.
+See the main [Dingo repository](https://github.com/MadAppGang/dingo) for contribution guidelines.
 
 ## License
 
@@ -336,6 +344,6 @@ Same as Dingo project (see root LICENSE file).
 
 ## Resources
 
-- [Dingo Documentation](https://github.com/yourusername/dingo)
+- [Dingo Documentation](https://github.com/MadAppGang/dingo)
 - [VS Code Language Extension Guide](https://code.visualstudio.com/api/language-extensions/overview)
 - [TextMate Grammar Guide](https://macromates.com/manual/en/language_grammars)
