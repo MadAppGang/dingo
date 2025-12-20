@@ -82,15 +82,7 @@ Want pattern matching? Enable it. Want sum types? Already working. Think you can
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/MadAppGang/dingo.git
-cd dingo
-
-# Build the compiler
-go build -o dingo ./cmd/dingo
-
-# Add to PATH (optional)
-export PATH=$PATH:$(pwd)
+go install github.com/MadAppGang/dingo/cmd/dingo@main
 ```
 
 ### Your First Dingo Program
