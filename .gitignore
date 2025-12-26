@@ -2,6 +2,7 @@
 /dingo
 /todo_cli
 /07_tuples
+/geometry
 *_bin
 *.test
 *.out
@@ -40,6 +41,7 @@ editors/vscode/.vscode-test/
 *.tmp
 *.log
 *.bak
+demo.db
 
 # Generated files
 *.gen.go
