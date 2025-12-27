@@ -3,6 +3,7 @@
 /todo_cli
 /07_tuples
 /geometry
+/http_handler
 *_bin
 *.test
 *.out
