@@ -100,7 +100,7 @@ Search for "Dingo" in the VS Code Extensions marketplace.
 
 1. Clone the Dingo repository:
    ```bash
-   git clone https://github.com/yourusername/dingo.git
+   git clone https://github.com/MadAppGang/dingo.git
    ```
 
 2. Copy the extension to your VS Code extensions folder:
