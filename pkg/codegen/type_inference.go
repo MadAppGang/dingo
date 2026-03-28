@@ -303,6 +303,49 @@ func findInnermostEnclosingFunc(src []byte, exprPos int) enclosingFuncInfo {
 	return enclosingFuncInfo{found: true, name: best.name, results: best.results}
 }
 
+// InferEnclosingFunctionNamedReturnParams returns the set of named return
+// parameter identifiers for the innermost function enclosing exprPos.
+// Returns nil if the function has no named returns or cannot be located.
+func InferEnclosingFunctionNamedReturnParams(src []byte, exprPos int) map[string]bool {
+	info := findInnermostEnclosingFunc(src, exprPos)
+	if !info.found || info.results == nil {
+		return nil
+	}
+	names := make(map[string]bool)
+	for _, field := range info.results.List {
+		for _, id := range field.Names {
+			if id.Name != "" && id.Name != "_" {
+				names[id.Name] = true
+			}
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	return names
+}
+
+// InferEnclosingFunctionNamedErrorReturn returns the name of the named return parameter
+// whose type is `error`, for the innermost function enclosing exprPos.
+// Returns "" if no such named return exists or the function cannot be located.
+func InferEnclosingFunctionNamedErrorReturn(src []byte, exprPos int) string {
+	info := findInnermostEnclosingFunc(src, exprPos)
+	if !info.found || info.results == nil {
+		return ""
+	}
+	for _, field := range info.results.List {
+		// Check if this field's type is the built-in "error" interface
+		if ident, ok := field.Type.(*ast.Ident); ok && ident.Name == "error" {
+			for _, id := range field.Names {
+				if id.Name != "" && id.Name != "_" {
+					return id.Name
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // InferEnclosingFunctionReturnsResult checks if the enclosing function returns a Result type.
 // Returns the Result's T type if it does, empty string otherwise.
 // For example, for `func foo() Result[User, error]`, returns "User".

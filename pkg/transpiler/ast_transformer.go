@@ -707,9 +707,33 @@ func transformErrorPropStatements(src []byte, originalSrc []byte, filename strin
 	result := src
 	var lineMappings []sourcemap.LineMapping
 	var columnMappings []sourcemap.ColumnMapping
-	// Start counter at len(locations) and decrement, so first statement in source
-	// gets tmp/err, second gets tmp1/err1, etc. (we process end-to-beginning)
-	counter := len(locations)
+	// Count only the locations that generate fresh (counter-named) variables.
+	// Locations that use named return parameters directly (isPlainAssign with a named error
+	// return, or bare statements whose errVar is a named return) do NOT consume a counter slot.
+	// This ensures: first counter-consuming statement in source gets tmp/err (no suffix),
+	// second gets tmp1/err1, etc.
+	counterConsuming := 0
+	for _, loc := range locations {
+		switch loc.Kind {
+		case ast.StmtErrorPropAssign, ast.StmtErrorPropLet:
+			if loc.IsPlainAssign {
+				// Uses named error return directly — no counter slot needed
+				if codegen.InferEnclosingFunctionNamedErrorReturn(src, loc.ExprStart) == "" {
+					counterConsuming++
+				}
+			} else {
+				counterConsuming++
+			}
+		case ast.StmtErrorPropBare:
+			// Uses named error return directly when the function has one — no counter slot needed
+			if codegen.InferEnclosingFunctionNamedErrorReturn(src, loc.ExprStart) == "" {
+				counterConsuming++
+			}
+		default:
+			// Return statements and other kinds do not generate new variables
+		}
+	}
+	counter := counterConsuming
 
 	// First pass: calculate all deltas to know final positions
 	// We need to track byte deltas from transforms to calculate correct Go positions
@@ -764,7 +788,7 @@ func transformErrorPropStatements(src []byte, originalSrc []byte, filename strin
 			if loc.TupleLHS != "" {
 				varNameOrTuple = loc.TupleLHS
 			}
-			generated = generateErrorPropStatementAdvanced(result, exprBytes, loc.ExprStart, varNameOrTuple, returnTypes, &counter, loc.ErrorKind, loc.ErrorContext, loc.LambdaParam, lambdaBody, resolver)
+			generated = generateErrorPropStatementAdvanced(result, exprBytes, loc.ExprStart, varNameOrTuple, returnTypes, &counter, loc.ErrorKind, loc.ErrorContext, loc.LambdaParam, lambdaBody, resolver, loc.IsPlainAssign)
 			// Calculate LHS lengths for column mapping
 			// Dingo: "varName := " or "a, b := " for tuples
 			dingoLHSLen = len(varNameOrTuple) + 4 // " := " or " = " (always 4 with leading space consideration)
@@ -946,7 +970,7 @@ func transformErrorPropStatements(src []byte, originalSrc []byte, filename strin
 //	tmp := expr; if tmp.IsErr() { return dgo.Err[T, E](tmp.MustErr()) }; data := tmp.MustOk()
 //
 // Context and Lambda variants wrap the error appropriately.
-func generateErrorPropStatementAdvanced(src []byte, expr []byte, exprPos int, varName string, returnTypes []string, counter *int, errorKind ast.ErrorPropKind, errorContext string, lambdaParam string, lambdaBody []byte, resolver *codegen.TypeResolver) []byte {
+func generateErrorPropStatementAdvanced(src []byte, expr []byte, exprPos int, varName string, returnTypes []string, counter *int, errorKind ast.ErrorPropKind, errorContext string, lambdaParam string, lambdaBody []byte, resolver *codegen.TypeResolver, isPlainAssign bool) []byte {
 	// Check if expression returns a Result type (use resolver for cross-file types)
 	isResult, exprOkType, exprErrType := codegen.InferExprReturnsResultWithResolver(src, expr, exprPos, resolver)
 
@@ -955,7 +979,7 @@ func generateErrorPropStatementAdvanced(src []byte, expr []byte, exprPos int, va
 	}
 
 	// Original tuple-based error propagation
-	return generateTupleErrorPropStatement(expr, varName, returnTypes, counter, errorKind, errorContext, lambdaParam, lambdaBody, src, exprPos)
+	return generateTupleErrorPropStatement(expr, varName, returnTypes, counter, errorKind, errorContext, lambdaParam, lambdaBody, src, exprPos, isPlainAssign)
 }
 
 // generateResultErrorPropStatement generates code for Result[T, E] error propagation.
@@ -1072,35 +1096,63 @@ func generateResultErrorPropStatement(expr []byte, varName string, counter *int,
 // Pattern for Result-returning enclosing function:
 //
 //	tmp, err := expr; if err != nil { return dgo.Err[T, E](err) }; data := tmp
-func generateTupleErrorPropStatement(expr []byte, varName string, returnTypes []string, counter *int, errorKind ast.ErrorPropKind, errorContext string, lambdaParam string, lambdaBody []byte, src []byte, exprPos int) []byte {
+func generateTupleErrorPropStatement(expr []byte, varName string, returnTypes []string, counter *int, errorKind ast.ErrorPropKind, errorContext string, lambdaParam string, lambdaBody []byte, src []byte, exprPos int, isPlainAssign bool) []byte {
 	var buf bytes.Buffer
 
 	// Check if varName contains comma - if so, it's a tuple LHS like "a, b"
 	isTupleLHS := strings.Contains(varName, ",")
 
+	// When isPlainAssign is true, the user wrote `varName = expr?` (plain = not :=).
+	// This happens when varName is a named return parameter.
+	// In that case, use the actual named error return variable and plain = assignment,
+	// instead of counter-generated names and :=.
+	var namedErrVar string
+	if isPlainAssign {
+		namedErrVar = codegen.InferEnclosingFunctionNamedErrorReturn(src, exprPos)
+	}
+
 	// Generate unique variable names
 	var tmpVar, errVar string
-	if *counter == 1 {
-		tmpVar = "tmp"
-		errVar = "err"
+	if namedErrVar != "" {
+		// Plain assign with named return: use named error return directly, don't consume counter slot.
+		// The counter is only consumed for generated (counter-named) variables to keep numbering stable.
+		errVar = namedErrVar
 	} else {
-		tmpVar = fmt.Sprintf("tmp%d", *counter-1)
-		errVar = fmt.Sprintf("err%d", *counter-1)
+		if *counter == 1 {
+			tmpVar = "tmp"
+			errVar = "err"
+		} else {
+			tmpVar = fmt.Sprintf("tmp%d", *counter-1)
+			errVar = fmt.Sprintf("err%d", *counter-1)
+		}
+		*counter--
 	}
-	*counter--
 
 	// Check if enclosing function returns Result[T, E]
 	// If so, we need to return dgo.Err[T, E](err) instead of tuple
 	enclosingReturnsResult, enclosingOkType, enclosingErrType := codegen.InferEnclosingFunctionResultTypes(src, exprPos)
 
-	// For tuple LHS, generate: a, b, err := expr
-	// For single LHS, generate: tmp, err := expr
+	// For tuple LHS, generate: a, b, err := expr (or a, b, err = expr for plain assign)
+	// For single LHS with plain assign (named return), generate: varName, err = expr
+	// For single LHS with define, generate: tmp, err := expr
 	if isTupleLHS {
 		// Tuple LHS: fullKey, keyHash, err := util.GeneratePersonalKey()
+		declOp := " := "
+		if isPlainAssign {
+			declOp = " = "
+		}
 		buf.WriteString(varName)
 		buf.WriteString(", ")
 		buf.WriteString(errVar)
-		buf.WriteString(" := ")
+		buf.WriteString(declOp)
+		buf.Write(expr)
+		buf.WriteByte('\n')
+	} else if isPlainAssign && namedErrVar != "" {
+		// Single LHS with named return: result, err = expr
+		buf.WriteString(varName)
+		buf.WriteString(", ")
+		buf.WriteString(errVar)
+		buf.WriteString(" = ")
 		buf.Write(expr)
 		buf.WriteByte('\n')
 	} else {
@@ -1177,11 +1229,11 @@ func generateTupleErrorPropStatement(expr []byte, varName string, returnTypes []
 		}
 	}
 
-	buf.WriteString("\n}\n")
-
 	// For tuple LHS, variables are already assigned (fullKey, keyHash, err := expr)
-	// For single LHS, we need: varName := tmp
-	if !isTupleLHS {
+	// For single LHS with plain assign (named return), variables are also already assigned (varName, err = expr)
+	// For single LHS with define, we need: varName := tmp
+	if !isTupleLHS && !(isPlainAssign && namedErrVar != "") {
+		buf.WriteString("\n}\n")
 		buf.WriteString(varName)
 		if varName == "_" {
 			buf.WriteString(" = ")
@@ -1189,6 +1241,10 @@ func generateTupleErrorPropStatement(expr []byte, varName string, returnTypes []
 			buf.WriteString(" := ")
 		}
 		buf.WriteString(tmpVar)
+	} else {
+		// No trailing assignment — end the if block without an extra newline
+		// to avoid introducing a blank line before the next source statement.
+		buf.WriteString("\n}")
 	}
 
 	return buf.Bytes()
@@ -1698,14 +1754,28 @@ func generateResultErrorPropBare(expr []byte, counter *int, errorKind ast.ErrorP
 func generateTupleErrorPropBare(src []byte, expr []byte, exprPos int, returnTypes []string, counter *int, errorKind ast.ErrorPropKind, errorContext string, lambdaParam string, lambdaBody []byte, resolver *codegen.TypeResolver) []byte {
 	var buf bytes.Buffer
 
+	// Check if there is a named error return parameter in the enclosing function.
+	// If so, use that variable name directly (do NOT consume a counter slot).
+	// This avoids "no new variables on left side of :=" compile errors.
+	namedErrReturn := codegen.InferEnclosingFunctionNamedErrorReturn(src, exprPos)
+
 	// Generate unique variable names
 	var errVar string
-	if *counter == 1 {
-		errVar = "err"
+	var errDeclOp string
+	if namedErrReturn != "" {
+		// Use the named error return directly — no new variable needed
+		errVar = namedErrReturn
+		errDeclOp = " = "
+		// Do NOT decrement counter: this location uses named returns, not a fresh counter slot
 	} else {
-		errVar = fmt.Sprintf("err%d", *counter-1)
+		if *counter == 1 {
+			errVar = "err"
+		} else {
+			errVar = fmt.Sprintf("err%d", *counter-1)
+		}
+		*counter--
+		errDeclOp = " := "
 	}
-	*counter--
 
 	// Detect return count: 1 = single (error only), 2+ = multi (T, error), -1 = unknown
 	// Use the resolver for cross-file type resolution if available
@@ -1719,15 +1789,15 @@ func generateTupleErrorPropBare(src []byte, expr []byte, exprPos int, returnType
 	// because the user is explicitly not capturing any non-error return value.
 	// If a function returns (T, error) but user wrote a bare `foo()?`, they want to ignore T.
 	if returnCount == 1 || returnCount == -1 {
-		// Single return or unknown: err := expr
+		// Single return or unknown: err := expr (or err = expr for named returns)
 		// For bare statements, single-return is safer default (avoids "assignment mismatch" errors)
 		buf.WriteString(errVar)
-		buf.WriteString(" := ")
+		buf.WriteString(errDeclOp)
 	} else {
-		// Multi-return (returnCount > 1): _, err := expr
+		// Multi-return (returnCount > 1): _, err := expr (or _, err = expr for named returns)
 		buf.WriteString("_, ")
 		buf.WriteString(errVar)
-		buf.WriteString(" := ")
+		buf.WriteString(errDeclOp)
 	}
 	buf.Write(expr)
 	buf.WriteByte('\n')

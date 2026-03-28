@@ -1,0 +1,37 @@
+package main
+
+// REGRESSION: named return error prop generates := instead of = — Fixed in /dev:fix session dev-fix-20260328-184322-392f98a3
+
+// mayFail is a helper returning only an error, used in the BARE sub-bug case.
+func mayFail() error {
+	return nil
+}
+
+// getData is a helper returning a value and an error, used in the STATEMENT sub-bug case.
+func getData() (string, error) {
+	return "hello", nil
+}
+
+// wrapper demonstrates the BARE sub-bug:
+// `mayFail()?` inside a function with named return `err error` must generate
+// `err = mayFail()` (plain assignment), NOT `err := mayFail()` (short declaration).
+func wrapper() (err error) {
+	mayFail()?
+	return nil
+}
+
+// fetch demonstrates the STATEMENT sub-bug:
+// `result = getData()?` inside a function with named returns `(result string, err error)`
+// must generate `result, err = getData()` (plain assignment on both sides),
+// NOT `_, err := getData()` (which discards result and re-declares err).
+func fetch() (result string, err error) {
+	result = getData()?
+	return
+}
+
+// normal has NO named return parameters — regression guard to ensure the common
+// case still generates the short-declaration `:=` form as expected.
+func normal() (string, error) {
+	val := getData()?
+	return val, nil
+}

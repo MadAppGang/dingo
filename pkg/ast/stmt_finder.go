@@ -40,6 +40,11 @@ type StmtLocation struct {
 	LambdaBodyStart int           // Start byte position of lambda body
 	LambdaBodyEnd   int           // End byte position of lambda body
 
+	// IsPlainAssign is true when the LHS was written with = (not :=).
+	// Used to emit plain assignment (=) instead of short declaration (:=) in generated code,
+	// which is required when the target variable is a named return parameter.
+	IsPlainAssign bool
+
 	// Source location for LSP (1-indexed, like GuardLocation)
 	Line   int // 1-indexed line number of the statement
 	Column int // 1-indexed column number
@@ -118,6 +123,19 @@ func FindErrorPropStatements(src []byte) ([]StmtLocation, error) {
 				if loc != nil {
 					loc.Kind = StmtErrorPropAssign
 					loc.VarName = t.Lit
+					locations = append(locations, *loc)
+					// Skip past this statement
+					i = findTokenAtByte(tokens, loc.End)
+				}
+				continue
+			}
+			// Check for "ident =" plain assignment (named return params or pre-declared vars)
+			if i+1 < len(tokens) && tokens[i+1].Kind == tokenizer.ASSIGN {
+				loc := scanForQuestionMark(tokens, i)
+				if loc != nil {
+					loc.Kind = StmtErrorPropAssign
+					loc.VarName = t.Lit
+					loc.IsPlainAssign = true
 					locations = append(locations, *loc)
 					// Skip past this statement
 					i = findTokenAtByte(tokens, loc.End)
