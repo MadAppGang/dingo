@@ -761,8 +761,9 @@ func findEnclosingFunctionFallback(src []byte, exprPos int) *ast.FuncDecl {
 	file := fset.AddFile("", fset.Base(), len(src))
 
 	type funcInfo struct {
-		pos     int
-		isNamed bool // true if it's a named function (declaration)
+		pos        int
+		isNamed    bool // true if it's a named function (declaration)
+		braceDepth int  // brace depth at the point the FUNC token was seen
 	}
 	var funcs []funcInfo
 
@@ -770,6 +771,8 @@ func findEnclosingFunctionFallback(src []byte, exprPos int) *ast.FuncDecl {
 
 	var lastTok token.Token
 	var afterFuncSawReceiver bool // tracks if we saw a receiver after FUNC
+	var braceDepth int            // current brace nesting depth
+	var braceDepthAtExpr int      // brace depth when we reach exprPos
 	for {
 		pos, tok, _ := s.Scan()
 		if tok == token.EOF {
@@ -777,7 +780,15 @@ func findEnclosingFunctionFallback(src []byte, exprPos int) *ast.FuncDecl {
 		}
 		offset := fset.Position(pos).Offset
 		if offset > exprPos {
-			break // Stop when we pass exprPos
+			// Capture the brace depth at the expression position before stopping
+			braceDepthAtExpr = braceDepth
+			break
+		}
+		// Update brace depth before recording per-token state
+		if tok == token.LBRACE {
+			braceDepth++
+		} else if tok == token.RBRACE {
+			braceDepth--
 		}
 		if lastTok == token.FUNC && tok == token.IDENT {
 			// Previous token was FUNC, this is a name → function declaration (no receiver)
@@ -796,7 +807,7 @@ func findEnclosingFunctionFallback(src []byte, exprPos int) *ast.FuncDecl {
 			afterFuncSawReceiver = false
 		}
 		if tok == token.FUNC {
-			funcs = append(funcs, funcInfo{pos: offset, isNamed: false})
+			funcs = append(funcs, funcInfo{pos: offset, isNamed: false, braceDepth: braceDepth})
 			afterFuncSawReceiver = false
 		}
 		lastTok = tok
@@ -806,18 +817,34 @@ func findEnclosingFunctionFallback(src []byte, exprPos int) *ast.FuncDecl {
 		return nil
 	}
 
-	// Find the last NAMED function before exprPos (skip anonymous functions)
+	// Find the innermost enclosing function: the last FUNC whose brace depth at the
+	// time it was seen is less than braceDepthAtExpr. This means its body is still
+	// open at exprPos, and works for both named functions and anonymous closures.
 	var lastFunc int = -1
+	var lastFuncIsNamed bool
 	for i := len(funcs) - 1; i >= 0; i-- {
-		if funcs[i].isNamed {
+		if funcs[i].braceDepth < braceDepthAtExpr {
 			lastFunc = funcs[i].pos
+			lastFuncIsNamed = funcs[i].isNamed
 			break
 		}
 	}
 
 	if lastFunc == -1 {
-		// No named functions found, try the last function anyway
+		// No function found via brace depth; fall back to last entry
 		lastFunc = funcs[len(funcs)-1].pos
+		lastFuncIsNamed = funcs[len(funcs)-1].isNamed
+	}
+
+	// For anonymous functions (closures), we know they have no return types
+	// (a void closure cannot propagate errors). Return a synthetic FuncDecl
+	// with a "(closure)" name and nil results to signal this to the caller.
+	if !lastFuncIsNamed {
+		syntheticName := &ast.Ident{Name: "(closure)"}
+		return &ast.FuncDecl{
+			Name: syntheticName,
+			Type: &ast.FuncType{Results: nil},
+		}
 	}
 
 	// Find the opening brace using a new scanner with new file

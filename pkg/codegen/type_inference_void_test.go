@@ -162,6 +162,40 @@ func wrapper() error {
 			wantCanProp:  false,
 			wantFuncName: "(closure)",
 		},
+
+		// REGRESSION: void closure ? detection — Fixed in /dev:fix session dev-fix-20260328-183924-7344b587
+		// The ? token prevents go/parser from parsing the file, forcing the fallback scanner path.
+		// The fallback path (findEnclosingFunctionFallback) previously only found named functions,
+		// so it would incorrectly identify the outer named function instead of the innermost closure.
+		{
+			name: "? inside void closure nested in error-returning function - fallback path",
+			src: `package main
+
+func wrapper() error {
+	f := func() {
+		doSomething()? // MARKER
+	}
+	_ = f
+	return nil
+}`,
+			exprMarker:   "MARKER",
+			wantCanProp:  false,
+			wantFuncName: "(closure)",
+		},
+		{
+			name: "? inside error-returning closure nested in void function - fallback path",
+			src: `package main
+
+func main() {
+	f := func() error {
+		doSomething()? // MARKER
+		return nil
+	}
+	_ = f
+}`,
+			exprMarker:  "MARKER",
+			wantCanProp: true,
+		},
 	}
 
 	for _, tt := range tests {
