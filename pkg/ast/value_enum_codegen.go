@@ -36,6 +36,7 @@ func NewValueEnumCodeGen() *ValueEnumCodeGen {
 //	const (
 //		contextKeyUserID contextKey = "user_id"
 //	)
+//
 // GenerateResult wraps the output with optional error
 type GenerateResult struct {
 	Output []byte

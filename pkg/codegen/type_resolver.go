@@ -11,9 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/MadAppGang/dingo/pkg/typeloader"
 )
+
+// profileTranspile enables timing output for type resolution stages.
+// Set DINGO_PROFILE=1 to enable.
+var profileTranspile = os.Getenv("DINGO_PROFILE") == "1"
 
 // globalTypeCache caches type loading results across multiple file transpilations.
 // This is critical for performance - packages.Load() is very expensive (1+ second).
@@ -151,8 +156,33 @@ func NewTypeResolver(src []byte, workingDir string) (*TypeResolver, error) {
 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
 	}
 
+	// Try fast gcexportdata-based importer first, fall back to source importer.
+	// The gc export importer reads pre-compiled type data from the build cache,
+	// which is ~1000x faster than the source importer for large dependency graphs.
+	var typeImporter types.Importer
+	if len(imports) > 0 {
+		var gcStart time.Time
+		if profileTranspile {
+			gcStart = time.Now()
+		}
+		gcImp, gcErr := NewGCExportImporter(fset, workingDir, imports...)
+		if gcErr == nil {
+			typeImporter = gcImp
+			if profileTranspile {
+				fmt.Fprintf(os.Stderr, "    [PROFILE] gcExportImporter created (%d exports) %v\n", gcImp.ExportCount(), time.Since(gcStart))
+			}
+		} else {
+			if profileTranspile {
+				fmt.Fprintf(os.Stderr, "    [PROFILE] gcExportImporter failed, falling back to source: %v\n", gcErr)
+			}
+		}
+	}
+	if typeImporter == nil {
+		typeImporter = importer.ForCompiler(fset, "source", nil)
+	}
+
 	config := types.Config{
-		Importer: importer.ForCompiler(fset, "source", nil),
+		Importer: typeImporter,
 		Error: func(err error) {
 			// Ignore errors - we want partial type info
 			// Dingo syntax may cause type mismatches
