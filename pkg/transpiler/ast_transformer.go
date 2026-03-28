@@ -734,6 +734,17 @@ func transformErrorPropStatements(src []byte, originalSrc []byte, filename strin
 		// Infer return types from enclosing function
 		returnTypes := codegen.InferReturnTypes(result, loc.Start)
 
+		// Check if enclosing function can propagate errors
+		canPropagate, funcName := codegen.CanPropagateError(result, loc.Start)
+		if !canPropagate {
+			return nil, nil, nil, fmt.Errorf(
+				"cannot use ? operator in function %q which has no error return type; "+
+					"refactor error-prone code into a helper function that returns error, "+
+					"or handle the error explicitly with if err != nil { ... }",
+				funcName,
+			)
+		}
+
 		// Extract lambda body if present (using token positions from finder)
 		var lambdaBody []byte
 		if loc.ErrorKind == ast.ErrorPropLambda && loc.LambdaBodyEnd > loc.LambdaBodyStart {

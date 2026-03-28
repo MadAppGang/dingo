@@ -167,7 +167,7 @@ func InferReturnTypes(src []byte, exprPos int) []string {
 
 	returnTypes := parseReturnTypes(funcDecl)
 	if len(returnTypes) == 0 {
-		return []string{"nil"}
+		return []string{}
 	}
 
 	// Convert types to zero values (excluding the last one which is err)
@@ -188,6 +188,42 @@ func InferReturnTypeNames(src []byte, exprPos int) []string {
 		return nil
 	}
 	return parseReturnTypes(funcDecl)
+}
+
+// CanPropagateError checks if the enclosing function at the given position can propagate errors.
+// Returns (true, "") if the function returns error or (T, error) or Result[T,E].
+// Returns (false, funcName) if the function has no error return (void, or non-error returns only).
+// Returns (true, "") if unable to determine (conservative - don't block compilation).
+func CanPropagateError(src []byte, exprPos int) (bool, string) {
+	funcDecl := findEnclosingFunction(src, exprPos)
+	if funcDecl == nil {
+		// Can't determine enclosing function - be conservative, don't block
+		return true, ""
+	}
+
+	funcName := ""
+	if funcDecl.Name != nil {
+		funcName = funcDecl.Name.Name
+	}
+
+	returnTypes := parseReturnTypes(funcDecl)
+	if len(returnTypes) == 0 {
+		// Void function - cannot propagate errors
+		return false, funcName
+	}
+
+	// Check if any return type is "error" or a Result type
+	for _, rt := range returnTypes {
+		if rt == "error" {
+			return true, ""
+		}
+		if IsResultType(rt) {
+			return true, ""
+		}
+	}
+
+	// Has return types but none is error or Result
+	return false, funcName
 }
 
 // InferEnclosingFunctionReturnsResult checks if the enclosing function returns a Result type.
