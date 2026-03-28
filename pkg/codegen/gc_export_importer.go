@@ -106,11 +106,13 @@ func NewGCExportImporter(fset *token.FileSet, workingDir string, patterns ...str
 
 	cmd := exec.Command("go", args...)
 	cmd.Dir = workingDir
-	cmd.Env = append(os.Environ(), "GOFLAGS=") // Clear GOFLAGS to avoid interference
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("gcExportImporter: go list failed: %w", err)
+		return nil, fmt.Errorf("gcExportImporter: go list failed: %w (stderr: %s)", err, stderr.String())
 	}
 
 	// Parse the streaming JSON output (one object per package, NOT a JSON array)
