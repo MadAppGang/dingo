@@ -71,7 +71,7 @@ Built with [Astro](https://astro.build) for optimal performance and SEO.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/dingo.git
+   git clone https://github.com/MadAppGang/dingo.git
    cd dingo/langingpage
    ```
 
