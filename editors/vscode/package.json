@@ -5,6 +5,7 @@
   "version": "0.3.1",
   "publisher": "MadAppGang",
   "icon": "dingo-logo.png",
+  "license": "Apache-2.0",
   "homepage": "https://dingolang.com",
   "repository": {
     "type": "git",

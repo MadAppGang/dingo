@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/MadAppGang/dingo"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "main": "bindings/node",
   "types": "bindings/node",
   "files": [

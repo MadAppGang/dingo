@@ -146,4 +146,4 @@ Uses [IntelliJ Platform Gradle Plugin 2.x](https://plugins.jetbrains.com/docs/in
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE) file.
+Apache License 2.0 - see [LICENSE](../../LICENSE) file.

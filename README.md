@@ -7,7 +7,7 @@
 **Go that escaped.**
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev)
-[![License](https://img.shields.io/badge/License-TBD-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Development Status](https://img.shields.io/badge/Status-Active%20Development-orange)](https://github.com/MadAppGang/dingo)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -1836,7 +1836,7 @@ And maybe, just maybe, making your codebase a little bit nicer to work with.
 
 ---
 
-**License:** TBD (probably MIT or Apache 2.0) • **Version:** 0.1.0-alpha • **Status:** Active Development
+**License:** [Apache 2.0](LICENSE) • **Version:** 0.1.0-alpha • **Status:** Active Development
 
 [Website](https://dingolang.com) • [GitHub](https://github.com/MadAppGang/dingo) • [Issues](https://github.com/MadAppGang/dingo/issues) • [Changelog](CHANGELOG.md) • [Features](features/INDEX.md)
 

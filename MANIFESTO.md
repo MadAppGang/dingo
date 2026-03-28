@@ -748,6 +748,6 @@ Both are open. Both evolve. Both belong to the community.
 
 *Go that escaped.*
 
-**License:** TBD (probably MIT or Apache 2.0)
+**License:** [Apache 2.0](LICENSE)
 **Website:** [dingolang.com](https://dingolang.com)
 **Current Status:** See [README.md](README.md)
