@@ -190,29 +190,37 @@ func InferReturnTypeNames(src []byte, exprPos int) []string {
 	return parseReturnTypes(funcDecl)
 }
 
-// CanPropagateError checks if the enclosing function at the given position can propagate errors.
+// CanPropagateError checks if the innermost enclosing function at the given position
+// can propagate errors. This checks both named functions (FuncDecl) and function
+// literals/closures (FuncLit), using whichever is more tightly enclosing.
 // Returns (true, "") if the function returns error or (T, error) or Result[T,E].
 // Returns (false, funcName) if the function has no error return (void, or non-error returns only).
 // Returns (true, "") if unable to determine (conservative - don't block compilation).
 func CanPropagateError(src []byte, exprPos int) (bool, string) {
-	funcDecl := findEnclosingFunction(src, exprPos)
-	if funcDecl == nil {
-		// Can't determine enclosing function - be conservative, don't block
+	info := findInnermostEnclosingFunc(src, exprPos)
+	if !info.found {
 		return true, ""
 	}
 
-	funcName := ""
-	if funcDecl.Name != nil {
-		funcName = funcDecl.Name.Name
+	// Extract return type names from the result field list
+	var returnTypes []string
+	if info.results != nil && info.results.NumFields() > 0 {
+		for _, field := range info.results.List {
+			typeName := exprToTypeName(field.Type)
+			if len(field.Names) > 0 {
+				for range field.Names {
+					returnTypes = append(returnTypes, typeName)
+				}
+			} else {
+				returnTypes = append(returnTypes, typeName)
+			}
+		}
 	}
 
-	returnTypes := parseReturnTypes(funcDecl)
 	if len(returnTypes) == 0 {
-		// Void function - cannot propagate errors
-		return false, funcName
+		return false, info.name
 	}
 
-	// Check if any return type is "error" or a Result type
 	for _, rt := range returnTypes {
 		if rt == "error" {
 			return true, ""
@@ -222,8 +230,77 @@ func CanPropagateError(src []byte, exprPos int) (bool, string) {
 		}
 	}
 
-	// Has return types but none is error or Result
-	return false, funcName
+	return false, info.name
+}
+
+// enclosingFuncInfo holds the return type info for the innermost enclosing function.
+// found distinguishes "no function found" from "void function found".
+type enclosingFuncInfo struct {
+	found   bool
+	name    string
+	results *ast.FieldList
+}
+
+// findInnermostEnclosingFunc finds the innermost function (FuncDecl or FuncLit)
+// that contains exprPos. Returns info about the enclosing function.
+// If no enclosing function is found, returns {found: false}.
+func findInnermostEnclosingFunc(src []byte, exprPos int) enclosingFuncInfo {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	if err != nil {
+		// Source has Dingo syntax (?) that prevents Go parsing.
+		// Fall back to named-function-only detection via scanner.
+		funcDecl := findEnclosingFunction(src, exprPos)
+		if funcDecl == nil {
+			return enclosingFuncInfo{}
+		}
+		name := ""
+		if funcDecl.Name != nil {
+			name = funcDecl.Name.Name
+		}
+		return enclosingFuncInfo{found: true, name: name, results: funcDecl.Type.Results}
+	}
+
+	type candidate struct {
+		name    string
+		results *ast.FieldList
+		start   int
+	}
+
+	var best *candidate
+	ast.Inspect(f, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		switch fn := n.(type) {
+		case *ast.FuncDecl:
+			start := fset.Position(fn.Pos()).Offset
+			end := fset.Position(fn.End()).Offset
+			if start <= exprPos && exprPos <= end {
+				name := ""
+				if fn.Name != nil {
+					name = fn.Name.Name
+				}
+				if best == nil || start > best.start {
+					best = &candidate{name: name, results: fn.Type.Results, start: start}
+				}
+			}
+		case *ast.FuncLit:
+			start := fset.Position(fn.Pos()).Offset
+			end := fset.Position(fn.End()).Offset
+			if start <= exprPos && exprPos <= end {
+				if best == nil || start > best.start {
+					best = &candidate{name: "(closure)", results: fn.Type.Results, start: start}
+				}
+			}
+		}
+		return true
+	})
+
+	if best == nil {
+		return enclosingFuncInfo{}
+	}
+	return enclosingFuncInfo{found: true, name: best.name, results: best.results}
 }
 
 // InferEnclosingFunctionReturnsResult checks if the enclosing function returns a Result type.

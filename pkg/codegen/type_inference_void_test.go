@@ -133,6 +133,35 @@ func main() {}`,
 			exprMarker:  "MARKER",
 			wantCanProp: true,
 		},
+		{
+			name: "error-returning closure inside void function - can propagate",
+			src: `package main
+
+func main() {
+	f := func() error {
+		doSomething() // MARKER
+		return nil
+	}
+	_ = f
+}`,
+			exprMarker:  "MARKER",
+			wantCanProp: true,
+		},
+		{
+			name: "void closure inside error-returning function - cannot propagate",
+			src: `package main
+
+func wrapper() error {
+	f := func() {
+		doSomething() // MARKER
+	}
+	_ = f
+	return nil
+}`,
+			exprMarker:   "MARKER",
+			wantCanProp:  false,
+			wantFuncName: "(closure)",
+		},
 	}
 
 	for _, tt := range tests {

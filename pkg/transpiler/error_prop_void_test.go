@@ -102,6 +102,29 @@ func parseNumber() (int, error) {
 			outputContains: []string{"func parseNumber() (int, error)"},
 		},
 		{
+			name: "? in error-returning closure inside main - succeeds",
+			source: `package main
+
+import "fmt"
+
+func mayFail() error {
+	return nil
+}
+
+func main() {
+	f := func() error {
+		mayFail()?
+		return nil
+	}
+	if err := f(); err != nil {
+		fmt.Println(err)
+	}
+}
+`,
+			expectError:    false,
+			outputContains: []string{"func() error"},
+		},
+		{
 			name: "error message suggests alternatives",
 			source: `package main
 
