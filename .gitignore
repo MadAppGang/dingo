@@ -71,6 +71,9 @@ dingo.claude/settings.local.json
 .gocache/
 specs/tools
 
+# Database files
+*.db
+
 # Compiled example binaries (built with dingo build)
 /http_handler
 /api_response

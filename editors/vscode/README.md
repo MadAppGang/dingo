@@ -100,7 +100,7 @@ Search for "Dingo" in the VS Code Extensions marketplace.
 
 1. Clone the Dingo repository:
    ```bash
-   git clone https://github.com/yourusername/dingo.git
+   git clone https://github.com/MadAppGang/dingo.git
    ```
 
 2. Copy the extension to your VS Code extensions folder:
@@ -330,7 +330,7 @@ If you see "dingo-lsp binary not found":
 
 ## Contributing
 
-See the main [Dingo repository](https://github.com/yourusername/dingo) for contribution guidelines.
+See the main [Dingo repository](https://github.com/MadAppGang/dingo) for contribution guidelines.
 
 ## License
 
@@ -338,6 +338,6 @@ Same as Dingo project (see root LICENSE file).
 
 ## Resources
 
-- [Dingo Documentation](https://github.com/yourusername/dingo)
+- [Dingo Documentation](https://github.com/MadAppGang/dingo)
 - [VS Code Language Extension Guide](https://code.visualstudio.com/api/language-extensions/overview)
 - [TextMate Grammar Guide](https://macromates.com/manual/en/language_grammars)
