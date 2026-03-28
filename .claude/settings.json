@@ -12,23 +12,8 @@
       }
     ]
   },
-  "extraKnownMarketplaces": {
-    "claude-code-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-code"
-      }
-    },
-    "mag-claude-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "MadAppGang/claude-code"
-      }
-    }
-  },
   "enabledPlugins": {
-    "orchestration@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true,
+    "code-analysis@magus": true,
     "commit-commands@claude-code-plugins": false,
     "explanatory-output-style@claude-code-plugins": false,
     "feature-dev@claude-code-plugins": false,
@@ -39,20 +24,41 @@
     "code-review@claude-plugins-official": true,
     "explanatory-output-style@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
-    "seo@mag-claude-plugins": true,
-    "dev@mag-claude-plugins": true,
-    "ralph-loop@claude-plugins-official": true
+    "seo@magus": true,
+    "dev@magus": true,
+    "ralph-loop@claude-plugins-official": true,
+    "multimodel@magus": true,
+    "browser-use@magus": true,
+    "terminal@magus": true,
+    "kanban@magus": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "magus": {
+      "source": {
+        "source": "github",
+        "repo": "MadAppGang/magus"
+      }
+    }
   },
   "installedPluginVersions": {
-    "orchestration@mag-claude-plugins": "0.8.2",
-    "code-analysis@mag-claude-plugins": "3.0.0",
+    "code-analysis@magus": "5.0.1",
     "commit-commands@claude-plugins-official": "0.0.0",
     "feature-dev@claude-plugins-official": "0.0.0",
     "code-review@claude-plugins-official": "0.0.0",
     "explanatory-output-style@claude-plugins-official": "0.0.0",
     "learning-output-style@claude-plugins-official": "0.0.0",
-    "seo@mag-claude-plugins": "1.5.1",
-    "dev@mag-claude-plugins": "1.17.0",
-    "ralph-loop@claude-plugins-official": "0.0.0"
+    "seo@magus": "1.6.5",
+    "dev@magus": "2.6.0",
+    "ralph-loop@claude-plugins-official": "0.0.0",
+    "multimodel@magus": "2.10.0",
+    "browser-use@magus": "1.0.3",
+    "terminal@magus": "4.0.0",
+    "kanban@magus": "1.0.0"
   }
 }

@@ -159,7 +159,7 @@ func TestValueEnumCodeGen(t *testing.T) {
 			contains: []string{
 				"type Status int",
 				"StatusPending Status = iota",
-				"\tStatusActive\n",  // No type on subsequent iota lines
+				"\tStatusActive\n", // No type on subsequent iota lines
 				"\tStatusClosed\n",
 				"const (",
 			},
@@ -219,7 +219,7 @@ func TestValueEnumCodeGen(t *testing.T) {
 func TestValueEnumWithPrefix(t *testing.T) {
 	// Test @prefix(false) attribute
 	decl := &ValueEnumDecl{
-		Name: &Ident{Name: "Status"},
+		Name:     &Ident{Name: "Status"},
 		BaseType: &TypeExpr{Text: "int"},
 		Variants: []*ValueEnumVariant{
 			{Name: &Ident{Name: "Pending"}},
@@ -307,7 +307,7 @@ func TestTransformValueEnumSource(t *testing.T) {
 			contains: []string{
 				"type Status int",
 				"StatusPending Status = iota",
-				"\tStatusActive\n",  // Second line should just be the name
+				"\tStatusActive\n", // Second line should just be the name
 			},
 		},
 		{
@@ -331,7 +331,7 @@ func TestTransformValueEnumSource(t *testing.T) {
 			src:  "package main\n\nenum Status: int { Active }\nenum Result { Ok(T) }\n",
 			contains: []string{
 				"type Status int",
-				"StatusActive Status = iota",  // Single variant still gets full declaration
+				"StatusActive Status = iota", // Single variant still gets full declaration
 				"type Result interface",
 			},
 		},
@@ -665,7 +665,7 @@ func TestTransformWithPrefixAttribute(t *testing.T) {
 				"\tStatusActive\n",
 			},
 			notContain: []string{
-				"\tPending Status",  // Should NOT have unprefixed
+				"\tPending Status", // Should NOT have unprefixed
 			},
 		},
 		{
@@ -746,33 +746,33 @@ func TestTransformWithPrefixAttribute(t *testing.T) {
 
 func TestFindAttributeStart(t *testing.T) {
 	tests := []struct {
-		name           string
-		src            string
-		enumStart      int
+		name            string
+		src             string
+		enumStart       int
 		expectDeclStart int
 	}{
 		{
-			name:           "no attribute",
-			src:            "enum Status: int { }",
-			enumStart:      0,
+			name:            "no attribute",
+			src:             "enum Status: int { }",
+			enumStart:       0,
 			expectDeclStart: 0,
 		},
 		{
-			name:           "attribute on same line",
-			src:            "@prefix(false) enum Status: int { }",
-			enumStart:      15,
+			name:            "attribute on same line",
+			src:             "@prefix(false) enum Status: int { }",
+			enumStart:       15,
 			expectDeclStart: 0,
 		},
 		{
-			name:           "attribute on previous line",
-			src:            "@prefix(false)\nenum Status: int { }",
-			enumStart:      15,
+			name:            "attribute on previous line",
+			src:             "@prefix(false)\nenum Status: int { }",
+			enumStart:       15,
 			expectDeclStart: 0,
 		},
 		{
-			name:           "attribute with spaces",
-			src:            "@prefix(false)  enum Status: int { }",
-			enumStart:      16,
+			name:            "attribute with spaces",
+			src:             "@prefix(false)  enum Status: int { }",
+			enumStart:       16,
 			expectDeclStart: 0,
 		},
 	}

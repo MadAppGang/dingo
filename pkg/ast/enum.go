@@ -186,14 +186,14 @@ func (e *EnumDecl) String() string {
 //   - @prefix(false) enum contextKey: string { UserID = "user_id" }
 //   - enum Status: int { Pending, Active, Closed }
 type ValueEnumDecl struct {
-	Enum       token.Pos            // Position of 'enum' keyword
-	Name       *Ident               // Enum name
-	Colon      token.Pos            // Position of ':' (distinguisher from sum types)
-	BaseType   *TypeExpr            // Base type (string, int, byte, etc.)
-	LBrace     token.Pos            // Position of '{'
-	Variants   []*ValueEnumVariant  // Enum values
-	RBrace     token.Pos            // Position of '}'
-	Attributes []*Attribute         // @prefix(false), etc.
+	Enum       token.Pos           // Position of 'enum' keyword
+	Name       *Ident              // Enum name
+	Colon      token.Pos           // Position of ':' (distinguisher from sum types)
+	BaseType   *TypeExpr           // Base type (string, int, byte, etc.)
+	LBrace     token.Pos           // Position of '{'
+	Variants   []*ValueEnumVariant // Enum values
+	RBrace     token.Pos           // Position of '}'
+	Attributes []*Attribute        // @prefix(false), etc.
 }
 
 // ValueEnumVariant represents one value in a value enum

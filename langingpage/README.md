@@ -216,4 +216,4 @@ See [CLAUDE.md](./CLAUDE.md) for AI agent instructions.
 
 ## License
 
-MIT
+Apache License 2.0 - see [LICENSE](../LICENSE) file.

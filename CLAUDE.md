@@ -426,5 +426,17 @@ Local development path: `/Users/jack/mag/dingo.nvim`
 - Research: `ai-docs/claude-research.md`, `ai-docs/gemini_research.md`
 - Architecture: `ai-docs/dingo-vs-borgo.md`
 
+## Learned Preferences
+
+### Tools & Commands
+<!-- learned: 2026-03-28 session: 9f136fc8 source: repeated_pattern -->
+- Use `claudish` CLI for external model invocation and multi-model review sessions
+<!-- learned: 2026-03-28 session: 83851fd3 source: repeated_pattern -->
+- Use `CI=true` prefix when running Go tests to suppress interactive prompts
+
+### Project Structure
+<!-- learned: 2026-03-28 session: 9f136fc8 source: explicit_rule -->
+- Session artifacts go in `ai-docs/sessions/{command}-{YYYYMMDD}-{HHMMSS}-{hash}/`
+
 ---
-**Last Updated**: 2026-01-07
+**Last Updated**: 2026-03-28
