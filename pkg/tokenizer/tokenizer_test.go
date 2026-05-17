@@ -35,6 +35,8 @@ func TestTokenIsKeyword(t *testing.T) {
 		{MATCH, true},
 		{IF, true},
 		{WHERE, true},
+		{ENUM, true},
+		{GUARD, true},
 		{IDENT, false},
 		{ARROW, false},
 		{COMMENT, false},
@@ -116,7 +118,7 @@ func TestScannerPosition(t *testing.T) {
 }
 
 func TestTokenizeIdentifiers(t *testing.T) {
-	src := []byte("match if where foo bar_123")
+	src := []byte("match if where enum guard foo bar_123")
 	tok := New(src)
 
 	tokens, err := tok.Tokenize()
@@ -131,6 +133,8 @@ func TestTokenizeIdentifiers(t *testing.T) {
 		{MATCH, "match"},
 		{IF, "if"},
 		{WHERE, "where"},
+		{ENUM, "enum"},
+		{GUARD, "guard"},
 		{IDENT, "foo"},
 		{IDENT, "bar_123"},
 		{EOF, ""},
