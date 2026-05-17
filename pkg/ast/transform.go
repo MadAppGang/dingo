@@ -104,6 +104,30 @@ func TransformSource(src []byte, filename string) ([]byte, error) {
 								break
 							}
 						}
+					} else if prevPrev.tok == gotoken.RPAREN {
+						// Method declaration: func (recv) name(x: int).
+						// Walk back to find the matching `(` of the receiver
+						// list and verify FUNC sits in front of it.
+						depth := 1
+						for j := i - 3; j >= 0; j-- {
+							switch tokens[j].tok {
+							case gotoken.RPAREN:
+								depth++
+							case gotoken.LPAREN:
+								depth--
+								if depth == 0 {
+									if j > 0 && tokens[j-1].tok == gotoken.FUNC {
+										paramListDepth = parenDepth
+									}
+									j = -1 // break outer
+								}
+							case gotoken.SEMICOLON, gotoken.LBRACE, gotoken.RBRACE:
+								j = -1 // break outer
+							}
+							if j < 0 {
+								break
+							}
+						}
 					}
 				}
 			}
