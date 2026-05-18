@@ -7,17 +7,32 @@ import (
 	"go/printer"
 	"go/scanner"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	dingoast "github.com/MadAppGang/dingo/pkg/ast"
+	"github.com/MadAppGang/dingo/pkg/config"
+	"github.com/MadAppGang/dingo/pkg/feature"
+	_ "github.com/MadAppGang/dingo/pkg/feature/builtin" // register built-in plugins
 	"github.com/MadAppGang/dingo/pkg/sourcemap"
 	"github.com/MadAppGang/dingo/pkg/typechecker"
 	"github.com/MadAppGang/dingo/pkg/typeloader"
 	"github.com/MadAppGang/dingo/pkg/validator"
 )
+
+// loadFeatureEnabled produces the feature.EnabledFeatures map from the active
+// dingo.toml FeatureMatrix. If the config cannot be loaded, every feature
+// defaults to enabled (the engine-level default).
+func loadFeatureEnabled() feature.EnabledFeatures {
+	cfg, err := config.Load(nil)
+	if err != nil || cfg == nil {
+		return nil
+	}
+	return cfg.FeatureMatrix.ToEnabledFeatures()
+}
 
 // profileTranspile enables timing output for each transpilation stage.
 // Set DINGO_PROFILE=1 to enable.
@@ -216,6 +231,27 @@ func PureASTTranspileWithMappingsOpts(source []byte, filename string, opts Trans
 	fullEnumRegistry := dingoast.ExtractFullEnumRegistry(source)
 	logTiming("Extract full enum registry", stageStart)
 
+	// Step 0.5: Run every enabled character-level feature plugin against the
+	// raw source. Plugins are invoked in priority order by the feature
+	// engine — the core pipeline does not know about any specific plugin by
+	// name. External plugins (e.g. dingo-mut) opt in by blank-importing
+	// themselves from the consuming binary; they register via init() and
+	// then participate in this pass like any built-in plugin.
+	stageStart = time.Now()
+	featureEnabled := loadFeatureEnabled()
+	featureEngine, featureEngineErr := feature.NewEngine(featureEnabled)
+	if featureEngineErr != nil {
+		return TranspileResult{}, fmt.Errorf("feature engine init: %w", featureEngineErr)
+	}
+	transformedByPlugins, pluginErr := featureEngine.TransformCharacterLevel(source, filename)
+	if pluginErr != nil {
+		return TranspileResult{}, fmt.Errorf("%s: %w", filename, pluginErr)
+	}
+	if transformedByPlugins != nil {
+		source = transformedByPlugins
+	}
+	logTiming("Step 0.5: Character-level feature plugins", stageStart)
+
 	// Step 1: Transform Dingo syntax to Go using token-based transformations
 	stageStart = time.Now()
 	transformedSource, err := dingoast.TransformSource(source, filename)
@@ -317,7 +353,7 @@ func PureASTTranspileWithMappingsOpts(source []byte, filename string, opts Trans
 	// Both are metadata - no machine comments in the generated code
 	lineMappings = append(lineMappings, astLineMappings...)
 
-	// Step 3: Parse the transformed Go source with standard go/parser
+	// Step 3 (parse): Parse the transformed Go source with standard go/parser
 	stageStart = time.Now()
 	fset := token.NewFileSet()
 	goFile, err := goparser.ParseFile(fset, filename, transformedSource, goparser.ParseComments)
@@ -372,6 +408,30 @@ func PureASTTranspileWithMappingsOpts(source []byte, filename string, opts Trans
 		return TranspileResult{}, fmt.Errorf("none inference: %w", err)
 	}
 	logTiming("Step 3.5: None inference", stageStart)
+
+	// Step 3.55: Run the feature engine's Validate pass.
+	//
+	// Every enabled plugin that implements feature.Validator inspects the
+	// Go AST + type info against its own side-table (stored in the registry
+	// during Transform). The engine walks plugins in priority order; the
+	// pipeline does not know which plugins participate. Each plugin's own
+	// Validate determines whether its rules apply to this file (typically
+	// a no-op when the plugin's Transform recorded no annotations).
+	stageStart = time.Now()
+	var typeInfo *types.Info
+	if typeChecker != nil {
+		typeInfo = typeChecker.Info()
+	}
+	if validationErrs := featureEngine.Validate(fset, goFile, typeInfo, filename); len(validationErrs) > 0 {
+		first := validationErrs[0]
+		label := first.Plugin
+		if label == "" {
+			label = "validation"
+		}
+		return TranspileResult{}, fmt.Errorf("%s check error at %s:%d:%d: %s",
+			label, filename, first.Line, first.Column, first.Message)
+	}
+	logTiming("Step 3.55: Feature validators", stageStart)
 
 	// Step 3.6: Inject dgo import if Result/Option types are detected
 	InjectDgoImport(fset, goFile)
