@@ -148,10 +148,11 @@ func runTranspile(files []string, output, outdir string, watch bool) error {
 
 	// Auto-detect non-interactive environment (CI, agents, pipes)
 	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
+	useFancyOutput := shouldUseFancyOutput(isTTY, noMascot)
 
-	// Create build UI only if we're in a TTY
+	// Create build UI only for interactive output when it was not explicitly disabled.
 	var buildUI *ui.SimpleBuildUI
-	if isTTY {
+	if useFancyOutput {
 		buildUI = ui.NewSimpleBuildUI()
 		buildUI.Start()
 		defer buildUI.Stop()
@@ -182,7 +183,7 @@ func runTranspile(files []string, output, outdir string, watch bool) error {
 			outputPath = output
 		}
 
-		if err := buildFileSimple(file, outputPath, buildUI, isTTY); err != nil {
+		if err := buildFileSimple(file, outputPath, buildUI, useFancyOutput); err != nil {
 			success = false
 			lastError = err
 			if buildUI != nil {
@@ -205,6 +206,10 @@ func runTranspile(files []string, output, outdir string, watch bool) error {
 	}
 
 	return lastError
+}
+
+func shouldUseFancyOutput(isTTY, noMascot bool) bool {
+	return isTTY && !noMascot
 }
 
 func buildFile(inputPath, outputPath string, buildUI *ui.BuildOutput) error {

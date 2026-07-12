@@ -247,6 +247,17 @@ func transformTupleLiterals(src []byte) ([]byte, error) {
 
 		// Look for LPAREN that could start a tuple literal
 		if t.Kind == tokenizer.LPAREN {
+			// Parenthesized declaration groups are Go syntax, not tuple
+			// literals. Their declarations may contain commas inside composite
+			// literals or multi-name specs, so scanning the whole group as a
+			// tuple corrupts otherwise valid source.
+			if prevToken.Kind == tokenizer.VAR || prevToken.Kind == tokenizer.CONST ||
+				prevToken.Kind == tokenizer.IMPORT || prevToken.Kind == tokenizer.TYPE {
+				prevPrevToken = prevToken
+				prevToken = t
+				continue
+			}
+
 			// Skip if this is a function call (preceded by IDENT or RPAREN)
 			// Also skip if preceded by FUNC keyword (function literal parameters)
 			// Also skip if preceded by RBRACKET (generic function parameters: func F[T any](...))
@@ -275,6 +286,8 @@ func transformTupleLiterals(src []byte) ([]byte, error) {
 			// Potential tuple literal - scan to find if it has a comma at depth 1
 			startPos := int(t.Pos) - 1 // 1-based to 0-based
 			depth := 1
+			braceDepth := 0
+			bracketDepth := 0
 			hasCommaAtDepth1 := false
 			var elements []string
 			elemStart := int(t.End) - 1
@@ -299,8 +312,20 @@ func transformTupleLiterals(src []byte) ([]byte, error) {
 							elements = append(elements, trimTypeWhitespace(elemStr))
 						}
 					}
+				case tokenizer.LBRACE:
+					braceDepth++
+				case tokenizer.RBRACE:
+					if braceDepth > 0 {
+						braceDepth--
+					}
+				case tokenizer.LBRACKET:
+					bracketDepth++
+				case tokenizer.RBRACKET:
+					if bracketDepth > 0 {
+						bracketDepth--
+					}
 				case tokenizer.COMMA:
-					if depth == 1 {
+					if depth == 1 && braceDepth == 0 && bracketDepth == 0 {
 						// Collect element before comma
 						elemStr := string(src[elemStart : int(inner.Pos)-1])
 						elements = append(elements, trimTypeWhitespace(elemStr))

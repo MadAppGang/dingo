@@ -317,17 +317,19 @@ func (p *EnumParser) parseStructFields() ([]*EnumField, error) {
 func (p *EnumParser) parseTypeExpr() (*TypeExpr, error) {
 	start := p.pos
 
-	// Handle pointer types
-	for p.peek() == '*' {
-		p.advance()
-	}
-
-	// Handle slice types
-	if p.peek() == '[' {
-		p.advance()
-		if p.peek() == ']' {
+	// Accept any number of '*' (pointer) and '[]' (slice) prefixes in any order.
+	// Supports *T, []T, []*T, *[]T, [][]T, **T, etc.
+	for {
+		if p.peek() == '*' {
 			p.advance()
+			continue
 		}
+		if p.peek() == '[' && p.pos+1 < len(p.src) && p.src[p.pos+1] == ']' {
+			p.advance() // '['
+			p.advance() // ']'
+			continue
+		}
+		break
 	}
 
 	// Parse base type name

@@ -69,6 +69,28 @@ func fetch() Result[string, DBError] {
 	}
 }
 
+func TestResultWrapper_MustErrWithUnresolvedReceiver(t *testing.T) {
+	source := `package main
+
+type DBError struct{ Message string }
+
+func source() Result[int, DBError] {
+	return 1
+}
+
+func transfer() Result[bool, DBError] {
+	result := source()
+	return result.MustErr()
+}
+`
+
+	generated := transformAndPrint(t, source)
+	expected := `dgo.Err[bool, DBError](result.MustErr())`
+	if !strings.Contains(generated, expected) {
+		t.Fatalf("expected MustErr return to contain %q, got:\n%s", expected, generated)
+	}
+}
+
 // TestResultWrapper_AlreadyWrapped_NoChange tests that already-wrapped returns are not double-wrapped.
 func TestResultWrapper_AlreadyWrapped_NoChange(t *testing.T) {
 	testCases := []struct {

@@ -679,7 +679,6 @@ func transformErrorPropStatements(src []byte, originalSrc []byte, filename strin
 
 	if os.Getenv("DINGO_PROFILE") == "1" {
 		fmt.Fprintf(os.Stderr, "    [PROFILE] NewTypeResolver                   %v (skipped=%v)\n", time.Since(profileStart), resolver == nil)
-		profileStart = time.Now()
 	}
 
 	// Pre-scan original source to get accurate line numbers

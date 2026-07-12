@@ -174,9 +174,17 @@ func (ra *ReturnAnalyzer) determineResultWrapper(expr ast.Expr, returnInfo *Retu
 		return WrapperSkip
 	}
 
-	// Strategy 0c: For method calls with unknown return type (nil or invalid), skip wrapping
-	// This prevents wrapping calls to external methods that may already return Result
-	// The user must explicitly wrap if needed (safer than guessing wrong)
+	// Strategy 0c: Recognize structurally unambiguous error expressions before
+	// applying the conservative unknown-method fallback. Calls such as
+	// result.MustErr() are specifically defined to return the Result error type
+	// and must be wrapped even when go/types cannot resolve the local dgo package.
+	if ra.isErrorExpression(expr) {
+		return WrapperErr
+	}
+
+	// Strategy 0d: For other method calls with unknown return type (nil or invalid),
+	// skip wrapping. This prevents wrapping external calls that may already return
+	// Result; callers can wrap ambiguous values explicitly.
 	if call, ok := expr.(*ast.CallExpr); ok {
 		if _, isSel := call.Fun.(*ast.SelectorExpr); isSel {
 			if ra.checker != nil {
@@ -189,13 +197,7 @@ func (ra *ReturnAnalyzer) determineResultWrapper(expr ast.Expr, returnInfo *Retu
 		}
 	}
 
-	// Strategy 1: AST-based error detection (works without type checker)
-	// This runs first to catch common error patterns even when type checker fails
-	if ra.isErrorExpression(expr) {
-		return WrapperErr
-	}
-
-	// Strategy 2: Use go/types for accurate type comparison
+	// Strategy 1: Use go/types for accurate type comparison
 	if ra.checker != nil && returnInfo.EType != nil {
 		exprType := ra.checker.TypeOf(expr)
 		if exprType != nil {
@@ -210,7 +212,7 @@ func (ra *ReturnAnalyzer) determineResultWrapper(expr ast.Expr, returnInfo *Retu
 		}
 	}
 
-	// Strategy 3: Heuristic - check for composite literal matching E type
+	// Strategy 2: Heuristic - check for composite literal matching E type
 	if compLit, ok := expr.(*ast.CompositeLit); ok {
 		if eIdent, ok := returnInfo.EAstExpr.(*ast.Ident); ok {
 			if litIdent, ok := compLit.Type.(*ast.Ident); ok {
@@ -221,7 +223,7 @@ func (ra *ReturnAnalyzer) determineResultWrapper(expr ast.Expr, returnInfo *Retu
 		}
 	}
 
-	// Strategy 4: Check for error interface (requires type checker)
+	// Strategy 3: Check for error interface (requires type checker)
 	// IMPORTANT: Skip invalid types - they may falsely pass implements check
 	if ra.checker != nil {
 		exprType := ra.checker.TypeOf(expr)
