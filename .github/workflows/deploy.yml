@@ -43,7 +43,7 @@ jobs:
         uses: withastro/action@v5
         with:
           path: ./langingpage
-          package-manager: pnpm@latest
+          package-manager: pnpm@9
           node-version: 22
         env:
           # Firebase config from GitHub secrets
