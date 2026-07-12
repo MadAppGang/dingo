@@ -1548,7 +1548,6 @@ func (g *MatchCodeGen) detectValueEnum() *ValueEnumMatchInfo {
 	}
 
 	var enumInfo *ast.ValueEnumInfo
-	var foundPatterns []string
 
 	for _, arm := range g.Match.Arms {
 		// Wildcards and variables are allowed (they become default case)
@@ -1583,7 +1582,6 @@ func (g *MatchCodeGen) detectValueEnum() *ValueEnumMatchInfo {
 			return nil // Mixed enums - not supported
 		}
 
-		foundPatterns = append(foundPatterns, cp.Name)
 	}
 
 	if enumInfo == nil {

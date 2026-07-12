@@ -717,7 +717,6 @@ func ExtractResultErrType(typeStr string) string {
 			// Only match comma at top level (bracket depth 1, not inside parens)
 			if bracketDepth == 1 && parenDepth == 0 {
 				commaIdx = i
-				break
 			}
 		}
 		if commaIdx != -1 {

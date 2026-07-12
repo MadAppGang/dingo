@@ -381,15 +381,25 @@ func (inf *LambdaTypeInferrer) tryLayer2DgoRegistry(call *ast.CallExpr) *types.S
 		return nil
 	}
 
-	// Use Layer 3 unification to instantiate with concrete types
-	unifier := NewTypeUnifier(inf.fset, inf.info)
-	bindings := unifier.InferTypeParams(call, genericSig)
-	if len(bindings) == 0 {
+	// Reuse the multi-pass resolver here instead of the standalone unifier.
+	// In addition to binding input types from non-lambda arguments, it can bind
+	// result type parameters from a lambda body after an earlier pass has typed
+	// the lambda parameters. This is required for dependent calls such as:
+	//
+	//   groups := dgo.GroupBy(items, |item| item.Category)
+	//   for _, group := range groups {
+	//       names := dgo.Map(group, |item| item.Name)
+	//   }
+	//
+	// On the first pass unresolved result parameters intentionally become any,
+	// which still gives go/types enough structure to type the range variable.
+	// A later pass then replaces them with the concrete lambda result type.
+	typeArgs := inf.resolveTypeParamsFromArgs(call, genericSig)
+	if len(typeArgs) == 0 {
 		return nil
 	}
 
-	// Instantiate signature with resolved types
-	return unifier.InstantiateSignature(genericSig, bindings)
+	return inf.instantiateSignature(genericSig, typeArgs)
 }
 
 // tryLayer3GenericUnification attempts inference using structural type matching.
@@ -520,6 +530,15 @@ func (inf *LambdaTypeInferrer) rewriteParams(fn *ast.FuncLit, expected *types.Si
 				expectedType := expectedParams.At(paramIdx).Type()
 				newTypeExpr := inf.typeToExpr(expectedType)
 				if newTypeExpr != nil {
+					// An unresolved synthetic type parameter is represented as any.
+					// Replacing the existing placeholder with another any node is not
+					// progress and would keep the multi-pass loop running forever.
+					if inf.isAnyType(newTypeExpr) {
+						newFields[i] = field
+						paramIdx += numNames
+						continue
+					}
+
 					// Create fresh Names with no position info to avoid
 					// go/printer trailing comma issues from stale position data
 					freshNames := make([]*ast.Ident, len(field.Names))
@@ -631,6 +650,12 @@ func (inf *LambdaTypeInferrer) rewriteResults(fn *ast.FuncLit, expected *types.S
 			expectedType := expectedResults.At(i).Type()
 			newTypeExpr := inf.typeToExpr(expectedType)
 			if newTypeExpr != nil {
+				// Do not count any -> any as a change. Synthetic dgo signatures
+				// intentionally use any for output type parameters that need a
+				// later inference pass.
+				if inf.isAnyType(newTypeExpr) {
+					continue
+				}
 				field.Type = newTypeExpr
 				changed = true
 			}
@@ -1101,7 +1126,22 @@ func (inf *LambdaTypeInferrer) resolveTypeParamsFromArgs(call *ast.CallExpr, gen
 				argType = tv.Type
 			}
 		}
-		if argType == nil {
+		if !isUsableInferenceType(argType) {
+			// importer.Default cannot resolve module-local packages when the
+			// transpiler is used as a library. That leaves variables derived
+			// from dgo calls (especially range variables) with invalid types.
+			// Recover their type from the dgo signature registry and the AST.
+			switch arg := arg.(type) {
+			case *ast.Ident:
+				argType = inf.inferRangeVariableType(arg)
+				if !isUsableInferenceType(argType) {
+					argType = inf.inferAssignedDgoResultType(arg)
+				}
+			case *ast.CallExpr:
+				argType = inf.inferDgoCallResultType(arg)
+			}
+		}
+		if !isUsableInferenceType(argType) {
 			continue
 		}
 
@@ -1127,6 +1167,191 @@ func (inf *LambdaTypeInferrer) resolveTypeParamsFromArgs(call *ast.CallExpr, gen
 
 	// Return even if some type args are 'any' - partial resolution is better than nothing
 	return typeArgs
+}
+
+// isUsableInferenceType reports whether a go/types result carries concrete
+// information. With partial type checking, unresolved identifiers are recorded
+// as types.Invalid rather than nil.
+func isUsableInferenceType(t types.Type) bool {
+	if t == nil {
+		return false
+	}
+	if basic, ok := t.(*types.Basic); ok && basic.Kind() == types.Invalid {
+		return false
+	}
+	return true
+}
+
+// inferRangeVariableType recovers the type of an identifier introduced by a
+// range statement when go/types could not resolve the range expression because
+// it came from a module-local dgo call.
+func (inf *LambdaTypeInferrer) inferRangeVariableType(ident *ast.Ident) types.Type {
+	target := inf.info.Uses[ident]
+	if target == nil {
+		target = inf.info.Defs[ident]
+	}
+	if target == nil {
+		return nil
+	}
+
+	var inferred types.Type
+	ast.Inspect(inf.file, func(n ast.Node) bool {
+		if inferred != nil {
+			return false
+		}
+		rangeStmt, ok := n.(*ast.RangeStmt)
+		if !ok {
+			return true
+		}
+
+		isKey := rangeIdentDefinesObject(inf.info, rangeStmt.Key, target)
+		isValue := rangeIdentDefinesObject(inf.info, rangeStmt.Value, target)
+		if !isKey && !isValue {
+			return true
+		}
+
+		containerType := inf.inferAssignedDgoResultType(rangeStmt.X)
+		if !isUsableInferenceType(containerType) {
+			return true
+		}
+
+		switch container := containerType.Underlying().(type) {
+		case *types.Map:
+			if isValue {
+				inferred = container.Elem()
+			} else {
+				inferred = container.Key()
+			}
+		case *types.Slice:
+			if isValue {
+				inferred = container.Elem()
+			} else {
+				inferred = types.Typ[types.Int]
+			}
+		case *types.Array:
+			if isValue {
+				inferred = container.Elem()
+			} else {
+				inferred = types.Typ[types.Int]
+			}
+		case *types.Chan:
+			if isValue || rangeStmt.Value == nil {
+				inferred = container.Elem()
+			}
+		case *types.Basic:
+			if container.Kind() == types.String {
+				if isValue {
+					inferred = types.Typ[types.Rune]
+				} else {
+					inferred = types.Typ[types.Int]
+				}
+			}
+		}
+
+		return inferred == nil
+	})
+
+	return inferred
+}
+
+func rangeIdentDefinesObject(info *types.Info, expr ast.Expr, target types.Object) bool {
+	ident, ok := expr.(*ast.Ident)
+	return ok && info.Defs[ident] == target
+}
+
+// inferAssignedDgoResultType resolves an expression such as byCategory back to
+// its defining dgo.GroupBy call, then instantiates the registry signature using
+// the types available in the current inference pass.
+func (inf *LambdaTypeInferrer) inferAssignedDgoResultType(expr ast.Expr) types.Type {
+	if tv, ok := inf.info.Types[expr]; ok && isUsableInferenceType(tv.Type) {
+		return tv.Type
+	}
+
+	if call, ok := expr.(*ast.CallExpr); ok {
+		return inf.inferDgoCallResultType(call)
+	}
+
+	ident, ok := expr.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	target := inf.info.Uses[ident]
+	if target == nil {
+		target = inf.info.Defs[ident]
+	}
+	if target == nil {
+		return nil
+	}
+
+	var inferred types.Type
+	ast.Inspect(inf.file, func(n ast.Node) bool {
+		if inferred != nil {
+			return false
+		}
+
+		switch decl := n.(type) {
+		case *ast.AssignStmt:
+			for i, lhs := range decl.Lhs {
+				lhsIdent, ok := lhs.(*ast.Ident)
+				if !ok || inf.info.Defs[lhsIdent] != target {
+					continue
+				}
+				rhsIndex := i
+				if len(decl.Rhs) == 1 {
+					rhsIndex = 0
+				}
+				if rhsIndex < len(decl.Rhs) {
+					if call, ok := decl.Rhs[rhsIndex].(*ast.CallExpr); ok {
+						inferred = inf.inferDgoCallResultType(call)
+					}
+				}
+				return inferred == nil
+			}
+
+		case *ast.ValueSpec:
+			for i, name := range decl.Names {
+				if inf.info.Defs[name] != target || len(decl.Values) == 0 {
+					continue
+				}
+				valueIndex := i
+				if len(decl.Values) == 1 {
+					valueIndex = 0
+				}
+				if valueIndex < len(decl.Values) {
+					if call, ok := decl.Values[valueIndex].(*ast.CallExpr); ok {
+						inferred = inf.inferDgoCallResultType(call)
+					}
+				}
+				return inferred == nil
+			}
+		}
+
+		return true
+	})
+
+	return inferred
+}
+
+func (inf *LambdaTypeInferrer) inferDgoCallResultType(call *ast.CallExpr) types.Type {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
+	pkgIdent, ok := sel.X.(*ast.Ident)
+	if !ok || pkgIdent.Name != "dgo" {
+		return nil
+	}
+
+	genericSig := GetDgoSignature(sel.Sel.Name)
+	if genericSig == nil {
+		return nil
+	}
+	typeArgs := inf.resolveTypeParamsFromArgs(call, genericSig)
+	instantiated := inf.instantiateSignature(genericSig, typeArgs)
+	if instantiated == nil || instantiated.Results() == nil || instantiated.Results().Len() == 0 {
+		return nil
+	}
+	return instantiated.Results().At(0).Type()
 }
 
 // matchTypeToParam matches a concrete type to a (possibly generic) parameter type,

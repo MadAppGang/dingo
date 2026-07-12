@@ -71,3 +71,25 @@ func TestIsWorkspacePattern(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldUseFancyOutput(t *testing.T) {
+	tests := []struct {
+		name     string
+		isTTY    bool
+		noMascot bool
+		want     bool
+	}{
+		{name: "interactive default", isTTY: true, want: true},
+		{name: "interactive no mascot", isTTY: true, noMascot: true, want: false},
+		{name: "non interactive default", isTTY: false, want: false},
+		{name: "non interactive no mascot", isTTY: false, noMascot: true, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldUseFancyOutput(tt.isTTY, tt.noMascot); got != tt.want {
+				t.Fatalf("shouldUseFancyOutput(%v, %v) = %v, want %v", tt.isTTY, tt.noMascot, got, tt.want)
+			}
+		})
+	}
+}
