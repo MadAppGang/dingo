@@ -2,7 +2,9 @@ package feature
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
+	"go/types"
 	"sort"
 )
 
@@ -86,6 +88,13 @@ func (e *Engine) loadPlugins() error {
 	})
 
 	return nil
+}
+
+// IsEnabled reports whether a feature is enabled in this engine. The caller
+// can use this to gate optional pipeline phases on a particular plugin's
+// config without having to walk EnabledPluginNames.
+func (e *Engine) IsEnabled(name string) bool {
+	return e.isEnabled(name)
 }
 
 // isEnabled checks if a feature is enabled
@@ -272,6 +281,46 @@ func (e *Engine) checkDisabledSyntax(src []byte) error {
 // Registry returns the shared registry for direct access
 func (e *Engine) Registry() *SharedRegistry {
 	return e.registry
+}
+
+// Validate runs every enabled plugin that implements Validator against the
+// post-typecheck Go AST + type info. Plugins access their previously stored
+// annotations via the shared registry. Errors are concatenated in plugin
+// priority order; the caller decides how to surface them.
+//
+// Plugins are walked in the same order as Transform (character-level first,
+// then token-level), each sorted by Priority. Plugins that do not implement
+// Validator are skipped.
+func (e *Engine) Validate(fset *token.FileSet, file *ast.File, info *types.Info, filename string) []ValidationError {
+	ctx := &ValidateContext{
+		FileSet:  fset,
+		GoFile:   file,
+		TypeInfo: info,
+		Registry: e.registry,
+		Filename: filename,
+	}
+
+	var errs []ValidationError
+	collect := func(p Plugin) {
+		v, ok := p.(Validator)
+		if !ok {
+			return
+		}
+		pluginErrs := v.Validate(ctx)
+		for i := range pluginErrs {
+			if pluginErrs[i].Plugin == "" {
+				pluginErrs[i].Plugin = p.Name()
+			}
+		}
+		errs = append(errs, pluginErrs...)
+	}
+	for _, p := range e.charPlugins {
+		collect(p)
+	}
+	for _, p := range e.tokenPlugins {
+		collect(p)
+	}
+	return errs
 }
 
 // EnabledPluginNames returns the names of all enabled plugins

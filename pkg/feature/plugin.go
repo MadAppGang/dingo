@@ -3,7 +3,10 @@
 package feature
 
 import (
+	"fmt"
+	"go/ast"
 	"go/token"
+	"go/types"
 	"sort"
 	"sync"
 )
@@ -146,6 +149,75 @@ const (
 	// EnumRegistryKey stores enum definitions for use by match plugin
 	EnumRegistryKey = "enum_definitions"
 )
+
+// Validator is an optional plugin extension. Plugins that need to inspect
+// the Go AST + type information AFTER transformation and type checking
+// implement this interface in addition to Plugin.
+//
+// The engine collects every registered, enabled plugin that implements
+// Validator and runs Validate in priority order during the post-typecheck
+// validation phase. Errors are reported at Dingo source positions (Pos is
+// already a token.Pos into the active FileSet; Line/Column are populated
+// by Validate for convenience).
+type Validator interface {
+	// Validate runs after Go AST construction and type checking.
+	// The plugin reads its own annotations from ctx.Registry (set during
+	// Transform), inspects ctx.GoFile against ctx.TypeInfo, and returns
+	// a slice of validation errors. nil / empty slice means "all good".
+	Validate(ctx *ValidateContext) []ValidationError
+}
+
+// ValidateContext provides the post-AST validation environment to a
+// Validator plugin. All fields are read-only for the plugin.
+type ValidateContext struct {
+	// FileSet is the active token.FileSet for the parsed Go AST.
+	FileSet *token.FileSet
+
+	// GoFile is the Go AST after all source transformations.
+	GoFile *ast.File
+
+	// TypeInfo is the type checker result for GoFile. May be nil if type
+	// inference was disabled or failed; validators should degrade gracefully.
+	TypeInfo *types.Info
+
+	// Registry is the shared cross-phase registry. Validators retrieve
+	// annotations previously stored by their Transform pass via a
+	// plugin-specific key (conventionally "<plugin>_annotations").
+	Registry *SharedRegistry
+
+	// Filename is the original Dingo source filename (for diagnostics).
+	Filename string
+}
+
+// ValidationError is a structured diagnostic from a Validator plugin.
+// Pos points at a position in ctx.FileSet; Line/Column are 1-based and
+// populated by the validator for convenience.
+type ValidationError struct {
+	// Plugin is the name of the plugin that produced the error. Plugins
+	// may leave this empty; the engine populates it from p.Name() before
+	// returning the error to the caller. The pipeline uses it to prefix
+	// the diagnostic with a feature-agnostic label (e.g. "<plugin> check
+	// error at ...").
+	Plugin string
+
+	// Pos points into the active FileSet.
+	Pos token.Pos
+
+	// Line is the 1-based line number in the Dingo source.
+	Line int
+
+	// Column is the 1-based column number in the Dingo source.
+	Column int
+
+	// Message describes the problem (no file path prefix; the engine adds it).
+	Message string
+}
+
+// Error implements the error interface for ValidationError so callers can
+// surface it via the standard error machinery.
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("%d:%d: %s", e.Line, e.Column, e.Message)
+}
 
 // --- Plugin Registry ---
 
