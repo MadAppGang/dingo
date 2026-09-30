@@ -6,7 +6,7 @@ This guide explains how to maintain and update the Dingo VS Code extension when 
 
 ```bash
 # Build grammar from YAML
-npm run build
+npm run build-grammar
 
 # Package extension
 npm run package
@@ -60,7 +60,7 @@ repository:
 ### 3. Build the Grammar
 
 ```bash
-npm run build
+npm run build-grammar
 ```
 
 This converts `dingo.tmLanguage.yaml` → `dingo.tmLanguage.json`.
@@ -241,7 +241,7 @@ tuples:
 
 Before committing:
 
-- [ ] Grammar builds without errors (`npm run build`)
+- [ ] Grammar builds without errors (`npm run build-grammar`)
 - [ ] All example files have correct highlighting
 - [ ] Tested across themes: Dark+, Light+, Monokai, Material
 - [ ] Scope Inspector shows expected scopes
